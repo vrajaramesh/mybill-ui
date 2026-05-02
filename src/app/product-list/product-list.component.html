@@ -1,0 +1,109 @@
+<div class="product-container">
+  <div class="product-card">
+    <h2 class="card-title">Product Management</h2>
+    <button class="add-btn" (click)="addNewProduct()">Add New Product</button>
+
+    <div class="filters">
+      <div class="filter-group">
+        <label for="search">Search:</label>
+        <input id="search" type="text" [(ngModel)]="searchTerm" placeholder="Search by name or description" class="filter-input">
+      </div>
+      <div class="filter-group">
+        <label for="categoryFilter">Category:</label>
+        <select id="categoryFilter" [(ngModel)]="selectedCategory" class="filter-input">
+          <option value="">All Categories</option>
+          <option *ngFor="let category of categories" [value]="category">{{ category }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="unitFilter">Unit:</label>
+        <select id="unitFilter" [(ngModel)]="selectedUnit" class="filter-input">
+          <option value="">All Units</option>
+          <option *ngFor="let unit of units" [value]="unit">{{ unit }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="product-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Selling Price</th>
+            <th>Stock</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let product of filteredProducts" class="table-row">
+            <td>{{ product.productId }}</td>
+            <td>{{ product.productName }}</td>
+            <td>{{ product.category }}</td>
+            <td>{{ product.sellingPrice | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td>{{ product.stockQuantity }}</td>
+            <td>
+              <button class="edit-btn" (click)="selectProduct(product)">Edit</button>
+              <button class="delete-btn" (click)="deleteProduct(product.productId!)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div *ngIf="selectedProduct" class="form-card">
+    <h3 class="form-title">{{ selectedProduct.productId ? 'Edit' : 'Add' }} Product</h3>
+    <form class="product-form" (ngSubmit)="saveProduct()">
+      <div class="form-group">
+        <label for="productName">Name:</label>
+        <input id="productName" type="text" [(ngModel)]="selectedProduct.productName" name="productName" required class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="description">Description:</label>
+        <textarea id="description" [(ngModel)]="selectedProduct.description" name="description" class="form-textarea"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="category">Category:</label>
+        <select id="category" [(ngModel)]="selectedProduct.category" name="category" class="form-input">
+          <option value="">Select Category</option>
+          <option *ngFor="let cat of productCategories" [value]="cat.categoryName">{{ cat.categoryName }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="unit">Unit:</label>
+        <select id="unit" [(ngModel)]="selectedProduct.unit" name="unit" class="form-input">
+          <option value="Meters">Meters</option>
+          <option value="Pieces">Pieces</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="costPrice">Cost Price:</label>
+        <input id="costPrice" type="number" step="0.01" [(ngModel)]="selectedProduct.costPrice" name="costPrice" class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="sellingPrice">Selling Price:</label>
+        <input id="sellingPrice" type="number" step="0.01" [(ngModel)]="selectedProduct.sellingPrice" name="sellingPrice" required class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="stockQuantity">Stock Quantity:</label>
+        <input id="stockQuantity" type="number" step="0.01" [(ngModel)]="selectedProduct.stockQuantity" name="stockQuantity" class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="minStockLevel">Min Stock Level:</label>
+        <input id="minStockLevel" type="number" step="0.01" [(ngModel)]="selectedProduct.minStockLevel" name="minStockLevel" class="form-input">
+      </div>
+      <div class="form-group checkbox-group">
+        <label for="isActive" class="checkbox-label">
+          <input id="isActive" type="checkbox" [(ngModel)]="selectedProduct.isActive" name="isActive" class="form-checkbox">
+          Active
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="save-btn">Save</button>
+        <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
