@@ -40,7 +40,7 @@
           <tr *ngFor="let product of filteredProducts" class="table-row">
             <td>{{ product.productId }}</td>
             <td>{{ product.productName }}</td>
-            <td>{{ product.category }}</td>
+            <td>{{ product.category?.categoryName }}</td>
             <td>{{ product.sellingPrice | currency:'INR':'symbol':'1.2-2' }}</td>
             <td>{{ product.stockQuantity }}</td>
             <td>
@@ -67,8 +67,8 @@
       <div class="form-group">
         <label for="category">Category:</label>
         <select id="category" [(ngModel)]="selectedProduct.category" name="category" class="form-input">
-          <option value="">Select Category</option>
-          <option *ngFor="let cat of productCategories" [value]="cat.categoryName">{{ cat.categoryName }}</option>
+          <option [ngValue]="null">Select Category</option>
+          <option *ngFor="let cat of productCategories" [ngValue]="cat">{{ cat.categoryName }}</option>
         </select>
       </div>
       <div class="form-group">

@@ -1,8 +1,13 @@
 <div class="app-container">
   <header class="app-header">
     <h1 class="app-title">Srisa Fabrics</h1>
+    <nav class="app-nav">
+      <button class="nav-btn" [class.active]="activeTab === 'products'" (click)="setActiveTab('products')">Products</button>
+      <button class="nav-btn" [class.active]="activeTab === 'purchases'" (click)="setActiveTab('purchases')">Purchases</button>
+    </nav>
   </header>
   <main class="app-main">
-    <app-product-list></app-product-list>
+    <app-product-list *ngIf="activeTab === 'products'"></app-product-list>
+    <app-purchase-list *ngIf="activeTab === 'purchases'"></app-purchase-list>
   </main>
 </div>

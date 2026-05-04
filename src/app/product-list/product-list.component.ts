@@ -43,7 +43,7 @@ export class ProductListComponent implements OnInit {
   }
 
   extractFilters(): void {
-    this.categories = [...new Set(this.products.map(p => p.category).filter((c): c is string => c !== undefined))];
+    this.categories = [...new Set(this.products.map(p => p.category?.categoryName).filter((c): c is string => c !== undefined))];
     this.units = [...new Set(this.products.map(p => p.unit).filter((u): u is string => u !== undefined))];
   }
 
@@ -53,7 +53,7 @@ export class ProductListComponent implements OnInit {
         product.productName.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         (product.description && product.description.toLowerCase().includes(this.searchTerm.toLowerCase()));
 
-      const matchesCategory = !this.selectedCategory || product.category === this.selectedCategory;
+      const matchesCategory = !this.selectedCategory || product.category?.categoryName === this.selectedCategory;
 
       const matchesUnit = !this.selectedUnit || product.unit === this.selectedUnit;
 
@@ -84,14 +84,26 @@ export class ProductListComponent implements OnInit {
   saveProduct(): void {
     if (this.selectedProduct) {
       if (this.selectedProduct.productId) {
-        this.productService.updateProduct(this.selectedProduct.productId, this.selectedProduct).subscribe(() => {
-          this.loadProducts();
-          this.selectedProduct = null;
+        this.productService.updateProduct(this.selectedProduct.productId, this.selectedProduct).subscribe({
+          next: () => {
+            this.loadProducts();
+            this.selectedProduct = null;
+          },
+          error: (err) => {
+            console.error('Error updating product:', err);
+            alert('Error updating product: ' + (err.error?.message || err.message));
+          }
         });
       } else {
-        this.productService.createProduct(this.selectedProduct).subscribe(() => {
-          this.loadProducts();
-          this.selectedProduct = null;
+        this.productService.createProduct(this.selectedProduct).subscribe({
+          next: () => {
+            this.loadProducts();
+            this.selectedProduct = null;
+          },
+          error: (err) => {
+            console.error('Error creating product:', err);
+            alert('Error creating product: ' + (err.error?.message || err.message));
+          }
         });
       }
     }

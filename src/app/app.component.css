@@ -12,6 +12,10 @@
   text-align: center;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
 }
 
 .app-title {
@@ -20,6 +24,33 @@
   font-weight: 300;
   color: #333;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.app-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn {
+  background: transparent;
+  border: 2px solid #667eea;
+  color: #667eea;
+  padding: 8px 16px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+  background: #667eea;
+  color: white;
+}
+
+.nav-btn.active {
+  background: #667eea;
+  color: white;
 }
 
 .app-main {
