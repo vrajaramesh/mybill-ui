@@ -7,6 +7,8 @@ export interface Purchase {
   invoiceNumber: string;
   invoiceDate: string;
   totalAmount: number;
+  gst?: number;
+  finalAmount?: number;
   paidAmount?: number;
   paymentStatus?: string;
   paymentDueDate?: string;
@@ -23,6 +25,8 @@ export interface PurchaseItem {
   quantity: number;
   unitPrice: number;
   totalPrice?: number;
+  gst?: number;
+  finalPrice?: number;
 }
 
 export interface PurchasePayment {

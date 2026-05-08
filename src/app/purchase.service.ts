@@ -43,6 +43,14 @@ export class PurchaseService {
     return this.http.get<Product>(`${this.apiUrl}/products/${id}`);
   }
 
+  createProduct(product: Product): Observable<Product> {
+    return this.http.post<Product>(`${this.apiUrl}/products`, product);
+  }
+
+  getProductCategories(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/products/categories`);
+  }
+
   // Purchase endpoints
   getPurchases(): Observable<Purchase[]> {
     return this.http.get<Purchase[]>(`${this.apiUrl}/purchases`);

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ProductService } from '../product.service';
-import { Product } from '../product.model';
+import { Product, ProductImage } from '../product.model';
 import { ProductCategory } from '../product-category.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,6 +21,9 @@ export class ProductListComponent implements OnInit {
   categories: string[] = [];
   units: string[] = [];
   productCategories: ProductCategory[] = [];
+
+  productImages: ProductImage[] = [];
+  uploadingCount = 0;
 
   constructor(private productService: ProductService) { }
 
@@ -52,17 +55,20 @@ export class ProductListComponent implements OnInit {
       const matchesSearch = !this.searchTerm ||
         product.productName.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         (product.description && product.description.toLowerCase().includes(this.searchTerm.toLowerCase()));
-
       const matchesCategory = !this.selectedCategory || product.category?.categoryName === this.selectedCategory;
-
       const matchesUnit = !this.selectedUnit || product.unit === this.selectedUnit;
-
       return matchesSearch && matchesCategory && matchesUnit;
     });
   }
 
   selectProduct(product: Product): void {
     this.selectedProduct = { ...product };
+    this.productImages = [];
+    if (product.productId) {
+      this.productService.getProductImages(product.productId).subscribe(imgs => {
+        this.productImages = imgs;
+      });
+    }
   }
 
   deleteProduct(id: number): void {
@@ -79,6 +85,7 @@ export class ProductListComponent implements OnInit {
       sellingPrice: 0,
       unit: 'Meters'
     };
+    this.productImages = [];
   }
 
   saveProduct(): void {
@@ -88,20 +95,21 @@ export class ProductListComponent implements OnInit {
           next: () => {
             this.loadProducts();
             this.selectedProduct = null;
+            this.productImages = [];
           },
           error: (err) => {
-            console.error('Error updating product:', err);
             alert('Error updating product: ' + (err.error?.message || err.message));
           }
         });
       } else {
         this.productService.createProduct(this.selectedProduct).subscribe({
-          next: () => {
+          next: (created) => {
             this.loadProducts();
-            this.selectedProduct = null;
+            // Re-open the new product so user can add images right away
+            this.selectedProduct = created;
+            this.productImages = [];
           },
           error: (err) => {
-            console.error('Error creating product:', err);
             alert('Error creating product: ' + (err.error?.message || err.message));
           }
         });
@@ -111,5 +119,46 @@ export class ProductListComponent implements OnInit {
 
   cancelEdit(): void {
     this.selectedProduct = null;
+    this.productImages = [];
+  }
+
+  onFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !this.selectedProduct?.productId) return;
+
+    const files = Array.from(input.files);
+    input.value = ''; // reset so same file can be re-selected
+
+    files.forEach(file => {
+      this.uploadingCount++;
+      this.productService.uploadToCloudinary(file).subscribe({
+        next: (res: any) => {
+          const productId = this.selectedProduct?.productId;
+          if (!productId) { this.uploadingCount--; return; }
+          this.productService.saveProductImage(productId, res.secure_url, res.public_id).subscribe({
+            next: (img) => {
+              this.productImages.push(img);
+              this.uploadingCount--;
+            },
+            error: () => { this.uploadingCount--; }
+          });
+        },
+        error: () => {
+          alert('Failed to upload image. Please try again.');
+          this.uploadingCount--;
+        }
+      });
+    });
+  }
+
+  deleteImage(img: ProductImage): void {
+    if (!this.selectedProduct?.productId || !img.imageId) return;
+    this.productService.deleteProductImage(this.selectedProduct.productId, img.imageId).subscribe(() => {
+      this.productImages = this.productImages.filter(i => i.imageId !== img.imageId);
+    });
+  }
+
+  get isUploading(): boolean {
+    return this.uploadingCount > 0;
   }
 }

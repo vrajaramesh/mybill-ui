@@ -18,3 +18,10 @@ export interface Product {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface ProductImage {
+  imageId?: number;
+  imageUrl: string;
+  publicId?: string;
+  createdAt?: string;
+}

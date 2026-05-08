@@ -1,13 +1,74 @@
-<div class="app-container">
-  <header class="app-header">
-    <h1 class="app-title">Srisa Fabrics</h1>
-    <nav class="app-nav">
-      <button class="nav-btn" [class.active]="activeTab === 'products'" (click)="setActiveTab('products')">Products</button>
-      <button class="nav-btn" [class.active]="activeTab === 'purchases'" (click)="setActiveTab('purchases')">Purchases</button>
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
+    <div class="sidebar-header">
+      <span class="brand-name" *ngIf="!sidebarCollapsed">Srisa Fabrics</span>
+      <button class="toggle-btn" (click)="toggleSidebar()" title="Toggle sidebar">&#9776;</button>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <!-- Billing -->
+      <div class="nav-group">
+        <div class="nav-item parent" [class.active]="activeMenu==='billing'"
+             (click)="toggleMenu('billing'); navigate('billing', activeSubMenu || 'transactions')">
+          <span class="nav-icon">🧾</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Billing</span>
+          <span class="arrow" *ngIf="!sidebarCollapsed">{{ isMenuExpanded('billing') ? '▾' : '▸' }}</span>
+        </div>
+        <div class="submenu" *ngIf="!sidebarCollapsed && isMenuExpanded('billing')">
+          <div class="nav-item sub" [class.active]="activeMenu==='billing' && activeSubMenu==='transactions'"
+               (click)="navigate('billing','transactions')">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">Transactions</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='billing' && activeSubMenu==='new-bill'"
+               (click)="navigate('billing','new-bill')">
+            <span class="nav-icon">➕</span>
+            <span class="nav-label">New Bill</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Products -->
+      <div class="nav-group">
+        <div class="nav-item parent" [class.active]="activeMenu==='products'"
+             (click)="navigate('products')">
+          <span class="nav-icon">📦</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Products</span>
+        </div>
+      </div>
+
+      <!-- Purchases -->
+      <div class="nav-group">
+        <div class="nav-item parent" [class.active]="activeMenu==='purchases'"
+             (click)="navigate('purchases')">
+          <span class="nav-icon">🛒</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Purchases</span>
+        </div>
+      </div>
+
+      <!-- GST Report -->
+      <div class="nav-group">
+        <div class="nav-item parent" [class.active]="activeMenu==='gst-report'"
+             (click)="navigate('gst-report')">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">GST Report</span>
+        </div>
+      </div>
+
     </nav>
-  </header>
-  <main class="app-main">
-    <app-product-list *ngIf="activeTab === 'products'"></app-product-list>
-    <app-purchase-list *ngIf="activeTab === 'purchases'"></app-purchase-list>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+    <app-billing
+      *ngIf="activeSection==='billing'"
+      [view]="billingView"
+      (viewChange)="onBillingViewChange($event)">
+    </app-billing>
+    <app-product-list *ngIf="activeSection==='products'"></app-product-list>
+    <app-purchase-list *ngIf="activeSection==='purchases'"></app-purchase-list>
+    <app-gst-report *ngIf="activeSection==='gst-report'"></app-gst-report>
   </main>
 </div>
