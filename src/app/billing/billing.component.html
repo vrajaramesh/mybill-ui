@@ -1,0 +1,411 @@
+<div class="billing-container">
+
+  <!-- Bill List (view === 'list') -->
+  <div class="bill-card" *ngIf="view === 'list'">
+    <div class="card-header">
+      <h2 class="card-title">Billing</h2>
+      <div class="header-actions">
+        <button class="settings-btn" (click)="openSettings()" title="Settings">&#9881;</button>
+      </div>
+    </div>
+
+    <!-- Date Filter Bar — single row -->
+    <div class="date-filter-bar">
+      <div class="day-nav-group" *ngIf="dateFilter==='today'">
+        <button class="nav-arrow" (click)="prevDay()" title="Previous day">&#8249;</button>
+        <span class="day-label">{{ selectedDate | date:'dd MMM yyyy' }}</span>
+        <button class="nav-arrow" (click)="nextDay()" title="Next day">&#8250;</button>
+      </div>
+
+      <button class="chip" [class.active]="dateFilter==='today'"         (click)="goToday()">Today</button>
+      <button class="chip" [class.active]="dateFilter==='this_week'"     (click)="dateFilter='this_week'">This Week</button>
+      <button class="chip" [class.active]="dateFilter==='last_month'"    (click)="dateFilter='last_month'">Last Month</button>
+      <button class="chip" [class.active]="dateFilter==='last_3_months'" (click)="dateFilter='last_3_months'">Last 3 Months</button>
+      <button class="chip" [class.active]="dateFilter==='this_year'"     (click)="dateFilter='this_year'">This Year</button>
+      <button class="chip" [class.active]="dateFilter==='last_year'"     (click)="dateFilter='last_year'">Last Year</button>
+      <button class="chip" [class.active]="dateFilter==='custom'"        (click)="dateFilter='custom'">Custom</button>
+      <button class="chip" [class.active]="dateFilter==='all'"           (click)="dateFilter='all'">All</button>
+
+      <ng-container *ngIf="dateFilter==='custom'">
+        <input type="date" [(ngModel)]="fromDate" name="fromDate" class="filter-input date-input">
+        <span class="range-sep">–</span>
+        <input type="date" [(ngModel)]="toDate" name="toDate" class="filter-input date-input">
+      </ng-container>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="filter-bar">
+      <input type="text" [(ngModel)]="searchTerm" placeholder="Search by bill number, customer name or phone..." class="filter-input">
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="summary-bar">
+      <div class="summary-stat">
+        <span class="stat-label">Bills</span>
+        <span class="stat-value">{{ summaryCount }}</span>
+      </div>
+      <div class="summary-stat highlight">
+        <span class="stat-label">Total</span>
+        <span class="stat-value">{{ summaryTotal | currency:'INR':'symbol':'1.2-2' }}</span>
+      </div>
+      <div class="summary-stat">
+        <span class="stat-label">Cash</span>
+        <span class="stat-value">{{ summaryCash | currency:'INR':'symbol':'1.2-2' }}</span>
+      </div>
+      <div class="summary-stat">
+        <span class="stat-label">UPI</span>
+        <span class="stat-value">{{ summaryUpi | currency:'INR':'symbol':'1.2-2' }}</span>
+      </div>
+      <div class="summary-stat">
+        <span class="stat-label">Card</span>
+        <span class="stat-value">{{ summaryCard | currency:'INR':'symbol':'1.2-2' }}</span>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="bill-table">
+        <thead>
+          <tr>
+            <th>Bill #</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Taxable</th>
+            <th>GST</th>
+            <th>Total</th>
+            <th>Payment</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let bill of filteredBills" class="table-row">
+            <td><strong>{{ bill.billNumber }}</strong></td>
+            <td>{{ bill.billDate | date:'dd/MM/yyyy' }}</td>
+            <td>
+              <span *ngIf="bill.customer?.customerName">{{ bill.customer?.customerName }}</span>
+              <span *ngIf="bill.customer?.phone" class="phone-text"> {{ bill.customer?.phone }}</span>
+              <span *ngIf="!bill.customer" class="walk-in">Walk-in</span>
+            </td>
+            <td class="center">{{ bill.billItems?.length || 0 }}</td>
+            <td>{{ bill.subtotal | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td>{{ bill.gstAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td><strong>{{ bill.totalAmount | currency:'INR':'symbol':'1.2-2' }}</strong></td>
+            <td>
+              <span class="payment-badge" [style.background]="getPaymentBadgeColor(bill.paymentMethod)">
+                {{ bill.paymentMethod }}
+              </span>
+            </td>
+            <td class="action-cell">
+              <button class="icon-btn print-icon" (click)="printBill(bill)" title="Print">🖨</button>
+              <button class="icon-btn edit-icon"  (click)="selectBill(bill)" title="Edit">✏</button>
+              <button class="icon-btn delete-icon" (click)="deleteBill(bill.billId!)" title="Delete">🗑</button>
+            </td>
+          </tr>
+          <tr *ngIf="filteredBills.length === 0">
+            <td colspan="9" class="no-data">No bills found.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bill Form (view === 'form') -->
+  <div *ngIf="view === 'form'" class="form-card">
+    <h3 class="form-title">{{ currentBill?.billId ? 'Edit Bill ' + currentBill?.billNumber : 'New Bill' }}</h3>
+
+    <form class="bill-form" (ngSubmit)="saveBill()">
+
+      <!-- Header Fields -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bill Date</label>
+          <input type="date" [(ngModel)]="currentBill!.billDate" name="billDate" required class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Payment Method</label>
+          <select [(ngModel)]="currentBill!.paymentMethod" name="paymentMethod" class="form-input">
+            <option value="CASH">Cash</option>
+            <option value="UPI">UPI</option>
+            <option value="CARD">Card</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <input type="text" [(ngModel)]="currentBill!.notes" name="notes" placeholder="Optional" class="form-input">
+        </div>
+      </div>
+
+      <!-- Customer Section -->
+      <div class="customer-section">
+        <label class="section-label">Customer <span class="optional">(optional)</span></label>
+        <div class="customer-search-row">
+          <div class="searchable-dropdown customer-dropdown">
+            <input type="text"
+                   [(ngModel)]="customerSearchTerm"
+                   name="customerSearch"
+                   placeholder="Search by name or phone..."
+                   class="form-input"
+                   (focus)="showCustomerDropdown = true"
+                   (blur)="onCustomerSearchBlur()"
+                   (input)="onCustomerSearchInput()"
+                   autocomplete="off">
+            <div class="dropdown-list" *ngIf="showCustomerDropdown">
+              <div *ngIf="filteredCustomers.length === 0" class="dropdown-no-results">
+                No customers found. Click + to add a new one.
+              </div>
+              <div class="dropdown-item"
+                   *ngFor="let c of filteredCustomers"
+                   (mousedown)="selectCustomer(c)">
+                <span class="cust-name">{{ c.customerName || '—' }}</span>
+                <span class="cust-phone">{{ c.phone }}</span>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-add-customer" (click)="openCustomerModal()" title="Add New Customer">+</button>
+          <button type="button" class="btn-clear" (click)="clearCustomer()" *ngIf="currentBill?.customer" title="Clear customer">✕</button>
+        </div>
+        <div class="customer-selected" *ngIf="currentBill?.customer">
+          <span>{{ currentBill?.customer?.customerName }}</span>
+          <span *ngIf="currentBill?.customer?.phone" class="phone-text"> · {{ currentBill?.customer?.phone }}</span>
+          <span *ngIf="currentBill?.customer?.address" class="addr-text"> · {{ currentBill?.customer?.address }}</span>
+        </div>
+      </div>
+
+      <!-- Bill Items -->
+      <div class="items-section">
+        <div class="items-header">
+          <h4>Items</h4>
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="add-item-btn" (click)="addBillItem()">+ Add Item</button>
+            <button type="button" class="add-misc-btn" (click)="addMiscItem()">+ Misc Item</button>
+          </div>
+        </div>
+
+        <div *ngIf="!currentBill?.billItems || currentBill!.billItems!.length === 0" class="no-items">
+          No items added yet. Click "+ Add Item" to start.
+        </div>
+
+        <div *ngIf="currentBill?.billItems && currentBill!.billItems!.length > 0">
+          <!-- Header row -->
+          <div class="item-row-header">
+            <div class="col-product">Product</div>
+            <div class="col-qty">Qty</div>
+            <div class="col-price">Unit Price (₹)</div>
+            <div class="col-disc">Disc %</div>
+            <div class="col-gst">GST (₹)</div>
+            <div class="col-total">Amount (₹)</div>
+            <div class="col-actions"></div>
+          </div>
+
+          <!-- Item rows -->
+          <div *ngFor="let item of currentBill!.billItems; let i = index" class="item-row">
+            <!-- Product / Misc description -->
+            <div class="col-product">
+              <!-- Normal product search -->
+              <div class="product-input-group" *ngIf="!item.isMisc">
+                <div class="searchable-dropdown">
+                  <input type="text"
+                         [(ngModel)]="productSearchTerms[i]"
+                         [name]="'productSearch_' + i"
+                         [id]="'productSearch_' + i"
+                         placeholder="Search product..."
+                         class="item-input"
+                         (focus)="openDropdownIndex = i; highlightedProductIndex = -1"
+                         (blur)="onProductSearchBlur()"
+                         (input)="onProductSearchInput(i)"
+                         (keydown)="onProductSearchKeydown($event, i)"
+                         autocomplete="off">
+                  <div class="dropdown-list" *ngIf="openDropdownIndex === i">
+                    <div *ngIf="getFilteredProducts(i).length === 0" class="dropdown-no-results">No products found</div>
+                    <div class="dropdown-item"
+                         *ngFor="let p of getFilteredProducts(i); let j = index"
+                         [class.highlighted]="highlightedProductIndex === j"
+                         (mousedown)="selectProduct(i, p)">
+                      <span class="prod-name">{{ p.productName }}</span>
+                      <span class="prod-meta">{{ p.unit }} · Stock: {{ p.stockQuantity }}</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn-add-product-small" tabindex="-1" (click)="openProductModal(i)" title="Add new product">+</button>
+              </div>
+              <!-- Misc item: free text description -->
+              <div *ngIf="item.isMisc">
+                <input type="text"
+                       [(ngModel)]="item.itemDescription"
+                       [name]="'miscDesc_' + i"
+                       [id]="'miscDesc_' + i"
+                       placeholder="Item description..."
+                       class="item-input misc-desc-input">
+              </div>
+            </div>
+
+            <!-- Qty -->
+            <div class="col-qty">
+              <input type="number" step="0.01" min="0.01"
+                     [(ngModel)]="item.quantity" [name]="'qty_' + i" [id]="'qty_' + i"
+                     (ngModelChange)="onBillItemChange(i)"
+                     class="item-input center">
+            </div>
+
+            <!-- Unit Price -->
+            <div class="col-price">
+              <input type="number" step="0.01" min="0"
+                     [(ngModel)]="item.unitPrice" [name]="'price_' + i"
+                     (ngModelChange)="onBillItemChange(i)"
+                     class="item-input center">
+            </div>
+
+            <!-- Discount % -->
+            <div class="col-disc">
+              <input type="number" step="0.01" min="0" max="100"
+                     [(ngModel)]="item.discountPct" [name]="'disc_' + i"
+                     (ngModelChange)="onBillItemChange(i)"
+                     class="item-input center">
+            </div>
+
+            <!-- GST Amount (readonly) -->
+            <div class="col-gst">
+              <input type="number" step="0.01"
+                     [(ngModel)]="item.gstAmount" [name]="'gst_' + i"
+                     readonly tabindex="-1" class="item-input center readonly-gst">
+            </div>
+
+            <!-- Total (readonly) -->
+            <div class="col-total">
+              <input type="number" step="0.01"
+                     [(ngModel)]="item.totalPrice" [name]="'total_' + i"
+                     readonly tabindex="-1" class="item-input center readonly-total">
+            </div>
+
+            <!-- Actions -->
+            <div class="col-actions">
+              <button type="button" class="btn-remove" tabindex="-1" (click)="removeBillItem(i)">✕</button>
+              <button *ngIf="i === (currentBill!.billItems?.length || 0) - 1"
+                      type="button" class="btn-add-row" (click)="addBillItem()">+ Add Item</button>
+            </div>
+          </div>
+
+          <!-- Summary Bar -->
+          <div class="bill-summary">
+            <div class="summary-row">
+              <span class="summary-label">Taxable Amount</span>
+              <span class="summary-value">{{ currentBill!.subtotal | currency:'INR':'symbol':'1.2-2' }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">GST (5%)</span>
+              <span class="summary-value">{{ currentBill!.gstAmount | currency:'INR':'symbol':'1.2-2' }}</span>
+            </div>
+            <div class="summary-row grand-total">
+              <span class="summary-label">Grand Total</span>
+              <span class="summary-value">{{ currentBill!.totalAmount | currency:'INR':'symbol':'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button type="button" class="wa-btn" (click)="sendWhatsApp(currentBill!)">WhatsApp</button>
+        <button type="button" class="print-save-btn" (click)="saveAndPrint()">Print &amp; Save</button>
+        <button type="submit" class="save-btn">Save Bill</button>
+        <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Settings Modal -->
+  <div *ngIf="showSettingsModal" class="modal-overlay" (click)="closeSettings()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Settings</h3>
+        <button type="button" class="modal-close" (click)="closeSettings()">×</button>
+      </div>
+      <div class="modal-form">
+        <div class="form-group">
+          <label>Business WhatsApp Phone Number</label>
+          <input type="tel" [(ngModel)]="businessPhone" name="businessPhone" class="form-input" placeholder="e.g. 8008152007">
+          <span style="font-size:11px;color:#999;margin-top:3px;">This number appears in WhatsApp bill messages as contact.</span>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="save-btn" (click)="saveSettings()">Save</button>
+          <button type="button" class="cancel-btn" (click)="closeSettings()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Customer Modal -->
+  <div *ngIf="showCustomerModal" class="modal-overlay" (click)="closeCustomerModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Add Customer</h3>
+        <button type="button" class="modal-close" (click)="closeCustomerModal()">×</button>
+      </div>
+      <form class="modal-form" (ngSubmit)="saveCustomer()">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" [(ngModel)]="newCustomer.customerName" name="customerName" class="form-input" placeholder="Customer name (optional)">
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" [(ngModel)]="newCustomer.phone" name="phone" class="form-input" placeholder="Phone number (optional)">
+        </div>
+        <div class="form-group">
+          <label>Address</label>
+          <textarea [(ngModel)]="newCustomer.address" name="address" class="form-textarea" placeholder="Address (optional)"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="save-btn">Save</button>
+          <button type="button" class="cancel-btn" (click)="closeCustomerModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Product Modal -->
+  <div *ngIf="showProductModal" class="modal-overlay" (click)="closeProductModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Add New Product</h3>
+        <button type="button" class="modal-close" (click)="closeProductModal()">×</button>
+      </div>
+      <form class="modal-form" (ngSubmit)="saveProduct()">
+        <div class="form-group">
+          <label>Product Name *</label>
+          <input type="text" [(ngModel)]="newProduct.productName" name="productName" required class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Category *</label>
+          <select [(ngModel)]="selectedCategory" name="category" required class="form-input">
+            <option value="">Select Category</option>
+            <option *ngFor="let c of categories" [value]="c.categoryName">{{ c.categoryName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <select [(ngModel)]="newProduct.unit" name="unit" class="form-input">
+            <option value="Meters">Meters</option>
+            <option value="Pieces">Pieces</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Selling Price (₹) *</label>
+          <input type="number" step="0.01" [(ngModel)]="newProduct.sellingPrice" name="sellingPrice" required class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Cost Price (₹)</label>
+          <input type="number" step="0.01" [(ngModel)]="newProduct.costPrice" name="costPrice" class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Stock Quantity</label>
+          <input type="number" step="0.01" [(ngModel)]="newProduct.stockQuantity" name="stockQuantity" class="form-input">
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="save-btn">Save Product</button>
+          <button type="button" class="cancel-btn" (click)="closeProductModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>

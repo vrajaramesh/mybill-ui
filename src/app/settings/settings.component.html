@@ -1,0 +1,147 @@
+<div class="settings-page">
+  <div class="settings-header">
+    <h1 class="settings-title">Settings</h1>
+    <p class="settings-sub">Manage your store details, tax info, and hardware.</p>
+  </div>
+
+  <div class="settings-grid">
+
+    <!-- ── Store Details ── -->
+    <div class="settings-card">
+      <div class="card-header">
+        <span class="card-icon">🏪</span>
+        <h2 class="card-title">Store Details</h2>
+      </div>
+      <p class="card-desc">Firm name and GST number appear on all printed bills and receipts. Address prints on receipts only.</p>
+
+      <div class="field-group">
+        <label class="field-label">Firm / Shop Name</label>
+        <div class="field-row">
+          <input class="field-input" type="text" [(ngModel)]="firmName"
+            placeholder="e.g. Srisa Fabrics" (keyup.enter)="saveFirm()" />
+          <button class="save-btn" (click)="saveFirm()" [class.saved]="firmSaved">
+            {{ firmSaved ? '✓ Saved' : 'Save' }}
+          </button>
+        </div>
+        <p class="field-hint">Updates the sidebar brand name and all bill headers instantly.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">GST Number <span class="optional">(optional)</span></label>
+        <div class="field-row">
+          <input class="field-input" type="text" [(ngModel)]="gstNumber"
+            placeholder="e.g. 36AAAAA0000A1Z5" maxlength="15"
+            style="text-transform:uppercase" (keyup.enter)="saveGst()" />
+          <button class="save-btn" (click)="saveGst()" [class.saved]="gstSaved">
+            {{ gstSaved ? '✓ Saved' : 'Save' }}
+          </button>
+        </div>
+        <p class="field-hint">Printed below the store name on every receipt.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Shop Address <span class="optional">(prints on receipts)</span></label>
+        <div class="field-row">
+          <textarea class="field-input field-textarea" [(ngModel)]="address"
+            placeholder="e.g. 42 Main Road, Chennai – 600001&#10;Phone: 9876543210"
+            rows="3"></textarea>
+          <button class="save-btn" (click)="saveAddress()" [class.saved]="addressSaved">
+            {{ addressSaved ? '✓ Saved' : 'Save' }}
+          </button>
+        </div>
+        <p class="field-hint">Shown on thermal prints and browser-print receipts. Not displayed on screen.</p>
+      </div>
+    </div>
+
+    <!-- ── Logo ── -->
+    <div class="settings-card">
+      <div class="card-header">
+        <span class="card-icon">🖼️</span>
+        <h2 class="card-title">Store Logo</h2>
+      </div>
+      <p class="card-desc">Logo is shown next to the firm name in the sidebar only. It does not appear on printed receipts.</p>
+
+      <input #logoInput type="file" accept="image/*" hidden (change)="onLogoSelected($event)">
+
+      <div class="logo-upload-area" (click)="logoInput.click()" [class.has-logo]="logoPreview">
+        <img *ngIf="logoPreview" [src]="logoPreview" class="logo-preview-img" alt="Logo preview">
+        <div *ngIf="!logoPreview" class="logo-placeholder">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span>Click to upload image</span>
+          <span class="upload-hint">JPG, PNG or SVG</span>
+        </div>
+      </div>
+
+      <div class="logo-actions" *ngIf="logoPreview">
+        <button class="save-btn" (click)="saveLogo()" [class.saved]="logoSaved">
+          {{ logoSaved ? '✓ Saved' : 'Save Logo' }}
+        </button>
+        <button class="save-btn remove-btn" (click)="clearLogo()">Remove</button>
+        <button class="action-btn secondary" (click)="logoInput.click()">Change</button>
+      </div>
+    </div>
+
+    <!-- ── Thermal Printer ── -->
+    <div class="settings-card">
+      <div class="card-header">
+        <span class="card-icon">🖨️</span>
+        <h2 class="card-title">Thermal Printer</h2>
+      </div>
+      <p class="card-desc">Pair a Bluetooth thermal printer to print bills directly without a browser dialog.</p>
+
+      <div *ngIf="!printer.supported" class="notice notice-warn">
+        Web Bluetooth is not supported in this browser. Use <strong>Chrome</strong> or <strong>Edge</strong> (desktop) served over HTTPS or localhost.
+      </div>
+
+      <ng-container *ngIf="printer.supported">
+        <div class="printer-status-row">
+          <span class="status-dot" [class.connected]="printer.connected"></span>
+          <span class="status-label">
+            <ng-container *ngIf="printer.connected">
+              Connected &mdash; <strong>{{ printer.deviceName || 'Thermal Printer' }}</strong>
+            </ng-container>
+            <ng-container *ngIf="!printer.connected">Not connected</ng-container>
+          </span>
+        </div>
+
+        <div class="printer-actions">
+          <button *ngIf="!printer.connected" class="action-btn primary"
+            (click)="pairPrinter()" [disabled]="printerPairing">
+            {{ printerPairing ? '🔄 Pairing…' : '📡 Pair Printer' }}
+          </button>
+          <button *ngIf="printer.connected" class="action-btn danger"
+            (click)="disconnectPrinter()">Disconnect</button>
+        </div>
+
+        <p class="field-hint" *ngIf="!printer.connected">
+          Turn on your Bluetooth thermal printer, put it in pairing mode, then click Pair Printer.
+        </p>
+      </ng-container>
+    </div>
+
+    <!-- ── WhatsApp ── -->
+    <div class="settings-card">
+      <div class="card-header">
+        <span class="card-icon">💬</span>
+        <h2 class="card-title">WhatsApp Business</h2>
+      </div>
+      <p class="card-desc">The number used to send bills to customers via WhatsApp.</p>
+
+      <div class="field-group">
+        <label class="field-label">Business Phone Number</label>
+        <div class="field-row">
+          <input class="field-input" type="tel" [(ngModel)]="waPhone"
+            placeholder="e.g. 9876543210" (keyup.enter)="saveWa()" />
+          <button class="save-btn" (click)="saveWa()" [class.saved]="waSaved">
+            {{ waSaved ? '✓ Saved' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

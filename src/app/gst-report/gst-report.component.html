@@ -1,0 +1,57 @@
+<div class="report-card">
+  <div class="report-header">
+    <h2 class="report-title">📊 GST Report</h2>
+    <div class="year-selector">
+      <label>Year:</label>
+      <select [(ngModel)]="selectedYear" (change)="loadReport()">
+        <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+      </select>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-msg">Loading...</div>
+  <div *ngIf="error" class="error-msg">{{ error }}</div>
+
+  <div *ngIf="!loading && !error">
+    <div *ngIf="rows.length === 0" class="empty-msg">No bills found for {{ selectedYear }}.</div>
+
+    <div *ngIf="rows.length > 0" class="table-wrapper">
+      <table class="gst-table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Starting Bill No.</th>
+            <th>Ending Bill No.</th>
+            <th class="num">Total Bills</th>
+            <th class="num">Taxable Amount (₹)</th>
+            <th class="num">SGST (₹)</th>
+            <th class="num">CGST (₹)</th>
+            <th class="num">Total GST (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of rows">
+            <td>{{ row.monthName }}</td>
+            <td class="bill-num">{{ row.startingBillNumber }}</td>
+            <td class="bill-num">{{ row.endingBillNumber }}</td>
+            <td class="num">{{ row.totalBills }}</td>
+            <td class="num">{{ row.totalTaxableAmount | number:'1.2-2' }}</td>
+            <td class="num">{{ row.sgst | number:'1.2-2' }}</td>
+            <td class="num">{{ row.cgst | number:'1.2-2' }}</td>
+            <td class="num">{{ row.totalGstAmount | number:'1.2-2' }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr class="totals-row">
+            <td colspan="3"><strong>Total</strong></td>
+            <td class="num"><strong>{{ totalBillsSum }}</strong></td>
+            <td class="num"><strong>{{ totalTaxable | number:'1.2-2' }}</strong></td>
+            <td class="num"><strong>{{ totalSgst | number:'1.2-2' }}</strong></td>
+            <td class="num"><strong>{{ totalCgst | number:'1.2-2' }}</strong></td>
+            <td class="num"><strong>{{ totalGst | number:'1.2-2' }}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>

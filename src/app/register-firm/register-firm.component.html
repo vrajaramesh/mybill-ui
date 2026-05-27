@@ -1,0 +1,137 @@
+<div class="register-page">
+  <div class="register-card">
+    <div class="register-logo">🏢</div>
+    <h1 class="register-brand">Create New Firm</h1>
+    <p class="register-subtitle">Set up your firm with MyBill</p>
+
+    <!-- Success Message -->
+    <div class="success-msg" *ngIf="successMessage">
+      {{ successMessage }}
+    </div>
+
+    <!-- Registration Form -->
+    <form (ngSubmit)="onSubmit()" class="register-form" *ngIf="!successMessage">
+      <!-- Firm Name -->
+      <div class="field-group">
+        <label for="firmName">Firm Name <span class="required">*</span></label>
+        <input
+          id="firmName"
+          type="text"
+          [(ngModel)]="firmName"
+          name="firmName"
+          placeholder="e.g. SRISA Fabrics"
+          (change)="generateFirmCode()"
+          required>
+      </div>
+
+      <!-- Firm Code -->
+      <div class="field-group">
+        <label for="firmCode">Firm Code <span class="required">*</span></label>
+        <input
+          id="firmCode"
+          type="text"
+          [(ngModel)]="firmCode"
+          name="firmCode"
+          placeholder="e.g. srisa_fabrics"
+          class="auto-generated"
+          required>
+        <small class="hint">Auto-generated from firm name. Use only letters, numbers, underscores, and hyphens.</small>
+      </div>
+
+      <!-- Owner Email -->
+      <div class="field-group">
+        <label for="ownerEmail">Owner Email <span class="required">*</span></label>
+        <input
+          id="ownerEmail"
+          type="email"
+          [(ngModel)]="ownerEmail"
+          name="ownerEmail"
+          placeholder="owner@example.com"
+          required>
+      </div>
+
+      <!-- Admin Username -->
+      <div class="field-group">
+        <label for="adminUsername">Admin Username <span class="required">*</span></label>
+        <input
+          id="adminUsername"
+          type="text"
+          [(ngModel)]="adminUsername"
+          name="adminUsername"
+          placeholder="At least 3 characters"
+          required>
+      </div>
+
+      <!-- Admin Full Name -->
+      <div class="field-group">
+        <label for="adminFullName">Admin Full Name <span class="required">*</span></label>
+        <input
+          id="adminFullName"
+          type="text"
+          [(ngModel)]="adminFullName"
+          name="adminFullName"
+          placeholder="Administrator Name"
+          required>
+      </div>
+
+      <!-- Admin Password -->
+      <div class="field-group">
+        <label for="adminPassword">Admin Password <span class="required">*</span></label>
+        <div class="password-input-wrapper">
+          <input
+            id="adminPassword"
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="adminPassword"
+            name="adminPassword"
+            placeholder="At least 6 characters"
+            required>
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="togglePasswordVisibility()">
+            {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="field-group">
+        <label for="confirmPassword">Confirm Password <span class="required">*</span></label>
+        <div class="password-input-wrapper">
+          <input
+            id="confirmPassword"
+            [type]="showConfirmPassword ? 'text' : 'password'"
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            placeholder="Repeat password"
+            required>
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="toggleConfirmPasswordVisibility()">
+            {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div class="error-msg" *ngIf="error">
+        ⚠️ {{ error }}
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="register-btn" [disabled]="loading">
+        {{ loading ? 'Creating Firm...' : 'Create Firm' }}
+      </button>
+
+      <!-- Back to Login Link -->
+      <button
+        type="button"
+        class="back-btn"
+        (click)="goBackToLogin()">
+        Back to Sign In
+      </button>
+    </form>
+  </div>
+</div>
+

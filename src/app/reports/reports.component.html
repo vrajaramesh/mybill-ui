@@ -1,0 +1,290 @@
+<div class="reports-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1 class="page-title">Reports & Analytics</h1>
+    <div class="header-controls">
+      <select class="year-select" [(ngModel)]="selectedYear" (change)="changeYear()">
+        <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+      </select>
+      <button class="btn-refresh" (click)="loadAll()" [disabled]="loading">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        {{ loading ? 'Loading...' : 'Refresh' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="alert-error" *ngIf="error">{{ error }}</div>
+
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="spinner"></div>
+    <span>Loading report data...</span>
+  </div>
+
+  <ng-container *ngIf="!loading">
+
+    <!-- ── Overview Cards ─────────────────────────────── -->
+    <div class="section-label">Overview — {{ selectedYear }}</div>
+    <div class="overview-cards">
+      <div class="card overview-card">
+        <div class="card-icon icon-green">₹</div>
+        <div>
+          <div class="card-value">{{ fmt(overview.totalSales) }}</div>
+          <div class="card-label">Total Sales</div>
+        </div>
+      </div>
+      <div class="card overview-card">
+        <div class="card-icon icon-blue">🧾</div>
+        <div>
+          <div class="card-value">{{ overview.totalBills ?? 0 }}</div>
+          <div class="card-label">Bills Raised</div>
+        </div>
+      </div>
+      <div class="card overview-card">
+        <div class="card-icon icon-orange">GST</div>
+        <div>
+          <div class="card-value">{{ fmt(overview.totalGST) }}</div>
+          <div class="card-label">GST Collected</div>
+        </div>
+      </div>
+      <div class="card overview-card">
+        <div class="card-icon icon-purple">~</div>
+        <div>
+          <div class="card-value">{{ fmt(overview.avgBillValue) }}</div>
+          <div class="card-label">Avg Bill Value</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Customer Sales by Period ──────────────────── -->
+    <div class="section-label">Sales by Customer</div>
+    <div class="card cs-card">
+
+      <!-- Period tab bar -->
+      <div class="cs-tabs">
+        <button *ngFor="let p of periods"
+                class="cs-tab"
+                [class.active]="csPeriod === p.key"
+                (click)="selectPeriod(p.key)">
+          {{ p.label }}
+        </button>
+        <span class="cs-daterange" *ngIf="csData.from">{{ csDateRange() }}</span>
+      </div>
+
+      <!-- Period summary cards -->
+      <div class="cs-summary" *ngIf="!csLoading">
+        <div class="cs-stat">
+          <div class="cs-stat-value">{{ fmt(csSummary.totalSales) }}</div>
+          <div class="cs-stat-label">Total Sales</div>
+        </div>
+        <div class="cs-stat">
+          <div class="cs-stat-value">{{ csSummary.totalBills ?? 0 }}</div>
+          <div class="cs-stat-label">Bills</div>
+        </div>
+        <div class="cs-stat">
+          <div class="cs-stat-value">{{ csSummary.uniqueCustomers ?? 0 }}</div>
+          <div class="cs-stat-label">Customers</div>
+        </div>
+        <div class="cs-stat cs-top-customer" *ngIf="csCustomers.length">
+          <div class="cs-stat-value cs-name-value">{{ csCustomers[0].customerName || 'Walk-in' }}</div>
+          <div class="cs-stat-label">Top Customer — {{ fmt(csCustomers[0].totalSales) }}</div>
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div class="cs-loading" *ngIf="csLoading">
+        <div class="spinner-sm"></div> Loading...
+      </div>
+
+      <!-- Customer table -->
+      <div class="cs-table-wrap" *ngIf="!csLoading">
+        <table class="cs-table" *ngIf="csCustomers.length; else csEmpty">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>Bills</th>
+              <th>Avg Bill</th>
+              <th>Last Purchase</th>
+              <th>Share</th>
+              <th style="text-align:right">Total Sales</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of csCustomers" [class.cs-top-row]="c.rank === 1">
+              <td>
+                <span class="cs-rank" [class.gold]="c.rank===1" [class.silver]="c.rank===2" [class.bronze]="c.rank===3">
+                  {{ c.rank }}
+                </span>
+              </td>
+              <td>
+                <div class="cs-customer-cell">
+                  <div class="cs-avatar">{{ c.customerName?.[0]?.toUpperCase() || 'W' }}</div>
+                  <div>
+                    <div class="cs-cname">{{ c.customerName || 'Walk-in' }}</div>
+                    <div class="cs-phone" *ngIf="c.phone">{{ c.phone }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="cs-center">{{ c.billCount }}</td>
+              <td class="cs-center">{{ fmt(c.avgBillValue) }}</td>
+              <td class="cs-center cs-date">{{ c.lastPurchase | date:'dd MMM' }}</td>
+              <td>
+                <div class="cs-share-cell">
+                  <div class="cs-bar-bg">
+                    <div class="cs-bar-fill" [style.width]="(+c.totalSales / csMax * 100) + '%'"></div>
+                  </div>
+                  <span class="cs-pct">{{ c.sharePercent }}%</span>
+                </div>
+              </td>
+              <td class="cs-amount">{{ fmt(c.totalSales) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #csEmpty>
+          <div class="no-data">No sales recorded for {{ periodLabel() | lowercase }}.</div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- ── Monthly Sales Trend ────────────────────────── -->
+    <div class="section-label">Monthly Sales Trend</div>
+    <div class="card chart-card chart-tall">
+      <canvas id="chart-monthly"></canvas>
+    </div>
+
+    <!-- ── Products & Categories ─────────────────────── -->
+    <div class="two-col">
+
+      <!-- Top Products -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Top Selling Products</span>
+          <span class="card-sub">by revenue</span>
+        </div>
+        <div class="ranked-list" *ngIf="topProducts.length; else emptyProd">
+          <div class="ranked-item" *ngFor="let p of topProducts; let i = index">
+            <span class="rank">{{ i + 1 }}</span>
+            <div class="ranked-info">
+              <div class="ranked-name">{{ p.productName }}</div>
+              <div class="ranked-sub">{{ p.category }} · {{ p.quantitySold | number:'1.0-1' }} units sold</div>
+              <div class="bar-bg">
+                <div class="bar-fill" [style.width]="(+p.revenue / topProductMax() * 100) + '%'"></div>
+              </div>
+            </div>
+            <div class="ranked-value">{{ fmt(p.revenue) }}</div>
+          </div>
+        </div>
+        <ng-template #emptyProd><div class="no-data">No sales data for this period</div></ng-template>
+      </div>
+
+      <!-- Category Revenue -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Revenue by Category</span>
+          <span class="card-sub">fabric type breakdown</span>
+        </div>
+        <div class="chart-medium" *ngIf="categoryRevenue.length; else emptyCat">
+          <canvas id="chart-category"></canvas>
+        </div>
+        <ng-template #emptyCat><div class="no-data">No category data for this period</div></ng-template>
+      </div>
+
+    </div>
+
+    <!-- ── Customers & Payment Methods ───────────────── -->
+    <div class="two-col">
+
+      <!-- Top Customers -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Top Customers</span>
+          <span class="card-sub">by purchase value</span>
+        </div>
+        <div class="customers-list" *ngIf="topCustomers.length; else emptyCust">
+          <div class="customer-item" *ngFor="let c of topCustomers; let i = index">
+            <div class="customer-rank">{{ i + 1 }}</div>
+            <div class="customer-avatar">{{ c.customerName?.[0]?.toUpperCase() || '?' }}</div>
+            <div class="customer-info">
+              <div class="customer-name">{{ c.customerName || 'Walk-in' }}</div>
+              <div class="customer-bills">{{ c.billCount }} bill{{ c.billCount !== 1 ? 's' : '' }}</div>
+            </div>
+            <div class="customer-spend">
+              <div class="spend-value">{{ fmt(c.totalSpend) }}</div>
+              <div class="spend-bar">
+                <div class="spend-fill" [style.width]="(+c.totalSpend / topCustomerMax() * 100) + '%'"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ng-template #emptyCust><div class="no-data">No customer data for this period</div></ng-template>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Payment Methods</span>
+          <span class="card-sub">collection breakdown</span>
+        </div>
+        <div class="chart-medium" *ngIf="paymentMethods.length; else emptyPay">
+          <canvas id="chart-payment"></canvas>
+        </div>
+        <div class="payment-stats" *ngIf="paymentMethods.length">
+          <div class="payment-row" *ngFor="let p of paymentMethods">
+            <span class="payment-method">{{ p.method }}</span>
+            <span class="payment-count">{{ p.count }} bills</span>
+            <span class="payment-pct">{{ pct(p.amount, totalPaymentAmount()) }}</span>
+            <span class="payment-amount">{{ fmt(p.amount) }}</span>
+          </div>
+        </div>
+        <ng-template #emptyPay><div class="no-data">No payment data for this period</div></ng-template>
+      </div>
+
+    </div>
+
+    <!-- ── Purchases vs Sales ─────────────────────────── -->
+    <div class="section-label">Purchases vs Sales — Monthly Comparison</div>
+    <div class="card chart-card chart-tall">
+      <canvas id="chart-compare"></canvas>
+    </div>
+
+    <!-- ── Low Stock Alerts ───────────────────────────── -->
+    <div class="section-label">
+      Low Stock Alerts
+      <span class="badge-danger" *ngIf="lowStock.length">{{ lowStock.length }}</span>
+    </div>
+    <div class="card" *ngIf="lowStock.length; else noStock">
+      <table class="stock-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Category</th>
+            <th>In Stock</th>
+            <th>Min Level</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of lowStock" [class]="stockClass(s.stockQty, s.minStockLevel)">
+            <td class="product-name-cell">{{ s.productName }}</td>
+            <td>{{ s.category }}</td>
+            <td class="qty-cell">{{ s.stockQty | number:'1.0-2' }}</td>
+            <td class="qty-cell">{{ s.minStockLevel | number:'1.0-2' }}</td>
+            <td>
+              <span class="status-chip" [class]="stockClass(s.stockQty, s.minStockLevel)">
+                {{ stockStatus(s.stockQty, s.minStockLevel) }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noStock>
+      <div class="card no-stock-ok">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        All products are adequately stocked.
+      </div>
+    </ng-template>
+
+  </ng-container>
+</div>

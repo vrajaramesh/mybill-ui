@@ -1,1 +1,136 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* ── Global print styles ───────────────────────────────────── */
+@media print {
+  /* 1. Hide every element on the page (visibility keeps the DOM intact
+        so nested children can independently be made visible) */
+  body * { visibility: hidden !important; }
+
+  /* 2a. Bill mode — surface only .print-bill as a full-page overlay */
+  body.print-bill-mode .print-bill {
+    visibility: visible !important;
+    display: block !important;
+    position: fixed; top: 0; left: 0; width: 100%;
+    background: white; padding: 28px; box-sizing: border-box;
+  }
+  body.print-bill-mode .print-bill * { visibility: visible !important; }
+
+  /* 2b. Work-order mode — .print-work-order is teleported to <body> root by JS
+         so it is in normal document flow and page-breaks work correctly */
+  body.print-order-mode > * { display: none !important; }
+  body.print-order-mode > .print-work-order {
+    display: block !important;
+    visibility: visible !important;
+    background: white; padding: 22px 28px; box-sizing: border-box;
+    width: 100%;
+  }
+  body.print-order-mode > .print-work-order * { visibility: visible !important; }
+
+  /* ── Bill content styles ────────────────────────────── */
+  .pb-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 2px solid #000; padding-bottom: 14px; margin-bottom: 14px;
+  }
+  .pb-shop h1 { font-size: 1.4rem; margin: 0 0 4px; font-weight: 800; }
+  .pb-shop p  { margin: 0; color: #444; font-size: 0.9rem; }
+  .pb-order-meta table td { padding: 2px 8px; font-size: 0.85rem; }
+  .pb-customer {
+    font-size: 0.95rem; margin-bottom: 14px;
+    padding: 8px 12px; background: #f5f5f5;
+  }
+  .pb-items { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 0.9rem; }
+  .pb-items th, .pb-items td { border: 1px solid #ddd; padding: 7px 10px; }
+  .pb-items th { background: #f0f0f0; font-weight: 700; text-align: left; }
+  .pb-extra-row td   { background: #fafafa; font-style: italic; color: #555; }
+  .pb-total-row td   { background: #f5f5f5; font-weight: 700; }
+  .pb-balance-row td { background: #fff3cd; font-weight: 700; }
+  .pb-notes  { font-size: 0.85rem; margin-bottom: 16px; font-style: italic; }
+  .pb-footer { border-top: 1px solid #ccc; padding-top: 14px; font-size: 0.85rem; }
+  .pb-signatures { display: flex; justify-content: space-between; margin-top: 30px; font-size: 0.85rem; }
+
+  /* ── Work order content styles ──────────────────────── */
+  .pwo-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 3px solid #000; padding-bottom: 12px; margin-bottom: 14px;
+  }
+  .pwo-shop-name h1 { font-size: 1.5rem; font-weight: 900; margin: 0 0 3px; }
+  .pwo-doc-title    { font-size: 0.9rem; color: #555; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .pwo-meta-table table { border-collapse: collapse; }
+  .pwo-meta-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #666; padding: 3px 10px 3px 0; white-space: nowrap; }
+  .pwo-meta-value { font-size: 0.9rem; padding: 3px 20px 3px 0; }
+  .pwo-priority { font-weight: 800; text-transform: uppercase; }
+  .pwo-delivery { color: #c00; }
+
+  .pwo-item-block { border: 1.5px solid #ccc; margin-bottom: 14px; page-break-inside: avoid; }
+  .pwo-item-header {
+    background: #f0f0f0; padding: 7px 12px; border-bottom: 1px solid #ccc;
+    font-size: 0.95rem; display: flex; align-items: center; gap: 8px;
+  }
+  .pwo-item-num   { font-weight: 800; font-size: 0.78rem; background: #333; color: white; padding: 2px 7px; }
+  .pwo-item-type  { font-weight: 700; font-size: 1rem; }
+  .pwo-item-fabric { color: #555; }
+  .pwo-item-qty   { margin-left: auto; font-size: 0.82rem; font-weight: 600; color: #444; }
+
+  .pwo-meas-sections { display: flex; }
+  .pwo-meas-col { flex: 1; padding: 10px 12px; border-right: 1px solid #e0e0e0; }
+  .pwo-meas-col:last-child { border-right: none; }
+  .pwo-meas-section { margin-bottom: 10px; }
+  .pwo-meas-sec-title {
+    font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #444;
+    border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-bottom: 5px;
+  }
+  .pwo-meas-tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .pwo-meas-tbl td { padding: 3px 6px; border-bottom: 1px dotted #e0e0e0; }
+  .pwo-meas-tbl td:first-child { color: #555; width: 55%; }
+  .pwo-meas-tbl td:nth-child(2) { font-weight: 700; text-align: right; }
+  .pwo-meas-tbl.wide td:first-child  { width: 28%; }
+  .pwo-meas-tbl.wide td:nth-child(3) { color: #555; width: 28%; padding-left: 14px; }
+  .pwo-meas-tbl.wide td:nth-child(4) { font-weight: 700; text-align: right; }
+  .pwo-meas-flat { padding: 10px 12px; }
+  .pwo-instructions {
+    margin: 8px 12px; padding: 6px 10px;
+    background: #fffde7; border-left: 3px solid #f59e0b; font-size: 0.85rem;
+  }
+
+  .pwo-tracker { margin-top: 16px; page-break-inside: avoid; }
+  .pwo-tracker-title {
+    font-size: 0.78rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.8px; background: #222; color: white; padding: 7px 14px;
+  }
+  .pwo-tracker-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .pwo-tracker-table th {
+    background: #f0f0f0; border: 1.5px solid #aaa;
+    padding: 7px 12px; text-align: left; font-size: 0.75rem; text-transform: uppercase;
+  }
+  .pwo-tracker-table td { border: 1.5px solid #ccc; padding: 10px 12px; }
+  .col-stage  { width: 32%; }
+  .col-worker { width: 30%; }
+  .col-date   { width: 22%; }
+  .col-done   { width: 10%; text-align: center; font-size: 1.3rem; }
+  .stage-key  { font-weight: 800; font-size: 0.88rem; display: block; }
+  .stage-label { font-size: 0.75rem; color: #555; display: block; }
+  .pwo-cancel-row td { background: #fafafa; color: #888; }
+  .pwo-footer {
+    margin-top: 12px; text-align: center; font-size: 0.75rem; color: #888;
+    border-top: 1px solid #ddd; padding-top: 8px;
+  }
+
+  /* ── Reference photos inline within the work order ── */
+  .pwo-images-print {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6mm;
+    padding: 6px 12px 10px;
+    border-top: 1px dotted #bbb;
+    margin-top: 6px;
+  }
+  .pwo-image-a7 {
+    display: flex; align-items: center; justify-content: center;
+    width: 60mm; height: 80mm;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    flex-shrink: 0;
+  }
+  .pwo-image-a7 img { max-width: 100%; max-height: 100%; object-fit: contain; }
+}

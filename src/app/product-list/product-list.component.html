@@ -24,6 +24,9 @@
       </div>
     </div>
 
+    <div *ngIf="loadError" class="load-error">⚠ {{ loadError }}</div>
+    <div *ngIf="isLoading" class="load-info">Loading products...</div>
+
     <div class="table-container">
       <table class="product-table">
         <thead>
@@ -31,8 +34,10 @@
             <th>ID</th>
             <th>Name</th>
             <th>Category</th>
+            <th>Sub-Categories</th>
             <th>Selling Price</th>
             <th>Stock</th>
+            <th>Online</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -40,12 +45,30 @@
           <tr *ngFor="let product of filteredProducts" class="table-row">
             <td>{{ product.productId }}</td>
             <td>{{ product.productName }}</td>
-            <td>{{ product.category?.categoryName }}</td>
+            <td>{{ product.category?.categoryName || '—' }}</td>
+            <td class="subcats-cell">{{ subCategoryLabel(product) }}</td>
             <td>{{ product.sellingPrice | currency:'INR':'symbol':'1.2-2' }}</td>
             <td>{{ product.stockQuantity }}</td>
             <td>
-              <button class="edit-btn" (click)="selectProduct(product)">Edit</button>
-              <button class="delete-btn" (click)="deleteProduct(product.productId!)">Delete</button>
+              <span class="online-badge" [class.online]="product.isOnline" [class.offline]="!product.isOnline">
+                {{ product.isOnline ? 'Yes' : 'No' }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button class="icon-btn edit-btn" (click)="selectProduct(product)" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="icon-btn delete-btn" (click)="deleteProduct(product.productId!)" title="Delete">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -61,76 +84,147 @@
         <button type="button" class="modal-close" (click)="cancelEdit()">×</button>
       </div>
       <form class="product-form" (ngSubmit)="saveProduct()">
-        <div class="form-group">
-          <label for="productName">Name:</label>
-          <input id="productName" type="text" [(ngModel)]="selectedProduct.productName" name="productName" required class="form-input">
+
+        <!-- Row: Product Name (full width) -->
+        <div class="form-group span-2">
+          <label for="productName">Product Name *</label>
+          <input id="productName" type="text" [(ngModel)]="selectedProduct.productName" name="productName" required class="form-input" placeholder="Enter product name">
         </div>
+
+        <!-- Row: Category | Unit -->
         <div class="form-group">
-          <label for="description">Description:</label>
-          <textarea id="description" [(ngModel)]="selectedProduct.description" name="description" class="form-textarea"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="category">Category:</label>
-          <select id="category" [(ngModel)]="selectedProduct.category" name="category" class="form-input">
-            <option [ngValue]="null">Select Category</option>
+          <label for="category">Category</label>
+          <select id="category" [(ngModel)]="selectedProduct.category" name="category" class="form-input"
+                  [compareWith]="compareCategory"
+                  (ngModelChange)="onCategoryChange($event)">
+            <option [ngValue]="null">— None —</option>
             <option *ngFor="let cat of productCategories" [ngValue]="cat">{{ cat.categoryName }}</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="unit">Unit:</label>
+          <label for="unit">Unit</label>
           <select id="unit" [(ngModel)]="selectedProduct.unit" name="unit" class="form-input">
             <option value="Meters">Meters</option>
             <option value="Pieces">Pieces</option>
           </select>
         </div>
+
+        <!-- Sub-Category (single selection) -->
+        <div class="form-group span-2" *ngIf="filteredSubCategories.length > 0">
+          <label class="subcat-label">Sub-Category <span class="subcat-hint">select one</span></label>
+          <div class="tags-grid">
+            <span *ngFor="let sc of filteredSubCategories" class="tag-chip" [class.selected]="isSubCatSelected(sc)"
+                  (click)="selectSubCat(sc)" style="cursor:pointer">
+              {{ sc.subCatName }}
+            </span>
+          </div>
+        </div>
+        <div class="form-group span-2" *ngIf="selectedProduct.category && filteredSubCategories.length === 0">
+          <p class="images-note">No sub-categories defined for this category yet.</p>
+        </div>
+
+        <!-- Row: Cost Price | Selling Price -->
         <div class="form-group">
-          <label for="costPrice">Cost Price:</label>
-          <input id="costPrice" type="number" step="0.01" [(ngModel)]="selectedProduct.costPrice" name="costPrice" class="form-input">
+          <label for="costPrice">Cost Price (₹)</label>
+          <input id="costPrice" type="number" step="0.01" [(ngModel)]="selectedProduct.costPrice" name="costPrice" class="form-input" placeholder="0.00">
         </div>
         <div class="form-group">
-          <label for="sellingPrice">Selling Price:</label>
-          <input id="sellingPrice" type="number" step="0.01" [(ngModel)]="selectedProduct.sellingPrice" name="sellingPrice" required class="form-input">
+          <label for="sellingPrice">Selling Price (₹) *</label>
+          <input id="sellingPrice" type="number" step="0.01" [(ngModel)]="selectedProduct.sellingPrice" name="sellingPrice" required class="form-input" placeholder="0.00">
+        </div>
+
+        <!-- Row: Stock Quantity | Min Stock Level -->
+        <div class="form-group">
+          <label for="stockQuantity">Stock Quantity</label>
+          <input id="stockQuantity" type="number" step="0.01" [(ngModel)]="selectedProduct.stockQuantity" name="stockQuantity" class="form-input" placeholder="0">
         </div>
         <div class="form-group">
-          <label for="stockQuantity">Stock Quantity:</label>
-          <input id="stockQuantity" type="number" step="0.01" [(ngModel)]="selectedProduct.stockQuantity" name="stockQuantity" class="form-input">
+          <label for="minStockLevel">Min Stock Level</label>
+          <input id="minStockLevel" type="number" step="0.01" [(ngModel)]="selectedProduct.minStockLevel" name="minStockLevel" class="form-input" placeholder="0">
         </div>
-        <div class="form-group">
-          <label for="minStockLevel">Min Stock Level:</label>
-          <input id="minStockLevel" type="number" step="0.01" [(ngModel)]="selectedProduct.minStockLevel" name="minStockLevel" class="form-input">
+
+        <!-- Description (full width) -->
+        <div class="form-group span-2">
+          <label for="description" class="desc-label-row">
+            Description / HSN Code
+            <button type="button" class="ai-gen-btn"
+                    (click)="generateDescription()"
+                    [disabled]="generatingDesc || !selectedProduct.productName">
+              <span *ngIf="!generatingDesc">✨ Generate with AI</span>
+              <span *ngIf="generatingDesc">Generating...</span>
+            </button>
+          </label>
+          <textarea id="description" [(ngModel)]="selectedProduct.description" name="description" class="form-textarea" placeholder="HSN code or product description"></textarea>
         </div>
+
+        <!-- Suitable For (full width) -->
+        <div class="form-group span-2">
+          <label class="subcat-label">Suitable For <span class="subcat-hint">what can this fabric be used to make?</span></label>
+          <div class="tags-grid">
+            <label *ngFor="let usage of availableUsages" class="tag-chip" [class.selected]="isUsageSelected(usage)">
+              <input type="checkbox" [checked]="isUsageSelected(usage)" (change)="toggleUsage(usage, $any($event.target).checked)" class="tag-hidden-cb">
+              {{ usage }}
+            </label>
+          </div>
+        </div>
+
+        <!-- Occasion / Style Tags (full width) -->
+        <div class="form-group span-2">
+          <label class="subcat-label">Occasion / Style Tags <span class="subcat-hint">select all that apply</span></label>
+          <div class="tags-grid">
+            <label *ngFor="let tag of availableTags" class="tag-chip" [class.selected]="isTagSelected(tag)">
+              <input type="checkbox" [checked]="isTagSelected(tag)" (change)="toggleTag(tag, $any($event.target).checked)" class="tag-hidden-cb">
+              {{ tag }}
+            </label>
+          </div>
+        </div>
+
+        <!-- Checkboxes row -->
         <div class="form-group checkbox-group">
           <label for="isActive" class="checkbox-label">
             <input id="isActive" type="checkbox" [(ngModel)]="selectedProduct.isActive" name="isActive" class="form-checkbox">
             Active
           </label>
         </div>
+        <div class="form-group checkbox-group">
+          <label for="isOnline" class="checkbox-label">
+            <input id="isOnline" type="checkbox" [(ngModel)]="selectedProduct.isOnline" name="isOnline" class="form-checkbox">
+            Show on eCom site
+          </label>
+        </div>
 
-        <!-- Product Images -->
+        <!-- Product Media -->
         <div class="form-group images-section">
-          <label class="images-label">Product Photos</label>
+          <label class="images-label">Product Media</label>
           <ng-container *ngIf="selectedProduct.productId; else saveFirstMsg">
+            <!-- Gallery -->
             <div class="image-gallery" *ngIf="productImages.length > 0">
               <div class="image-thumb" *ngFor="let img of productImages">
-                <img [src]="img.imageUrl" [alt]="selectedProduct.productName">
+                <video *ngIf="img.mediaType === 'video'" [src]="img.imageUrl" controls class="media-thumb-video"></video>
+                <img *ngIf="img.mediaType !== 'video'" [src]="img.imageUrl" [alt]="selectedProduct.productName">
+                <span class="img-type-badge" *ngIf="img.imageType === 'ai-generated'" title="AI Generated">✨</span>
                 <button type="button" class="img-delete-btn" (click)="deleteImage(img)" title="Remove">×</button>
               </div>
               <div class="image-thumb uploading-thumb" *ngIf="isUploading">
                 <div class="upload-spinner"></div>
               </div>
             </div>
-            <div class="no-images" *ngIf="productImages.length === 0 && !isUploading">No photos yet</div>
-            <div class="uploading-msg" *ngIf="isUploading && productImages.length === 0">Uploading...</div>
+            <div class="no-images" *ngIf="productImages.length === 0 && !isUploading">No media yet</div>
 
-            <label class="upload-btn" for="imageUpload">
-              📷 Add Photos
-            </label>
-            <input id="imageUpload" type="file" accept="image/*" multiple
+            <!-- AI button (only if isOnline) -->
+            <button *ngIf="selectedProduct.isOnline" type="button" class="upload-btn ai-upload-btn" (click)="openAIPhotoWorkflow(selectedProduct)">
+              ✨ Generate AI Catalog Photos
+            </button>
+            <p *ngIf="selectedProduct.isOnline" class="images-note">Will generate professional catalog photos using AI based on "Suitable For" settings.</p>
+
+            <!-- Direct upload (always shown) -->
+            <label class="upload-btn" for="mediaUpload">📷 Add Photos / Videos</label>
+            <input id="mediaUpload" type="file" accept="image/*,video/*" multiple
                    (change)="onFilesSelected($event)" class="file-input-hidden">
-            <span class="upload-status" *ngIf="isUploading">Uploading {{ uploadingCount }} photo(s)...</span>
+            <span class="upload-status" *ngIf="isUploading">Uploading {{ uploadingCount }} file(s)...</span>
           </ng-container>
           <ng-template #saveFirstMsg>
-            <p class="images-note">Save the product first, then re-open to add photos.</p>
+            <p class="images-note">Save the product first, then re-open to add media.</p>
           </ng-template>
         </div>
 
@@ -142,3 +236,11 @@
     </div>
   </div>
 </div>
+
+<!-- AI Photo Workflow -->
+<app-ai-photo-workflow
+  *ngIf="aiPhotoProduct"
+  [product]="aiPhotoProduct"
+  (close)="closeAIPhotoWorkflow()"
+  (saved)="onAIPhotoSaved()">
+</app-ai-photo-workflow>

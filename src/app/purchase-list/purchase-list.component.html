@@ -1,0 +1,304 @@
+<div class="purchase-container">
+  <div class="purchase-card">
+    <h2 class="card-title">Purchase Management</h2>
+    <button class="add-btn" (click)="addNewPurchase()">Add New Purchase</button>
+
+    <div class="filters">
+      <div class="filter-group">
+        <label for="search">Search:</label>
+        <input id="search" type="text" [(ngModel)]="searchTerm" placeholder="Search by invoice or supplier" class="filter-input">
+      </div>
+      <div class="filter-group">
+        <label for="supplierFilter">Supplier:</label>
+        <select id="supplierFilter" [(ngModel)]="selectedSupplier" class="filter-input">
+          <option value="">All Suppliers</option>
+          <option *ngFor="let supplier of suppliers" [value]="supplier.supplierName">{{ supplier.supplierName }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="statusFilter">Payment Status:</label>
+        <select id="statusFilter" [(ngModel)]="selectedStatus" class="filter-input">
+          <option value="">All Status</option>
+          <option value="PENDING">Pending</option>
+          <option value="PARTIAL">Partial</option>
+          <option value="PAID">Paid</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="purchase-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Invoice Number</th>
+            <th>Supplier</th>
+            <th>Invoice Date</th>
+            <th>Base Total</th>
+            <th>GST</th>
+            <th>Final Amount</th>
+            <th>Paid Amount</th>
+            <th>Payment Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let purchase of filteredPurchases" class="table-row">
+            <td>{{ purchase.purchaseId }}</td>
+            <td>{{ purchase.invoiceNumber }}</td>
+            <td>{{ purchase.supplier?.supplierName }}</td>
+            <td>{{ purchase.invoiceDate | date:'dd/MM/yyyy' }}</td>
+            <td>{{ purchase.totalAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td>{{ purchase.gst | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td>{{ purchase.finalAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td>{{ purchase.paidAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td>
+              <span class="status-badge" [style.color]="getStatusColor(purchase.paymentStatus!)">
+                {{ purchase.paymentStatus }}
+              </span>
+            </td>
+            <td>
+              <button class="edit-btn" (click)="selectPurchase(purchase)">Edit</button>
+              <button class="delete-btn" (click)="deletePurchase(purchase.purchaseId!)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div *ngIf="selectedPurchase" class="form-card">
+    <h3 class="form-title">{{ selectedPurchase.purchaseId ? 'Edit' : 'Add' }} Purchase</h3>
+    <form class="purchase-form" (ngSubmit)="savePurchase()">
+      <div class="form-group">
+        <label for="supplier">Supplier:</label>
+        <div class="supplier-selection">
+          <select id="supplier" [(ngModel)]="selectedSupplierForPurchase" name="supplier" required class="form-input">
+            <option [ngValue]="null">Select Supplier</option>
+            <option *ngFor="let supplier of suppliers" [ngValue]="supplier">{{ supplier.supplierName }}</option>
+          </select>
+          <button type="button" class="add-supplier-btn" (click)="openSupplierModal()" title="Add New Supplier">
+            <span>+</span>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="invoiceNumber">Invoice Number:</label>
+        <input id="invoiceNumber" type="text" [(ngModel)]="selectedPurchase.invoiceNumber" name="invoiceNumber" required class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="invoiceDate">Invoice Date:</label>
+        <input id="invoiceDate" type="date" [(ngModel)]="selectedPurchase.invoiceDate" name="invoiceDate" required class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="totalAmount">Base Total (Auto-calculated):</label>
+        <input id="totalAmount" type="number" step="0.01" [(ngModel)]="selectedPurchase.totalAmount" name="totalAmount" readonly class="form-input total-amount-display">
+      </div>
+      <div class="form-group">
+        <label for="gstAmount">GST Amount (Auto-calculated):</label>
+        <input id="gstAmount" type="number" step="0.01" [(ngModel)]="selectedPurchase.gst" name="gstAmount" readonly class="form-input total-amount-display">
+      </div>
+      <div class="form-group">
+        <label for="finalAmount">Final Amount (Auto-calculated):</label>
+        <input id="finalAmount" type="number" step="0.01" [(ngModel)]="selectedPurchase.finalAmount" name="finalAmount" readonly class="form-input total-amount-display">
+      </div>
+      <div class="form-group">
+        <label for="paymentDueDate">Payment Due Date:</label>
+        <input id="paymentDueDate" type="date" [(ngModel)]="selectedPurchase.paymentDueDate" name="paymentDueDate" class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="notes">Notes:</label>
+        <textarea id="notes" [(ngModel)]="selectedPurchase.notes" name="notes" class="form-textarea"></textarea>
+      </div>
+
+      <!-- Purchase Items Section -->
+      <div class="purchase-items-section">
+        <div class="section-header">
+          <h4>Purchase Items</h4>
+          <button type="button" class="add-item-btn" (click)="addPurchaseItem()">Add Item</button>
+        </div>
+
+        <div class="items-list">
+          <!-- Table header -->
+          <div class="item-row-header">
+            <div class="product-col">Product</div>
+            <div class="qty-col">Qty</div>
+            <div class="price-col">Unit Price (₹)</div>
+            <div class="total-col">Total (₹)</div>
+            <div class="gst-col">GST %</div>
+            <div class="final-price-col">Final Price (₹)</div>
+            <div class="actions-col"></div>
+          </div>
+
+          <!-- Item rows -->
+          <div *ngFor="let item of selectedPurchase.purchaseItems; let i = index" class="item-row-single-line">
+            <div class="product-col">
+              <div class="product-input-group">
+                <div class="searchable-dropdown">
+                  <input type="text"
+                         [(ngModel)]="productSearchTerms[i]"
+                         [name]="'productSearch_' + i"
+                         [id]="'pSearch_' + i"
+                         placeholder="Search and select..."
+                         class="product-search-input"
+                         (focus)="openDropdownIndex = i; highlightedProductIndex = -1"
+                         (blur)="onProductSearchBlur()"
+                         (input)="onProductSearchInput(i)"
+                         (keydown)="onProductSearchKeydown($event, i)"
+                         autocomplete="off">
+                  <div class="dropdown-list" *ngIf="openDropdownIndex === i">
+                    <div *ngIf="getFilteredProducts(i).length === 0" class="dropdown-no-results">No products found</div>
+                    <div class="dropdown-item"
+                         *ngFor="let product of getFilteredProducts(i); let j = index"
+                         [class.highlighted]="highlightedProductIndex === j"
+                         (mousedown)="selectProduct(i, product)">
+                      {{ product.productName }} (ID: {{ product.productId }})
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn-add-product-small" tabindex="-1" (click)="openProductModal(i)">+</button>
+              </div>
+            </div>
+
+            <div class="qty-col">
+              <input type="number" step="0.01" min="0"
+                     [(ngModel)]="item.quantity" [name]="'quantity_' + i" [id]="'pQty_' + i"
+                     (ngModelChange)="onPurchaseItemChange(i)" required class="input-small">
+            </div>
+
+            <div class="price-col">
+              <input type="number" step="0.01" min="0" [(ngModel)]="item.unitPrice" [name]="'unitPrice_' + i"
+                     (ngModelChange)="onPurchaseItemChange(i)" required class="input-small">
+            </div>
+
+            <div class="total-col">
+              <input type="number" step="0.01" [(ngModel)]="item.totalPrice" [name]="'totalPrice_' + i"
+                     readonly tabindex="-1" class="input-small total-display">
+            </div>
+
+            <div class="gst-col">
+              <input type="number" step="0.01" min="0" [(ngModel)]="item.gst" [name]="'gst_' + i"
+                     (ngModelChange)="onPurchaseItemChange(i)" class="input-small">
+            </div>
+
+            <div class="final-price-col">
+              <input type="number" step="0.01" [(ngModel)]="item.finalPrice" [name]="'finalPrice_' + i"
+                     readonly tabindex="-1" class="input-small final-price-display">
+            </div>
+
+            <div class="actions-col">
+              <button type="button" class="btn-remove" tabindex="-1" (click)="removePurchaseItem(i)">Remove</button>
+              <button *ngIf="i === (selectedPurchase.purchaseItems?.length || 0) - 1"
+                      type="button" class="btn-add-item-inline" (click)="addPurchaseItem()">+ Add Item</button>
+            </div>
+          </div>
+
+          <div *ngIf="!selectedPurchase.purchaseItems || selectedPurchase.purchaseItems.length === 0" class="no-items">
+            No items added yet. Click "Add Item" to add purchase items.
+          </div>
+        </div>
+
+        <div class="total-summary" *ngIf="selectedPurchase.purchaseItems && selectedPurchase.purchaseItems.length > 0">
+          <div class="total-amount">
+            <strong>Invoice Total: {{ selectedPurchase.finalAmount | currency:'INR':'symbol':'1.2-2' }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="save-btn">Save</button>
+        <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Supplier Modal -->
+  <div *ngIf="showSupplierModal" class="modal-overlay" (click)="closeSupplierModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Add New Supplier</h3>
+        <button type="button" class="modal-close" (click)="closeSupplierModal()">&times;</button>
+      </div>
+      <form class="supplier-form" (ngSubmit)="saveSupplier()">
+        <div class="form-group">
+          <label for="supplierName">Supplier Name:</label>
+          <input id="supplierName" type="text" [(ngModel)]="newSupplier.supplierName" name="supplierName" required class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="contactPerson">Contact Person:</label>
+          <input id="contactPerson" type="text" [(ngModel)]="newSupplier.contactPerson" name="contactPerson" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone:</label>
+          <input id="phone" type="tel" [(ngModel)]="newSupplier.phone" name="phone" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input id="email" type="email" [(ngModel)]="newSupplier.email" name="email" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="address">Address:</label>
+          <textarea id="address" [(ngModel)]="newSupplier.address" name="address" class="form-textarea"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="save-btn">Save Supplier</button>
+          <button type="button" class="cancel-btn" (click)="closeSupplierModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Product Modal -->
+  <div *ngIf="showProductModal" class="modal-overlay" (click)="closeProductModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Add New Product</h3>
+        <button type="button" class="modal-close" (click)="closeProductModal()">&times;</button>
+      </div>
+      <form class="product-form" (ngSubmit)="saveProduct()">
+        <div class="form-group">
+          <label for="productName">Product Name:</label>
+          <input id="productName" type="text" [(ngModel)]="newProduct.productName" name="productName" required class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="description">Description:</label>
+          <textarea id="description" [(ngModel)]="newProduct.description" name="description" class="form-textarea"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="category">Category:</label>
+          <select id="category" [(ngModel)]="selectedCategory" name="category" required class="form-input">
+            <option value="">Select Category</option>
+            <option *ngFor="let category of categories" [value]="category.categoryName">{{ category.categoryName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="unit">Unit:</label>
+          <select id="unit" [(ngModel)]="newProduct.unit" name="unit" class="form-input">
+            <option value="Meters">Meters</option>
+            <option value="Pieces">Pieces</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="costPrice">Cost Price:</label>
+          <input id="costPrice" type="number" step="0.01" [(ngModel)]="newProduct.costPrice" name="costPrice" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="sellingPrice">Selling Price:</label>
+          <input id="sellingPrice" type="number" step="0.01" [(ngModel)]="newProduct.sellingPrice" name="sellingPrice" required class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="stockQuantity">Stock Quantity:</label>
+          <input id="stockQuantity" type="number" step="0.01" [(ngModel)]="newProduct.stockQuantity" name="stockQuantity" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="minStockLevel">Min Stock Level:</label>
+          <input id="minStockLevel" type="number" step="0.01" [(ngModel)]="newProduct.minStockLevel" name="minStockLevel" class="form-input">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="save-btn">Save Product</button>
+          <button type="button" class="cancel-btn" (click)="closeProductModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

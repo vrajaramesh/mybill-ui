@@ -1,0 +1,90 @@
+<div class="media-container">
+  <div class="media-card">
+    <h2 class="card-title">Product Media</h2>
+
+    <!-- Searchable product selector -->
+    <div class="select-group">
+      <label class="select-label">Select Product</label>
+      <div class="search-wrap">
+        <input
+          class="product-search-input"
+          type="text"
+          [(ngModel)]="searchQuery"
+          (focus)="onSearchFocus()"
+          (blur)="onSearchBlur()"
+          (input)="onSearchInput()"
+          [placeholder]="isLoadingProducts ? 'Loading products...' : 'Search by name or ID…'"
+          [disabled]="isLoadingProducts"
+          autocomplete="off">
+        <span class="search-icon" [class.confirmed]="!!selectedProduct">{{ selectedProduct ? '✓' : '🔍' }}</span>
+
+        <div class="search-dropdown" *ngIf="showDropdown">
+          <div class="search-item"
+               *ngFor="let p of filteredProductOptions"
+               (mousedown)="pickProduct(p)">
+            <span class="item-id">#{{ p.productId }}</span>
+            <span class="item-name">{{ p.productName }}</span>
+            <span class="item-cat" *ngIf="p.category?.categoryName">{{ p.category?.categoryName }}</span>
+          </div>
+          <div class="search-empty" *ngIf="filteredProductOptions.length === 0">
+            No products match "{{ searchQuery }}"
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-container *ngIf="selectedProduct">
+
+      <!-- Drop zone / file picker -->
+      <label class="upload-zone" for="mediaFilePicker">
+        <div class="upload-zone-icon">📁</div>
+        <div class="upload-zone-text">Click to select photos or videos</div>
+        <div class="upload-zone-hint">JPG, PNG, MP4, MOV — multiple files supported</div>
+      </label>
+      <input id="mediaFilePicker" type="file" accept="image/*,video/*" multiple
+             (change)="onFilesSelected($event)" class="hidden-input">
+
+      <!-- Pending preview -->
+      <ng-container *ngIf="filePreviews.length > 0">
+        <div class="section-header">
+          <span class="section-label">Ready to upload</span>
+          <span class="count-badge">{{ filePreviews.length }}</span>
+        </div>
+        <div class="thumb-grid">
+          <div class="thumb-card" *ngFor="let p of filePreviews; let i = index">
+            <video *ngIf="p.type === 'video'" [src]="p.url" class="thumb-media"></video>
+            <img  *ngIf="p.type !== 'video'" [src]="p.url" [alt]="p.name" class="thumb-media">
+            <span class="thumb-badge" *ngIf="p.type === 'video'">🎥</span>
+            <button class="thumb-remove" type="button" (click)="removePending(i)" title="Remove">×</button>
+          </div>
+        </div>
+        <button class="upload-btn" (click)="upload()" [disabled]="isUploading">
+          {{ isUploading ? 'Uploading ' + uploadingCount + ' file(s)...' : 'Upload to "' + selectedProduct.productName + '"' }}
+        </button>
+      </ng-container>
+
+      <!-- Uploading indicator (no pending left but still in progress) -->
+      <div class="uploading-msg" *ngIf="isUploading && filePreviews.length === 0">
+        Uploading {{ uploadingCount }} file(s)...
+      </div>
+
+      <!-- Saved media -->
+      <div class="section-header" style="margin-top: 24px;">
+        <span class="section-label">Saved Media</span>
+        <span class="count-badge" *ngIf="productImages.length > 0">{{ productImages.length }}</span>
+      </div>
+      <div class="loading-msg" *ngIf="isLoadingImages">Loading...</div>
+      <div class="empty-msg" *ngIf="!isLoadingImages && productImages.length === 0">No media yet for this product</div>
+
+      <div class="thumb-grid" *ngIf="productImages.length > 0">
+        <div class="thumb-card" *ngFor="let img of productImages">
+          <video *ngIf="img.mediaType === 'video'" [src]="img.imageUrl" controls class="thumb-media"></video>
+          <img  *ngIf="img.mediaType !== 'video'" [src]="img.imageUrl" [alt]="selectedProduct.productName" class="thumb-media">
+          <span class="thumb-badge" *ngIf="img.imageType === 'ai-generated'">✨</span>
+          <button class="thumb-remove" type="button" (click)="deleteImage(img)" title="Delete">×</button>
+        </div>
+      </div>
+
+    </ng-container>
+  </div>
+</div>

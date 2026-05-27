@@ -1,0 +1,88 @@
+<div class="cat-container">
+
+  <!-- Categories panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">Categories</h2>
+      <button class="add-btn" (click)="addingCategory = !addingCategory">
+        {{ addingCategory ? '✕ Cancel' : '+ Add' }}
+      </button>
+    </div>
+
+    <div class="add-form" *ngIf="addingCategory">
+      <input type="text" class="add-input" placeholder="Category name" [(ngModel)]="newCategoryName"
+             (keyup.enter)="addCategory()" autofocus>
+      <button class="save-btn" [disabled]="!newCategoryName.trim() || savingCategory" (click)="addCategory()">Save</button>
+    </div>
+
+    <div class="list-scroll">
+      <div *ngFor="let cat of categories"
+           class="list-item"
+           [class.selected]="cat.categoryName === selectedCategoryName"
+           (click)="selectCategory(cat)">
+        <div class="item-info">
+          <span class="item-name">{{ cat.categoryName }}</span>
+          <span class="sub-count">{{ getSubCatCount(cat.categoryName) }} sub-cats</span>
+        </div>
+        <div class="item-actions" (click)="$event.stopPropagation()">
+          <label class="toggle-wrap" title="Show on eCom site">
+            <input type="checkbox" [checked]="cat.isOnline" (change)="toggleCategoryOnline(cat)" class="toggle-input">
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label">{{ cat.isOnline ? 'Online' : 'Offline' }}</span>
+          </label>
+          <button class="del-btn" (click)="deleteCategory(cat)" title="Delete">🗑</button>
+        </div>
+      </div>
+      <div class="empty-msg" *ngIf="categories.length === 0">No categories yet</div>
+    </div>
+  </div>
+
+  <!-- Sub-categories panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        Sub-Categories
+        <span class="for-cat" *ngIf="selectedCategory"> — {{ selectedCategory.categoryName }}</span>
+      </h2>
+      <button class="add-btn" *ngIf="selectedCategoryName"
+              (click)="addingSubCat = !addingSubCat">
+        {{ addingSubCat ? '✕ Cancel' : '+ Add' }}
+      </button>
+    </div>
+
+    <div class="add-form" *ngIf="addingSubCat && selectedCategoryName">
+      <input type="text" class="add-input" placeholder="Sub-category name" [(ngModel)]="newSubCatName"
+             (keyup.enter)="addSubCategory()" autofocus>
+      <button class="save-btn" [disabled]="!newSubCatName.trim() || savingSubCat" (click)="addSubCategory()">Save</button>
+    </div>
+
+    <div class="list-scroll">
+      <ng-container *ngIf="selectedCategoryName; else noSelection">
+        <div *ngFor="let sc of subCatsForSelected" class="list-item">
+          <div class="item-info">
+            <span class="item-name">{{ sc.subCatName }}</span>
+          </div>
+          <div class="item-actions">
+            <label class="toggle-wrap" title="Show on eCom site">
+              <input type="checkbox" [checked]="sc.isOnline" (change)="toggleSubCatOnline(sc)" class="toggle-input">
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">{{ sc.isOnline ? 'Online' : 'Offline' }}</span>
+            </label>
+            <button class="del-btn" (click)="deleteSubCategory(sc)" title="Delete">🗑</button>
+          </div>
+        </div>
+        <div class="empty-msg" *ngIf="subCatsForSelected.length === 0">
+          No sub-categories yet — click "+ Add" to create one
+        </div>
+      </ng-container>
+      <ng-template #noSelection>
+        <div class="empty-msg">Select a category to manage its sub-categories</div>
+      </ng-template>
+    </div>
+  </div>
+
+</div>

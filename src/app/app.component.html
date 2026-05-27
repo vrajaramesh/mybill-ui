@@ -1,8 +1,32 @@
-<div class="app-layout">
+<!-- Login screen -->
+<app-login
+  *ngIf="currentView === 'login'"
+  (loginSuccess)="onLoginSuccess()"
+  (registerFirm)="goToRegister()"></app-login>
+
+<!-- Superadmin dashboard -->
+<app-superadmin-dashboard
+  *ngIf="currentView === 'superadmin'"
+  (logout)="onSuperadminLogout()">
+</app-superadmin-dashboard>
+
+<!-- Register firm screen (legacy fallback) -->
+<app-register-firm
+  *ngIf="currentView === 'register'"
+  (registrationSuccess)="onRegisterFirmSuccess()"
+  (backToLogin)="goBackToLogin()"></app-register-firm>
+
+<!-- Main app layout after login -->
+<div class="app-layout" *ngIf="currentView === 'app'">
+
   <!-- Sidebar -->
   <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
     <div class="sidebar-header">
-      <span class="brand-name" *ngIf="!sidebarCollapsed">Srisa Fabrics</span>
+      <div class="brand-wrap" *ngIf="!sidebarCollapsed">
+        <img *ngIf="displayLogo" [src]="displayLogo" class="brand-logo" alt="Logo">
+        <span class="brand-name">{{ displayFirmName }}</span>
+      </div>
+      <img *ngIf="sidebarCollapsed && displayLogo" [src]="displayLogo" class="brand-logo-collapsed" alt="Logo">
       <button class="toggle-btn" (click)="toggleSidebar()" title="Toggle sidebar">&#9776;</button>
     </div>
 
@@ -33,9 +57,27 @@
       <!-- Products -->
       <div class="nav-group">
         <div class="nav-item parent" [class.active]="activeMenu==='products'"
-             (click)="navigate('products')">
+             (click)="toggleMenu('products'); navigate('products', 'list')">
           <span class="nav-icon">📦</span>
           <span class="nav-label" *ngIf="!sidebarCollapsed">Products</span>
+          <span class="arrow" *ngIf="!sidebarCollapsed">{{ isMenuExpanded('products') ? '▾' : '▸' }}</span>
+        </div>
+        <div class="submenu" *ngIf="!sidebarCollapsed && isMenuExpanded('products')">
+          <div class="nav-item sub" [class.active]="activeMenu==='products' && activeSubMenu==='list'"
+               (click)="navigate('products','list')">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">Product List</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='products' && activeSubMenu==='categories'"
+               (click)="navigate('products','categories')">
+            <span class="nav-icon">🏷️</span>
+            <span class="nav-label">Categories</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='products' && activeSubMenu==='media'"
+               (click)="navigate('products','media')">
+            <span class="nav-icon">🖼️</span>
+            <span class="nav-label">Media Upload</span>
+          </div>
         </div>
       </div>
 
@@ -48,16 +90,77 @@
         </div>
       </div>
 
-      <!-- GST Report -->
+      <!-- Reports -->
       <div class="nav-group">
-        <div class="nav-item parent" [class.active]="activeMenu==='gst-report'"
-             (click)="navigate('gst-report')">
-          <span class="nav-icon">📊</span>
-          <span class="nav-label" *ngIf="!sidebarCollapsed">GST Report</span>
+        <div class="nav-item parent" [class.active]="activeMenu==='reports'"
+             (click)="toggleMenu('reports'); navigate('reports', activeSubMenu || 'sales')">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Reports</span>
+          <span class="arrow" *ngIf="!sidebarCollapsed">{{ isMenuExpanded('reports') ? '▾' : '▸' }}</span>
+        </div>
+        <div class="submenu" *ngIf="!sidebarCollapsed && isMenuExpanded('reports')">
+          <div class="nav-item sub" [class.active]="activeMenu==='reports' && activeSubMenu==='sales'"
+               (click)="navigate('reports','sales')">
+            <span class="nav-icon">📈</span>
+            <span class="nav-label">Sales Report</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='reports' && activeSubMenu==='gst'"
+               (click)="navigate('reports','gst')">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">GST Report</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Boutique -->
+      <div class="nav-group">
+        <div class="nav-item parent" [class.active]="activeMenu==='boutique'"
+             (click)="navigate('boutique')">
+          <span class="nav-icon">&#9986;</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Boutique</span>
+        </div>
+      </div>
+
+      <!-- Users (admin only) -->
+      <div class="nav-group" *ngIf="isAdmin">
+        <div class="nav-item parent" [class.active]="activeMenu==='users'"
+             (click)="navigate('users')">
+          <span class="nav-icon">👥</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Users</span>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="nav-group">
+        <div class="nav-item parent" [class.active]="activeMenu==='settings'"
+             (click)="navigate('settings')">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Settings</span>
         </div>
       </div>
 
     </nav>
+
+    <!-- Sidebar footer: current user info + logout -->
+    <div class="sidebar-footer">
+      <div class="sidebar-user" *ngIf="!sidebarCollapsed">
+        <div class="sidebar-avatar">{{ currentUserInitials }}</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">{{ currentUser?.fullName || currentUser?.username }}</div>
+          <div class="sidebar-user-role" [class]="'role-chip-' + (currentUser?.role || '').toLowerCase()">
+            {{ currentUser?.role }}
+          </div>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="logout()" [title]="sidebarCollapsed ? 'Sign Out' : ''">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Sign Out</span>
+      </button>
+    </div>
   </aside>
 
   <!-- Main content -->
@@ -67,8 +170,15 @@
       [view]="billingView"
       (viewChange)="onBillingViewChange($event)">
     </app-billing>
-    <app-product-list *ngIf="activeSection==='products'"></app-product-list>
-    <app-purchase-list *ngIf="activeSection==='purchases'"></app-purchase-list>
-    <app-gst-report *ngIf="activeSection==='gst-report'"></app-gst-report>
+    <app-product-list        *ngIf="activeSection==='products'"></app-product-list>
+    <app-product-category    *ngIf="activeSection==='categories'"></app-product-category>
+    <app-product-media       *ngIf="activeSection==='media'"></app-product-media>
+    <app-purchase-list   *ngIf="activeSection==='purchases'"></app-purchase-list>
+    <app-gst-report      *ngIf="activeSection==='gst-report'"></app-gst-report>
+    <app-reports         *ngIf="activeSection==='reports'"></app-reports>
+    <app-boutique        *ngIf="activeSection==='boutique'"></app-boutique>
+    <app-user-management *ngIf="activeSection==='users'"></app-user-management>
+    <app-settings        *ngIf="activeSection==='settings'"></app-settings>
   </main>
+
 </div>

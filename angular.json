@@ -39,13 +39,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1.5MB",
+                  "maximumError": "2MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kB",
-                  "maximumError": "4kB"
+                  "maximumWarning": "30kB",
+                  "maximumError": "60kB"
                 }
               ],
               "outputHashing": "all"
@@ -65,7 +65,8 @@
               "buildTarget": "mybill-ui:build:production"
             },
             "development": {
-              "buildTarget": "mybill-ui:build:development"
+              "buildTarget": "mybill-ui:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

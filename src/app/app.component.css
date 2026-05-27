@@ -34,12 +34,37 @@
   min-height: 60px;
 }
 
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.brand-logo {
+  height: 32px;
+  width: auto;
+  max-width: 80px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.brand-logo-collapsed {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
 .brand-name {
   font-size: 15px;
   font-weight: 700;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .toggle-btn {
@@ -90,3 +115,76 @@
   padding: 20px;
   background: #f0f2f5;
 }
+
+/* ── Sidebar footer ───────────────────────────────────── */
+.sidebar-footer {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 2px;
+}
+
+.sidebar-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #2d6a4f;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sidebar-user-info { overflow: hidden; }
+
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user-role {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.role-chip-admin { background: #1e3a8a; color: #93c5fd; }
+.role-chip-sales { background: #14532d; color: #86efac; }
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  color: #a0adb8;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+}
+.logout-btn:hover { background: rgba(220,38,38,0.15); color: #fca5a5; }

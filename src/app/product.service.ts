@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Product, ProductImage } from './product.model';
-import { ProductCategory } from './product-category.model';
+import { ProductCategory, ProductSubCategory } from './product-category.model';
 
 const CLOUDINARY_CLOUD = 'dfo9d18ru';
 const CLOUDINARY_PRESET = 'ixl3m630';
@@ -11,7 +11,7 @@ const CLOUDINARY_PRESET = 'ixl3m630';
   providedIn: 'root'
 })
 export class ProductService {
-  private apiUrl = 'http://localhost:8080/api/products';
+  private apiUrl = '/api/products';
 
   constructor(private http: HttpClient) { }
 
@@ -35,30 +35,87 @@ export class ProductService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
+  // ── Categories ──────────────────────────────────────────────────────────
+
   getProductCategories(): Observable<ProductCategory[]> {
     return this.http.get<ProductCategory[]>(`${this.apiUrl}/categories`);
   }
 
-  // Image endpoints
+  createProductCategory(categoryName: string): Observable<ProductCategory> {
+    return this.http.post<ProductCategory>(`${this.apiUrl}/categories`, { categoryName, isOnline: true });
+  }
+
+  updateProductCategory(name: string, isOnline: boolean): Observable<ProductCategory> {
+    return this.http.put<ProductCategory>(`${this.apiUrl}/categories/${encodeURIComponent(name)}`, { isOnline });
+  }
+
+  deleteProductCategory(name: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/categories/${encodeURIComponent(name)}`);
+  }
+
+  // ── Sub-categories ──────────────────────────────────────────────────────
+
+  getAllSubCategories(): Observable<ProductSubCategory[]> {
+    return this.http.get<ProductSubCategory[]>(`${this.apiUrl}/subcategories`);
+  }
+
+  getSubCategories(categoryName: string): Observable<ProductSubCategory[]> {
+    return this.http.get<ProductSubCategory[]>(`${this.apiUrl}/categories/${encodeURIComponent(categoryName)}/subcategories`);
+  }
+
+  createSubCategory(subCatName: string, categoryName: string): Observable<ProductSubCategory> {
+    return this.http.post<ProductSubCategory>(`${this.apiUrl}/subcategories`, {
+      subCatName,
+      category: { categoryName },
+      isOnline: true
+    });
+  }
+
+  updateSubCategory(id: number, data: Partial<ProductSubCategory>): Observable<ProductSubCategory> {
+    return this.http.put<ProductSubCategory>(`${this.apiUrl}/subcategories/${id}`, data);
+  }
+
+  deleteSubCategory(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/subcategories/${id}`);
+  }
+
+  // ── Images ──────────────────────────────────────────────────────────────
+
   getProductImages(productId: number): Observable<ProductImage[]> {
     return this.http.get<ProductImage[]>(`${this.apiUrl}/${productId}/images`);
   }
 
-  saveProductImage(productId: number, imageUrl: string, publicId: string): Observable<ProductImage> {
-    return this.http.post<ProductImage>(`${this.apiUrl}/${productId}/images`, { imageUrl, publicId });
+  saveProductImage(productId: number, imageUrl: string, publicId: string, mediaType = 'image'): Observable<ProductImage> {
+    return this.http.post<ProductImage>(`${this.apiUrl}/${productId}/images`, { imageUrl, publicId, mediaType });
   }
 
   deleteProductImage(productId: number, imageId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${productId}/images/${imageId}`);
   }
 
-  // Upload a single file to Cloudinary; returns the full Cloudinary response
+  // ── AI Photo Generation ─────────────────────────────────────────────────
+
+  generateAIPhotos(productId: number, imageBase64: string, mimeType: string): Observable<string[]> {
+    return this.http.post<string[]>(`${this.apiUrl}/${productId}/ai-photos/generate`, { imageBase64, mimeType });
+  }
+
+  saveAIPhotos(productId: number, imageUrls: string[]): Observable<any[]> {
+    return this.http.post<any[]>(`${this.apiUrl}/${productId}/ai-photos/save`, imageUrls);
+  }
+
+  generateDescription(productName: string, category?: string, suitableFor?: string, tags?: string, imageUrl?: string): Observable<{ description: string }> {
+    return this.http.post<{ description: string }>(`${this.apiUrl}/generate-description`, {
+      productName, category, suitableFor, tags, imageUrl
+    });
+  }
+
   uploadToCloudinary(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', CLOUDINARY_PRESET);
+    const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
     return this.http.post(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
       formData
     );
   }

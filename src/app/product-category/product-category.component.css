@@ -1,0 +1,236 @@
+.cat-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .cat-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.for-cat {
+  font-weight: 400;
+  color: #667eea;
+  font-size: 1rem;
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+  box-shadow: 0 3px 10px rgba(102,126,234,0.3);
+}
+
+.add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(102,126,234,0.45);
+}
+
+.add-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.add-input {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.add-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+}
+
+.save-btn {
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #34c759, #30d158);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.07);
+  background: #fafafa;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  flex-wrap: wrap;
+}
+
+.list-item:hover {
+  background: rgba(102,126,234,0.06);
+  border-color: rgba(102,126,234,0.2);
+}
+
+.list-item.selected {
+  background: rgba(102,126,234,0.1);
+  border-color: rgba(102,126,234,0.35);
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.item-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sub-count {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Toggle switch ─────────────────────────────────────────── */
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-input {
+  display: none;
+}
+
+.toggle-track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: #ddd;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+
+.toggle-input:checked + .toggle-track {
+  background: #34c759;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: left 0.25s;
+}
+
+.toggle-input:checked + .toggle-track .toggle-thumb {
+  left: 18px;
+}
+
+.toggle-label {
+  font-size: 0.75rem;
+  color: #666;
+  min-width: 38px;
+}
+
+.del-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.del-btn:hover {
+  opacity: 1;
+  background: rgba(220, 53, 69, 0.1);
+}
+
+.empty-msg {
+  color: #aaa;
+  font-size: 0.88rem;
+  font-style: italic;
+  padding: 20px 0;
+  text-align: center;
+}

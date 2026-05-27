@@ -1,0 +1,129 @@
+<div class="sa-layout">
+  <!-- Header -->
+  <header class="sa-header">
+    <div class="sa-brand">
+      <span class="sa-logo">🏢</span>
+      <span class="sa-title">MyBill — Super Admin</span>
+    </div>
+    <div class="sa-user">
+      <div class="sa-avatar">{{ currentUserInitials }}</div>
+      <span class="sa-username">{{ currentUser?.fullName || currentUser?.username }}</span>
+      <button class="sa-logout" (click)="onLogout()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="sa-main">
+
+    <!-- Firms list section -->
+    <div class="sa-section">
+      <div class="sa-section-header">
+        <h2>Registered Firms</h2>
+        <button class="btn-create" (click)="showCreateForm = !showCreateForm">
+          {{ showCreateForm ? 'Cancel' : '+ Create New Firm' }}
+        </button>
+      </div>
+
+      <!-- Success message -->
+      <div class="alert-success" *ngIf="createSuccess">{{ createSuccess }}</div>
+
+      <!-- Create Firm Form -->
+      <div class="create-form-card" *ngIf="showCreateForm">
+        <h3>Create New Firm</h3>
+        <form (ngSubmit)="onCreateFirm()">
+          <div class="form-row">
+            <div class="field-group">
+              <label>Firm Name *</label>
+              <input type="text" [(ngModel)]="firmName" name="firmName"
+                     placeholder="e.g. Srisa Fabrics" (change)="generateFirmCode()" required>
+            </div>
+            <div class="field-group">
+              <label>Firm Code *</label>
+              <input type="text" [(ngModel)]="firmCode" name="firmCode"
+                     placeholder="e.g. srisa_fabrics" required>
+              <small>Auto-generated. Only letters, numbers, underscore, hyphen.</small>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field-group">
+              <label>Owner Email *</label>
+              <input type="email" [(ngModel)]="ownerEmail" name="ownerEmail"
+                     placeholder="owner@example.com" required>
+            </div>
+            <div class="field-group">
+              <label>Admin Full Name *</label>
+              <input type="text" [(ngModel)]="adminFullName" name="adminFullName"
+                     placeholder="Administrator Name" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field-group">
+              <label>Admin Username *</label>
+              <input type="text" [(ngModel)]="adminUsername" name="adminUsername"
+                     placeholder="e.g. admin" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field-group">
+              <label>Admin Password *</label>
+              <input type="password" [(ngModel)]="adminPassword" name="adminPassword"
+                     placeholder="Min 6 characters" required>
+            </div>
+            <div class="field-group">
+              <label>Confirm Password *</label>
+              <input type="password" [(ngModel)]="confirmPassword" name="confirmPassword"
+                     placeholder="Repeat password" required>
+            </div>
+          </div>
+          <div class="error-msg" *ngIf="createError">{{ createError }}</div>
+          <div class="form-actions">
+            <button type="submit" class="btn-submit" [disabled]="creating">
+              {{ creating ? 'Creating...' : 'Create Firm' }}
+            </button>
+            <button type="button" class="btn-cancel" (click)="showCreateForm = false; resetForm()">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Firms Table -->
+      <div class="firms-table-wrap" *ngIf="!loadingFirms && firms.length > 0">
+        <table class="firms-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Firm Name</th>
+              <th>Firm Code</th>
+              <th>Owner Email</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let firm of firms; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td><strong>{{ firm.firmName }}</strong></td>
+              <td><code>{{ firm.firmCode }}</code></td>
+              <td>{{ firm.ownerEmail || '—' }}</td>
+              <td>
+                <span class="badge" [class.active]="firm.isActive" [class.inactive]="!firm.isActive">
+                  {{ firm.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td>{{ firm.createdAt | date:'dd MMM yyyy' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="!loadingFirms && firms.length === 0">
+        <p>No firms yet. Create the first one above.</p>
+      </div>
+
+      <div class="loading" *ngIf="loadingFirms">Loading firms...</div>
+      <div class="error-msg" *ngIf="firmsError">{{ firmsError }}</div>
+    </div>
+
+  </main>
+</div>
