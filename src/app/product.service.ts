@@ -4,8 +4,6 @@ import { Observable } from 'rxjs';
 import { Product, ProductImage } from './product.model';
 import { ProductCategory, ProductSubCategory } from './product-category.model';
 
-const CLOUDINARY_CLOUD = 'dfo9d18ru';
-const CLOUDINARY_PRESET = 'ixl3m630';
 
 @Injectable({
   providedIn: 'root'
@@ -112,11 +110,6 @@ export class ProductService {
   uploadToCloudinary(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-    const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
-    return this.http.post(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
-      formData
-    );
+    return this.http.post('/api/upload/image', formData);
   }
 }

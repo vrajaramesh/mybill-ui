@@ -2,8 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-const CLOUDINARY_CLOUD = 'dfo9d18ru';
-const CLOUDINARY_PRESET = 'ixl3m630';
 
 export interface StitchingOrderItem {
   itemId?: number;
@@ -199,8 +197,7 @@ export class BoutiqueService {
   uploadToCloudinary(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-    return this.http.post(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, formData);
+    return this.http.post('/api/upload/image', formData);
   }
 
   // ── Boutique Designs ──────────────────────────────────────────────────────
