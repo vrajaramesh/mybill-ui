@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../settings.service';
 import { ThermalPrinterService } from '../thermal-printer.service';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-settings',
@@ -18,6 +19,14 @@ export class SettingsComponent implements OnInit {
   waPhone     = '';
   logoPreview = '';
 
+  // WhatsApp Cloud API bot credentials
+  waPhoneNumberId = '';
+  waAccessToken   = '';
+  waVerifyToken   = '';
+  waEcomUrl       = '';
+  waApiSaved      = false;
+  waShowToken     = false;
+
   firmSaved    = false;
   gstSaved     = false;
   addressSaved = false;
@@ -27,8 +36,11 @@ export class SettingsComponent implements OnInit {
 
   constructor(
     private settings: SettingsService,
-    public  printer:  ThermalPrinterService
+    public  printer:  ThermalPrinterService,
+    private auth:     AuthService
   ) {}
+
+  get isSales(): boolean { return this.auth.isSales(); }
 
   ngOnInit(): void {
     this.firmName    = this.settings.firmName;
@@ -36,6 +48,12 @@ export class SettingsComponent implements OnInit {
     this.address     = this.settings.address;
     this.waPhone     = this.settings.whatsappPhone;
     this.logoPreview = this.settings.logo;
+
+    const waApi = this.settings.getWhatsappApiSettings();
+    this.waPhoneNumberId = waApi['whatsapp_phone_number_id'];
+    this.waAccessToken   = waApi['whatsapp_access_token'];
+    this.waVerifyToken   = waApi['whatsapp_verify_token'];
+    this.waEcomUrl       = waApi['ecom_url'];
   }
 
   saveFirm(): void {
@@ -113,5 +131,26 @@ export class SettingsComponent implements OnInit {
 
   disconnectPrinter(): void {
     this.printer.disconnect();
+  }
+
+  saveWaApi(): void {
+    this.settings.saveWhatsappApiCredentials(
+      this.waPhoneNumberId, this.waAccessToken, this.waVerifyToken, this.waEcomUrl);
+    localStorage.setItem('wa_phone_number_id', this.waPhoneNumberId.trim());
+    localStorage.setItem('wa_access_token',    this.waAccessToken.trim());
+    localStorage.setItem('wa_verify_token',    this.waVerifyToken.trim());
+    localStorage.setItem('wa_ecom_url',        this.waEcomUrl.trim());
+    this.waApiSaved = true;
+    setTimeout(() => this.waApiSaved = false, 2500);
+  }
+
+  get webhookUrl(): string {
+    try {
+      const raw = localStorage.getItem('mybill_current_firm');
+      const firm = raw ? JSON.parse(raw) : null;
+      const code = firm?.firmCode || '';
+      if (code) return `${window.location.origin}/api/public/${code}/whatsapp/webhook`;
+    } catch {}
+    return 'https://your-server.com/api/public/{firmCode}/whatsapp/webhook';
   }
 }

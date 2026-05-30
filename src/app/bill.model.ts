@@ -26,6 +26,8 @@ export interface Bill {
   totalAmount?: number;
   paymentMethod: string;
   notes?: string;
+  salesPersonId?: number;
+  salesPersonName?: string;
   createdAt?: string;
   billItems?: BillItem[];
 }

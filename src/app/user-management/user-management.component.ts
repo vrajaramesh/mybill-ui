@@ -1,17 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UserService, User } from '../user.service';
+import { UserService, AdminUser } from '../user.service';
 import { AuthService } from '../auth.service';
 
-interface UserForm {
-  username: string;
-  password: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  role: 'ADMIN' | 'SALES';
-  isActive: boolean;
+interface SalesForm {
+  username: string; password: string; fullName: string;
+  email: string; phone: string; isActive: boolean; firmCode: string;
+}
+
+interface AdminForm {
+  username: string; password: string; fullName: string;
+  email: string; phone: string; firmCodes: string[];
 }
 
 @Component({
@@ -22,213 +22,342 @@ interface UserForm {
   styleUrls: ['./user-management.component.css']
 })
 export class UserManagementComponent implements OnInit {
-  users: User[] = [];
-  loading = false;
-  error = '';
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  activeTab: 'sales' | 'admins' = 'sales';
+
+  // ── Firms ─────────────────────────────────────────────────────────────────
+  allFirms: any[] = [];
+  selectedFirmCode: string = '';
+
+  // ── Sales users ───────────────────────────────────────────────────────────
+  salesUsers: any[] = [];
+  salesLoading = false;
+  salesError = '';
+
+  // ── Admin users ───────────────────────────────────────────────────────────
+  adminUsers: AdminUser[] = [];
+  adminsLoading = false;
+  adminsError = '';
+
+  // ── Common ────────────────────────────────────────────────────────────────
   successMsg = '';
 
-  showModal = false;
-  modalMode: 'create' | 'edit' = 'create';
-  editingUserId: number | null = null;
+  // ── Sales modal ───────────────────────────────────────────────────────────
+  showSalesModal = false;
+  salesModalMode: 'create' | 'edit' = 'create';
+  editingSalesId: number | null = null;
+  salesForm: SalesForm = this.emptySalesForm();
+  salesFormError = '';
+  salesFormLoading = false;
 
-  form: UserForm = this.emptyForm();
-  formError = '';
-  formLoading = false;
+  // ── Admin modal ───────────────────────────────────────────────────────────
+  showAdminModal = false;
+  adminModalMode: 'create' | 'edit' = 'create';
+  editingAdminId: number | null = null;
+  adminForm: AdminForm = this.emptyAdminForm();
+  adminFormError = '';
+  adminFormLoading = false;
 
-  deleteConfirmId: number | null = null;
-  deleteConfirmName = '';
+  // ── Firm assignment panel ─────────────────────────────────────────────────
+  assigningAdmin: AdminUser | null = null;
 
-  showPasswordModal = false;
+  // ── Password modal ────────────────────────────────────────────────────────
+  showPwModal = false;
   pwForm = { newPassword: '', confirmPassword: '' };
-  pwUserId: number | null = null;
-  pwUserName = '';
+  pwTarget: { id: number; name: string; isSalesUser: boolean; firmCode?: string } | null = null;
   pwError = '';
   pwLoading = false;
 
-  constructor(private userService: UserService, public authService: AuthService) {}
+  // ── Delete confirm ────────────────────────────────────────────────────────
+  deleteTarget: { id: number; name: string; firmCode?: string } | null = null;
+
+  constructor(private userService: UserService, public auth: AuthService) {}
+
+  get isSuperadmin() { return this.auth.isSuperadminIdentity(); }
 
   ngOnInit(): void {
-    this.loadUsers();
+    this.loadFirms();
   }
 
-  private emptyForm(): UserForm {
-    return { username: '', password: '', fullName: '', email: '', phone: '', role: 'SALES', isActive: true };
-  }
+  // ── Firms ─────────────────────────────────────────────────────────────────
 
-  loadUsers(): void {
-    this.loading = true;
-    this.error = '';
-    this.userService.getUsers().subscribe({
-      next: users => { this.users = users; this.loading = false; },
-      error: () => { this.error = 'Failed to load users'; this.loading = false; }
+  loadFirms(): void {
+    this.userService.getAccessibleFirms().subscribe({
+      next: firms => {
+        this.allFirms = firms;
+        if (firms.length > 0) {
+          // ADMIN logged into a firm: selectedFirmCode from their JWT
+          const currentFirm = this.auth.getCurrentFirm();
+          this.selectedFirmCode = currentFirm?.firmCode ?? (firms[0]?.firm_code ?? firms[0]?.firmCode ?? '');
+        }
+        this.loadSalesUsers();
+        if (this.isSuperadmin) this.loadAdmins();
+      },
+      error: () => { this.salesError = 'Failed to load firms'; }
     });
   }
 
-  get currentUserId(): number | null {
-    return this.authService.getCurrentUser()?.userId ?? null;
+  onFirmChange(): void {
+    this.loadSalesUsers();
   }
 
-  isSelf(userId: number): boolean {
-    return this.currentUserId === userId;
+  firmCodeOf(f: any): string { return f.firm_code ?? f.firmCode ?? ''; }
+  firmNameOf(f: any): string { return f.firm_name ?? f.firmName ?? ''; }
+
+  // ── Sales users ───────────────────────────────────────────────────────────
+
+  loadSalesUsers(): void {
+    this.salesLoading = true;
+    this.salesError = '';
+    const firmCode = this.isSuperadmin ? this.selectedFirmCode : undefined;
+    this.userService.getSalesUsers(firmCode).subscribe({
+      next: users => { this.salesUsers = users; this.salesLoading = false; },
+      error: () => { this.salesError = 'Failed to load users'; this.salesLoading = false; }
+    });
   }
 
-  get totalUsers(): number { return this.users.length; }
-  get activeCount(): number { return this.users.filter(u => u.isActive).length; }
-  get adminCount(): number { return this.users.filter(u => u.role === 'ADMIN').length; }
-  get salesCount(): number { return this.users.filter(u => u.role === 'SALES').length; }
+  openCreateSalesModal(): void {
+    this.salesForm = this.emptySalesForm();
+    this.salesForm.firmCode = this.selectedFirmCode;
+    this.salesFormError = '';
+    this.salesModalMode = 'create';
+    this.editingSalesId = null;
+    this.showSalesModal = true;
+  }
+
+  openEditSalesModal(u: any): void {
+    this.salesForm = {
+      username:  u.username,
+      password:  '',
+      fullName:  u.full_name || '',
+      email:     u.email || '',
+      phone:     u.phone || '',
+      isActive:  u.is_active ?? true,
+      firmCode:  this.selectedFirmCode
+    };
+    this.salesFormError = '';
+    this.salesModalMode = 'edit';
+    this.editingSalesId = u.user_id;
+    this.showSalesModal = true;
+  }
+
+  closeSalesModal(): void { this.showSalesModal = false; }
+
+  saveSalesUser(): void {
+    this.salesFormError = '';
+    if (!this.salesForm.fullName.trim()) { this.salesFormError = 'Full name is required'; return; }
+    if (this.salesModalMode === 'create') {
+      if (!this.salesForm.username.trim()) { this.salesFormError = 'Username is required'; return; }
+      if (!this.salesForm.password || this.salesForm.password.length < 6) { this.salesFormError = 'Password must be at least 6 characters'; return; }
+      if (!this.salesForm.firmCode) { this.salesFormError = 'Please select a firm'; return; }
+    }
+    this.salesFormLoading = true;
+
+    if (this.salesModalMode === 'create') {
+      this.userService.createSalesUser({
+        firmCode: this.salesForm.firmCode,
+        username: this.salesForm.username.trim(),
+        password: this.salesForm.password,
+        fullName: this.salesForm.fullName.trim(),
+        email: this.salesForm.email || undefined,
+        phone: this.salesForm.phone || undefined
+      }).subscribe({
+        next: () => { this.salesFormLoading = false; this.closeSalesModal(); this.showSuccess('User created'); this.loadSalesUsers(); },
+        error: err => { this.salesFormLoading = false; this.salesFormError = err.error?.error || 'Error creating user'; }
+      });
+    } else {
+      const firmCode = this.isSuperadmin ? this.selectedFirmCode : undefined;
+      this.userService.updateSalesUser(this.editingSalesId!, {
+        fullName: this.salesForm.fullName.trim(),
+        email: this.salesForm.email || null,
+        phone: this.salesForm.phone || null,
+        isActive: this.salesForm.isActive,
+        password: this.salesForm.password || undefined
+      }, firmCode).subscribe({
+        next: () => { this.salesFormLoading = false; this.closeSalesModal(); this.showSuccess('User updated'); this.loadSalesUsers(); },
+        error: err => { this.salesFormLoading = false; this.salesFormError = err.error?.error || 'Error updating user'; }
+      });
+    }
+  }
+
+  toggleSalesStatus(u: any): void {
+    const firmCode = this.isSuperadmin ? this.selectedFirmCode : undefined;
+    this.userService.toggleSalesUserStatus(u.user_id, !u.is_active, firmCode).subscribe({
+      next: () => this.loadSalesUsers(),
+      error: () => { this.salesError = 'Failed to update status'; }
+    });
+  }
+
+  confirmDeleteSales(u: any): void {
+    this.deleteTarget = { id: u.user_id, name: u.full_name || u.username, firmCode: this.selectedFirmCode };
+  }
+
+  // ── Admin users ───────────────────────────────────────────────────────────
+
+  loadAdmins(): void {
+    this.adminsLoading = true;
+    this.userService.getAdmins().subscribe({
+      next: admins => { this.adminUsers = admins; this.adminsLoading = false; },
+      error: () => { this.adminsError = 'Failed to load admin users'; this.adminsLoading = false; }
+    });
+  }
+
+  openCreateAdminModal(): void {
+    this.adminForm = this.emptyAdminForm();
+    this.adminFormError = '';
+    this.adminModalMode = 'create';
+    this.editingAdminId = null;
+    this.showAdminModal = true;
+  }
+
+  openEditAdminModal(a: AdminUser): void {
+    this.adminForm = {
+      username: a.username,
+      password: '',
+      fullName: a.full_name || '',
+      email: a.email || '',
+      phone: a.phone || '',
+      firmCodes: (a.firms ?? []).filter(f => f.is_active).map(f => f.firm_code)
+    };
+    this.adminFormError = '';
+    this.adminModalMode = 'edit';
+    this.editingAdminId = a.user_id;
+    this.showAdminModal = true;
+  }
+
+  closeAdminModal(): void { this.showAdminModal = false; }
+
+  toggleFirmCodeInAdminForm(firmCode: string): void {
+    const idx = this.adminForm.firmCodes.indexOf(firmCode);
+    if (idx >= 0) this.adminForm.firmCodes.splice(idx, 1);
+    else this.adminForm.firmCodes.push(firmCode);
+  }
+
+  isFirmSelectedInAdminForm(firmCode: string): boolean {
+    return this.adminForm.firmCodes.includes(firmCode);
+  }
+
+  saveAdminUser(): void {
+    this.adminFormError = '';
+    if (!this.adminForm.fullName.trim()) { this.adminFormError = 'Full name is required'; return; }
+    if (this.adminModalMode === 'create') {
+      if (!this.adminForm.username.trim()) { this.adminFormError = 'Username is required'; return; }
+      if (!this.adminForm.password || this.adminForm.password.length < 6) { this.adminFormError = 'Password must be at least 6 characters'; return; }
+    }
+    this.adminFormLoading = true;
+
+    if (this.adminModalMode === 'create') {
+      this.userService.createAdmin({
+        username: this.adminForm.username.trim(),
+        password: this.adminForm.password,
+        fullName: this.adminForm.fullName.trim(),
+        email: this.adminForm.email || undefined,
+        phone: this.adminForm.phone || undefined,
+        firmCodes: this.adminForm.firmCodes
+      }).subscribe({
+        next: () => { this.adminFormLoading = false; this.closeAdminModal(); this.showSuccess('Admin user created'); this.loadAdmins(); },
+        error: err => { this.adminFormLoading = false; this.adminFormError = err.error?.error || 'Error creating admin'; }
+      });
+    } else {
+      this.userService.updateAdmin(this.editingAdminId!, {
+        fullName: this.adminForm.fullName.trim(),
+        email: this.adminForm.email || null,
+        phone: this.adminForm.phone || null,
+        password: this.adminForm.password || undefined
+      }).subscribe({
+        next: () => { this.adminFormLoading = false; this.closeAdminModal(); this.showSuccess('Admin updated'); this.loadAdmins(); },
+        error: err => { this.adminFormLoading = false; this.adminFormError = err.error?.error || 'Error updating admin'; }
+      });
+    }
+  }
+
+  // ── Firm assignment ────────────────────────────────────────────────────────
+
+  openFirmAssignment(admin: AdminUser): void { this.assigningAdmin = admin; }
+  closeFirmAssignment(): void { this.assigningAdmin = null; }
+
+  adminHasFirm(firmId: number): boolean {
+    return (this.assigningAdmin?.firms ?? []).some(f => f.firm_id === firmId && f.is_active);
+  }
+
+  toggleAdminFirm(firmId: number): void {
+    if (!this.assigningAdmin) return;
+    const has = this.adminHasFirm(firmId);
+    const req = has
+      ? this.userService.removeAdminFromFirm(this.assigningAdmin.user_id, firmId)
+      : this.userService.assignAdminToFirm(this.assigningAdmin.user_id, firmId);
+    req.subscribe({
+      next: () => { this.showSuccess(has ? 'Access removed' : 'Firm assigned'); this.loadAdmins(); this.closeFirmAssignment(); },
+      error: err => { this.adminsError = err.error?.error || 'Operation failed'; }
+    });
+  }
+
+  // ── Password modal ────────────────────────────────────────────────────────
+
+  openPwModal(id: number, name: string, isSalesUser: boolean, firmCode?: string): void {
+    this.pwForm = { newPassword: '', confirmPassword: '' };
+    this.pwError = '';
+    this.pwTarget = { id, name, isSalesUser, firmCode };
+    this.showPwModal = true;
+  }
+
+  closePwModal(): void { this.showPwModal = false; }
+
+  savePw(): void {
+    this.pwError = '';
+    if (!this.pwForm.newPassword) { this.pwError = 'New password is required'; return; }
+    if (this.pwForm.newPassword.length < 6) { this.pwError = 'Minimum 6 characters'; return; }
+    if (this.pwForm.newPassword !== this.pwForm.confirmPassword) { this.pwError = 'Passwords do not match'; return; }
+    if (!this.pwTarget) return;
+    this.pwLoading = true;
+
+    const req = this.pwTarget.isSalesUser
+      ? this.userService.updateSalesUser(this.pwTarget.id, { password: this.pwForm.newPassword }, this.pwTarget.firmCode)
+      : this.userService.updateAdmin(this.pwTarget.id, { password: this.pwForm.newPassword });
+
+    req.subscribe({
+      next: () => { this.pwLoading = false; this.closePwModal(); this.showSuccess('Password updated'); },
+      error: () => { this.pwLoading = false; this.pwError = 'Failed to update password'; }
+    });
+  }
+
+  // ── Delete confirm ────────────────────────────────────────────────────────
+
+  cancelDelete(): void { this.deleteTarget = null; }
+
+  doDelete(): void {
+    if (!this.deleteTarget) return;
+    const t = this.deleteTarget;
+    this.deleteTarget = null;
+    const firmCode = this.isSuperadmin ? t.firmCode : undefined;
+    this.userService.toggleSalesUserStatus(t.id, false, firmCode).subscribe({
+      next: () => { this.showSuccess('User deactivated'); this.loadSalesUsers(); },
+      error: () => { this.salesError = 'Failed to deactivate user'; }
+    });
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   initials(name: string): string {
     if (!name) return '?';
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   }
 
-  openCreateModal(): void {
-    this.form = this.emptyForm();
-    this.formError = '';
-    this.modalMode = 'create';
-    this.editingUserId = null;
-    this.showModal = true;
-  }
-
-  openEditModal(user: User): void {
-    this.form = {
-      username: user.username,
-      password: '',
-      fullName: user.fullName || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      role: user.role,
-      isActive: user.isActive
-    };
-    this.formError = '';
-    this.modalMode = 'edit';
-    this.editingUserId = user.userId;
-    this.showModal = true;
-  }
-
-  closeModal(): void {
-    this.showModal = false;
-  }
-
-  saveUser(): void {
-    this.formError = '';
-    if (!this.form.fullName.trim()) { this.formError = 'Full name is required'; return; }
-
-    if (this.modalMode === 'create') {
-      if (!this.form.username.trim()) { this.formError = 'Username is required'; return; }
-      if (!this.form.password) { this.formError = 'Password is required'; return; }
-      if (this.form.password.length < 6) { this.formError = 'Password must be at least 6 characters'; return; }
-    } else if (this.form.password && this.form.password.length < 6) {
-      this.formError = 'Password must be at least 6 characters';
-      return;
-    }
-
-    this.formLoading = true;
-
-    if (this.modalMode === 'create') {
-      this.userService.createUser({
-        username: this.form.username.trim(),
-        password: this.form.password,
-        fullName: this.form.fullName.trim(),
-        email: this.form.email || undefined,
-        phone: this.form.phone || undefined,
-        role: this.form.role,
-        isActive: true
-      }).subscribe({
-        next: () => { this.formLoading = false; this.closeModal(); this.showSuccess('User created successfully'); this.loadUsers(); },
-        error: err => { this.formLoading = false; this.formError = typeof err.error === 'string' ? err.error : 'Error creating user'; }
-      });
-    } else {
-      const payload: any = {
-        fullName: this.form.fullName.trim(),
-        email: this.form.email || null,
-        phone: this.form.phone || null,
-        role: this.form.role,
-        isActive: this.form.isActive
-      };
-      if (this.form.password) payload.password = this.form.password;
-
-      this.userService.updateUser(this.editingUserId!, payload).subscribe({
-        next: () => { this.formLoading = false; this.closeModal(); this.showSuccess('User updated successfully'); this.loadUsers(); },
-        error: () => { this.formLoading = false; this.formError = 'Error updating user'; }
-      });
-    }
-  }
-
-  confirmDelete(user: User): void {
-    this.deleteConfirmId = user.userId;
-    this.deleteConfirmName = user.fullName || user.username;
-  }
-
-  cancelDelete(): void {
-    this.deleteConfirmId = null;
-  }
-
-  doDelete(): void {
-    if (!this.deleteConfirmId) return;
-    const id = this.deleteConfirmId;
-    this.deleteConfirmId = null;
-    this.userService.deleteUser(id).subscribe({
-      next: () => { this.showSuccess('User deleted'); this.loadUsers(); },
-      error: () => { this.error = 'Failed to delete user'; }
-    });
-  }
-
-  toggleStatus(user: User): void {
-    this.userService.updateUser(user.userId, {
-      fullName: user.fullName,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      isActive: !user.isActive
-    }).subscribe({
-      next: () => this.loadUsers(),
-      error: () => { this.error = 'Failed to update status'; }
-    });
-  }
-
-  openPasswordModal(user: User): void {
-    this.pwForm = { newPassword: '', confirmPassword: '' };
-    this.pwError = '';
-    this.pwUserId = user.userId;
-    this.pwUserName = user.fullName || user.username;
-    this.showPasswordModal = true;
-  }
-
-  closePasswordModal(): void {
-    this.showPasswordModal = false;
-  }
-
-  savePassword(): void {
-    this.pwError = '';
-    if (!this.pwForm.newPassword) { this.pwError = 'New password is required'; return; }
-    if (this.pwForm.newPassword.length < 6) { this.pwError = 'Password must be at least 6 characters'; return; }
-    if (this.pwForm.newPassword !== this.pwForm.confirmPassword) { this.pwError = 'Passwords do not match'; return; }
-
-    const user = this.users.find(u => u.userId === this.pwUserId);
-    if (!user) { this.closePasswordModal(); return; }
-
-    this.pwLoading = true;
-    this.userService.updateUser(this.pwUserId!, {
-      fullName: user.fullName,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      isActive: user.isActive,
-      password: this.pwForm.newPassword
-    }).subscribe({
-      next: () => { this.pwLoading = false; this.closePasswordModal(); this.showSuccess('Password updated successfully'); },
-      error: () => { this.pwLoading = false; this.pwError = 'Failed to update password'; }
-    });
-  }
-
-  get saveButtonLabel(): string {
-    if (this.formLoading) return 'Saving...';
-    return this.modalMode === 'create' ? 'Create User' : 'Save Changes';
+  get currentUserId(): number | null {
+    return this.auth.getCurrentUser()?.userId ?? null;
   }
 
   private showSuccess(msg: string): void {
     this.successMsg = msg;
     setTimeout(() => { this.successMsg = ''; }, 3000);
+  }
+
+  private emptySalesForm(): SalesForm {
+    return { username: '', password: '', fullName: '', email: '', phone: '', isActive: true, firmCode: '' };
+  }
+
+  private emptyAdminForm(): AdminForm {
+    return { username: '', password: '', fullName: '', email: '', phone: '', firmCodes: [] };
   }
 }

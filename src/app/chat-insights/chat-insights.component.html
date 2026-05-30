@@ -1,0 +1,325 @@
+<div class="ci-page">
+
+  <!-- Header -->
+  <div class="ci-header">
+    <div>
+      <h1 class="ci-title">Chat Insights</h1>
+      <p class="ci-subtitle">What customers are searching, asking, and not finding</p>
+    </div>
+    <button class="ci-refresh" (click)="load()" [disabled]="loading">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      {{ loading ? 'Loading...' : 'Refresh' }}
+    </button>
+  </div>
+
+  <!-- Period tabs -->
+  <div class="ci-tabs">
+    <button *ngFor="let p of periods" class="ci-tab"
+      [class.active]="period === p.key" (click)="selectPeriod(p.key)">
+      {{ p.label }}
+    </button>
+  </div>
+
+  <!-- ── AI Insights panel ──────────────────────────── -->
+  <div class="ai-panel" *ngIf="summaryLoading || summaryData || summaryError">
+
+    <div class="ai-header">
+      <div class="ai-title">
+        <span class="ai-spark">✦</span> AI Business Insights
+        <span class="ai-cached-badge" *ngIf="summaryData?.cached">cached</span>
+      </div>
+      <div class="ai-meta" *ngIf="summaryData">
+        <span class="ai-age">Generated {{ summaryAge() }}</span>
+        <button class="ai-regen" (click)="regenerate()" [disabled]="summaryLoading">
+          {{ summaryLoading ? 'Generating...' : '↻ Regenerate' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Generating state -->
+    <div class="ai-generating" *ngIf="summaryLoading && !summaryData">
+      <div class="ai-dots"><span></span><span></span><span></span></div>
+      Analysing your customer conversations with AI...
+    </div>
+
+    <!-- Error state -->
+    <div class="ai-error" *ngIf="summaryError && !summaryLoading">{{ summaryError }}</div>
+
+    <!-- Summary content -->
+    <ng-container *ngIf="summaryData && !summaryData.parseError">
+
+      <!-- Headline -->
+      <div class="ai-headline">{{ summaryData.headline }}</div>
+
+      <!-- Main grid -->
+      <div class="ai-grid">
+
+        <!-- Demand gaps -->
+        <div class="ai-section" *ngIf="summaryGaps.length">
+          <div class="ai-section-title">🔍 Demand Gaps</div>
+          <div class="ai-section-sub">What customers want but can't find</div>
+          <div class="ai-gap-list">
+            <div class="ai-gap-item" *ngFor="let g of summaryGaps">
+              <div class="ai-gap-topic">{{ g.topic }}</div>
+              <div class="ai-gap-insight">{{ g.insight }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommended actions -->
+        <div class="ai-section" *ngIf="summaryActions.length">
+          <div class="ai-section-title">🎯 Recommended Actions</div>
+          <div class="ai-section-sub">Prioritised steps to improve your store</div>
+          <div class="ai-action-list">
+            <div class="ai-action-item" *ngFor="let a of summaryActions" [ngClass]="priorityClass(a.priority)">
+              <div class="ai-action-badge">{{ a.priority }}</div>
+              <div class="ai-action-body">
+                <div class="ai-action-text">{{ a.action }}</div>
+                <div class="ai-action-impact">{{ a.impact }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /ai-grid -->
+
+      <!-- Bottom row -->
+      <div class="ai-bottom">
+
+        <!-- Stock alerts -->
+        <div class="ai-section ai-bottom-card" *ngIf="summaryAlerts.length">
+          <div class="ai-section-title">⚠️ Stock Alerts</div>
+          <div class="ai-alert-list">
+            <div class="ai-alert-item" *ngFor="let s of summaryAlerts" [class.urgency-high]="s.urgency==='high'">
+              <span class="ai-alert-name">{{ s.product }}</span>
+              <span class="ai-urgency-chip" [class.urgency-high]="s.urgency==='high'">{{ s.urgency }}</span>
+              <span class="ai-alert-insight">{{ s.insight }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trust + Channel -->
+        <div class="ai-section ai-bottom-card">
+          <div class="ai-section-title">📊 Store Health</div>
+          <div class="ai-trust-row" *ngIf="summaryData.trustScore">
+            <span class="ai-trust-label">Customer Trust:</span>
+            <span class="ai-trust-chip" [ngClass]="trustClass()">{{ summaryData.trustScore.score | titlecase }}</span>
+            <span class="ai-trust-reason">{{ summaryData.trustScore.reason }}</span>
+          </div>
+          <div class="ai-insight-line" *ngIf="summaryData.channelInsight">
+            <span class="ai-insight-icon">📱</span> {{ summaryData.channelInsight }}
+          </div>
+          <div class="ai-insight-line" *ngIf="summaryData.imageInsight">
+            <span class="ai-insight-icon">📸</span> {{ summaryData.imageInsight }}
+          </div>
+        </div>
+
+      </div><!-- /ai-bottom -->
+
+    </ng-container>
+
+  </div><!-- /ai-panel -->
+
+  <!-- Loading -->
+  <div class="ci-loading" *ngIf="loading">
+    <div class="spinner"></div>
+    <span>Loading chat data...</span>
+  </div>
+
+  <ng-container *ngIf="!loading">
+
+    <!-- Overview cards -->
+    <div class="ci-overview">
+      <div class="ci-stat-card">
+        <div class="ci-stat-icon ci-purple">💬</div>
+        <div class="ci-stat-value">{{ overview.totalSessions ?? 0 }}</div>
+        <div class="ci-stat-label">Sessions</div>
+      </div>
+      <div class="ci-stat-card">
+        <div class="ci-stat-icon ci-blue">🔍</div>
+        <div class="ci-stat-value">{{ overview.totalQueries ?? 0 }}</div>
+        <div class="ci-stat-label">Queries</div>
+      </div>
+      <div class="ci-stat-card">
+        <div class="ci-stat-icon ci-pink">📸</div>
+        <div class="ci-stat-value">{{ overview.imageSearches ?? 0 }}</div>
+        <div class="ci-stat-label">Image Searches</div>
+      </div>
+      <div class="ci-stat-card" [class.ci-alert-card]="overview.unansweredCount > 0">
+        <div class="ci-stat-icon ci-orange">⚠️</div>
+        <div class="ci-stat-value">{{ overview.unansweredCount ?? 0 }}</div>
+        <div class="ci-stat-label">Unanswered</div>
+      </div>
+      <div class="ci-stat-card">
+        <div class="ci-stat-icon ci-wa">📱</div>
+        <div class="ci-stat-value">{{ overview.whatsappSessions ?? 0 }}</div>
+        <div class="ci-stat-label">WhatsApp</div>
+      </div>
+      <div class="ci-stat-card">
+        <div class="ci-stat-icon ci-web">🌐</div>
+        <div class="ci-stat-value">{{ overview.webSessions ?? 0 }}</div>
+        <div class="ci-stat-label">Web Chatbot</div>
+      </div>
+    </div>
+
+    <!-- No data -->
+    <div class="ci-empty" *ngIf="!overview.totalSessions">
+      <div class="ci-empty-icon">💬</div>
+      <div class="ci-empty-title">No chat data for {{ periodLabel() | lowercase }}</div>
+      <div class="ci-empty-sub">Customers using the chatbot or WhatsApp bot will appear here.</div>
+    </div>
+
+    <ng-container *ngIf="overview.totalSessions">
+
+      <!-- Stock gap alert -->
+      <div class="ci-gap-alert" *ngIf="overview.unansweredCount > 0">
+        <span>⚠️</span>
+        <span>
+          <strong>{{ overview.unansweredCount }} quer{{ overview.unansweredCount === 1 ? 'y' : 'ies' }}</strong>
+          got zero product results — potential stock or catalogue gap.
+        </span>
+      </div>
+
+      <!-- Row 1: Unanswered queries + Recent questions -->
+      <div class="ci-two-col">
+
+        <div class="ci-card">
+          <div class="ci-card-header">
+            <span class="ci-card-title">Couldn't Find</span>
+            <span class="ci-card-sub">queries with no results — stock gaps</span>
+          </div>
+          <div *ngIf="unanswered.length; else noUnanswered">
+            <table class="ci-table">
+              <thead>
+                <tr><th>Query</th><th>When</th><th>Via</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let q of unanswered">
+                  <td class="ci-q-text">{{ q.query }}</td>
+                  <td class="ci-q-time">{{ relTime(q.askedAt) }}</td>
+                  <td>
+                    <span class="ci-badge" [class.badge-wa]="q.channel==='whatsapp'" [class.badge-web]="q.channel!=='whatsapp'">
+                      {{ q.channel === 'whatsapp' ? '📱 WA' : '🌐 Web' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #noUnanswered>
+            <div class="ci-no-data">All queries found products — great catalogue coverage!</div>
+          </ng-template>
+        </div>
+
+        <div class="ci-card">
+          <div class="ci-card-header">
+            <span class="ci-card-title">Recent Questions</span>
+            <span class="ci-card-sub">last 20 customer queries</span>
+          </div>
+          <div *ngIf="recent.length; else noRecent">
+            <table class="ci-table">
+              <thead>
+                <tr><th>Query</th><th>When</th><th>Result</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let q of recent">
+                  <td class="ci-q-text">{{ q.query }}</td>
+                  <td class="ci-q-time">{{ relTime(q.askedAt) }}</td>
+                  <td>
+                    <span class="ci-badge" [class.badge-found]="q.productsFound > 0" [class.badge-none]="q.productsFound === 0">
+                      {{ q.productsFound > 0 ? q.productsFound + ' shown' : 'None' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #noRecent><div class="ci-no-data">No recent queries</div></ng-template>
+        </div>
+
+      </div>
+
+      <!-- Row 2: Image searches gallery -->
+      <div class="ci-card" *ngIf="imageSearches.length">
+        <div class="ci-card-header">
+          <span class="ci-card-title">Image Searches</span>
+          <span class="ci-card-sub">designs &amp; fabrics customers uploaded</span>
+        </div>
+        <div class="ci-img-grid">
+          <div class="ci-img-card" *ngFor="let s of imageSearches">
+            <a [href]="s.imageUrl" target="_blank" class="ci-img-wrap">
+              <img [src]="thumbUrl(s.imageUrl)" alt="Customer upload" class="ci-img-thumb" loading="lazy" />
+              <span class="ci-img-ch" [class.badge-wa]="s.channel==='whatsapp'" [class.badge-web]="s.channel!=='whatsapp'">
+                {{ s.channel === 'whatsapp' ? '📱' : '🌐' }}
+              </span>
+            </a>
+            <div class="ci-img-meta">
+              <span class="ci-q-time">{{ relTime(s.askedAt) }}</span>
+              <span class="ci-badge" [class.badge-found]="s.productsFound > 0" [class.badge-none]="s.productsFound === 0">
+                {{ s.productsFound > 0 ? s.productsFound + ' match' + (s.productsFound > 1 ? 'es' : '') : 'No match' }}
+              </span>
+            </div>
+            <div class="ci-img-names" *ngIf="s.matchedProducts?.length">
+              <span *ngFor="let p of s.matchedProducts" class="ci-img-name">{{ p }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Most requested products + Category interest -->
+      <div class="ci-two-col">
+
+        <div class="ci-card">
+          <div class="ci-card-header">
+            <span class="ci-card-title">Most Requested Products</span>
+            <span class="ci-card-sub">shown in chat · with current stock</span>
+          </div>
+          <div *ngIf="products.length; else noProd">
+            <div class="ci-ranked-list">
+              <div class="ci-ranked-item" *ngFor="let p of products; let i = index">
+                <span class="ci-rank">{{ i + 1 }}</span>
+                <div class="ci-ranked-info">
+                  <div class="ci-prod-row">
+                    <span class="ci-prod-name">{{ p.productName }}</span>
+                    <span class="ci-stock" *ngIf="stockBadge(p.stockQty)" [ngClass]="stockClass(p.stockQty)">
+                      {{ stockBadge(p.stockQty) }}
+                    </span>
+                  </div>
+                  <div class="ci-prod-cat">{{ p.categoryName }}</div>
+                  <div class="ci-bar-bg">
+                    <div class="ci-bar-fill" [style.width]="(+p.timesShown / products[0].timesShown * 100) + '%'"></div>
+                  </div>
+                </div>
+                <div class="ci-count">{{ p.timesShown }}×</div>
+              </div>
+            </div>
+          </div>
+          <ng-template #noProd><div class="ci-no-data">No product requests yet</div></ng-template>
+        </div>
+
+        <div class="ci-card">
+          <div class="ci-card-header">
+            <span class="ci-card-title">Category Interest</span>
+            <span class="ci-card-sub">what customers are browsing</span>
+          </div>
+          <div *ngIf="categories.length; else noCat">
+            <div class="ci-ranked-list">
+              <div class="ci-cat-row" *ngFor="let c of categories">
+                <span class="ci-cat-name">{{ c.categoryName }}</span>
+                <div class="ci-bar-bg ci-cat-bar">
+                  <div class="ci-cat-fill" [style.width]="(+c.timesShown / categoryMax() * 100) + '%'"></div>
+                </div>
+                <span class="ci-cat-count">{{ c.timesShown }}</span>
+              </div>
+            </div>
+          </div>
+          <ng-template #noCat><div class="ci-no-data">No category data yet</div></ng-template>
+        </div>
+
+      </div>
+
+    </ng-container>
+
+  </ng-container>
+
+</div>

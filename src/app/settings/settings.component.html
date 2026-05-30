@@ -7,7 +7,7 @@
   <div class="settings-grid">
 
     <!-- ── Store Details ── -->
-    <div class="settings-card">
+    <div class="settings-card" *ngIf="!isSales">
       <div class="card-header">
         <span class="card-icon">🏪</span>
         <h2 class="card-title">Store Details</h2>
@@ -54,7 +54,7 @@
     </div>
 
     <!-- ── Logo ── -->
-    <div class="settings-card">
+    <div class="settings-card" *ngIf="!isSales">
       <div class="card-header">
         <span class="card-icon">🖼️</span>
         <h2 class="card-title">Store Logo</h2>
@@ -124,7 +124,7 @@
     </div>
 
     <!-- ── WhatsApp ── -->
-    <div class="settings-card">
+    <div class="settings-card" *ngIf="!isSales">
       <div class="card-header">
         <span class="card-icon">💬</span>
         <h2 class="card-title">WhatsApp Business</h2>
@@ -140,6 +140,80 @@
             {{ waSaved ? '✓ Saved' : 'Save' }}
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── WhatsApp Bot (Cloud API) ── -->
+    <div class="settings-card wa-bot-card" *ngIf="!isSales">
+      <div class="card-header">
+        <span class="card-icon">🤖</span>
+        <h2 class="card-title">WhatsApp Auto-Reply Bot</h2>
+      </div>
+      <p class="card-desc">
+        Connect your WhatsApp Business account so customers can ask product queries and get automatic AI replies based on your catalog.
+      </p>
+
+      <div class="wa-setup-steps">
+        <div class="wa-step">
+          <span class="wa-step-num">1</span>
+          <span>Go to <strong>Meta for Developers</strong> → Your App → WhatsApp → Configuration</span>
+        </div>
+        <div class="wa-step">
+          <span class="wa-step-num">2</span>
+          <span>Set the webhook URL below and paste your Verify Token</span>
+        </div>
+        <div class="wa-step">
+          <span class="wa-step-num">3</span>
+          <span>Subscribe to the <strong>messages</strong> webhook field</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Your Webhook URL</label>
+        <div class="webhook-url-box">
+          <span class="webhook-url-text">{{ webhookUrl }}</span>
+        </div>
+        <p class="field-hint">Paste this URL in Meta Developer Console → Webhook URL.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Phone Number ID</label>
+        <input class="field-input" type="text" [(ngModel)]="waPhoneNumberId"
+          placeholder="e.g. 123456789012345" />
+        <p class="field-hint">Found in Meta App → WhatsApp → API Setup.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Access Token (Permanent)</label>
+        <div class="field-row">
+          <input class="field-input" [type]="waShowToken ? 'text' : 'password'"
+            [(ngModel)]="waAccessToken" placeholder="EAAxxxxxx..." />
+          <button class="save-btn secondary-btn" (click)="waShowToken = !waShowToken" type="button">
+            {{ waShowToken ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+        <p class="field-hint">Use a System User permanent token from Meta Business Suite.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Verify Token <span class="optional">(you choose this)</span></label>
+        <input class="field-input" type="text" [(ngModel)]="waVerifyToken"
+          placeholder="e.g. mybill_wa_secret_123" />
+        <p class="field-hint">Any secret string — enter the same value in Meta's Verify Token field.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Ecom Shop URL <span class="optional">(optional)</span></label>
+        <input class="field-input" type="url" [(ngModel)]="waEcomUrl"
+          placeholder="e.g. https://shop.yourstore.com" />
+        <p class="field-hint">When provided, product links in bot replies will point here.</p>
+      </div>
+
+      <div class="field-group">
+        <button class="save-btn" style="width:100%;justify-content:center"
+          (click)="saveWaApi()" [class.saved]="waApiSaved">
+          {{ waApiSaved ? '✓ Saved' : 'Save Bot Settings' }}
+        </button>
       </div>
     </div>
 

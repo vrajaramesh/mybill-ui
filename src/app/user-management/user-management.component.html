@@ -1,213 +1,335 @@
 <div class="user-mgmt">
+
   <div class="page-header">
     <h1 class="page-title">User Management</h1>
-    <button class="btn-primary" (click)="openCreateModal()">+ Add User</button>
+    <div class="header-actions">
+      <button class="btn-primary" (click)="activeTab === 'sales' ? openCreateSalesModal() : openCreateAdminModal()">
+        + {{ activeTab === 'sales' ? 'Add Sales User' : 'Add Admin' }}
+      </button>
+    </div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-value">{{ totalUsers }}</div>
-      <div class="stat-label">Total Users</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value stat-active">{{ activeCount }}</div>
-      <div class="stat-label">Active</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value stat-admin">{{ adminCount }}</div>
-      <div class="stat-label">Admins</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value stat-sales">{{ salesCount }}</div>
-      <div class="stat-label">Sales</div>
-    </div>
+  <!-- Tabs -->
+  <div class="tabs-row">
+    <button class="tab-btn" [class.active]="activeTab === 'sales'" (click)="activeTab = 'sales'">
+      Sales Users
+    </button>
+    <button class="tab-btn" *ngIf="isSuperadmin" [class.active]="activeTab === 'admins'" (click)="activeTab = 'admins'">
+      Admin Users
+    </button>
   </div>
 
   <!-- Alerts -->
   <div class="alert alert-success" *ngIf="successMsg">{{ successMsg }}</div>
-  <div class="alert alert-error" *ngIf="error">
-    {{ error }}
-    <button class="alert-close" (click)="error=''">×</button>
+
+  <!-- ══════════════════ SALES USERS TAB ══════════════════ -->
+  <div *ngIf="activeTab === 'sales'">
+
+    <!-- Firm selector (superadmin only) -->
+    <div class="firm-selector-row" *ngIf="isSuperadmin">
+      <label class="firm-label">Firm:</label>
+      <select class="firm-select" [(ngModel)]="selectedFirmCode" (ngModelChange)="onFirmChange()">
+        <option *ngFor="let f of allFirms" [value]="firmCodeOf(f)">{{ firmNameOf(f) }}</option>
+      </select>
+    </div>
+
+    <div class="alert alert-error" *ngIf="salesError">
+      {{ salesError }} <button class="alert-close" (click)="salesError=''">×</button>
+    </div>
+    <div class="loading-state" *ngIf="salesLoading">Loading users...</div>
+
+    <div class="table-card" *ngIf="!salesLoading">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Contact</th>
+            <th>Status</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of salesUsers" [class.inactive-row]="!u.is_active">
+            <td>
+              <div class="user-cell">
+                <div class="avatar avatar-sales">{{ initials(u.full_name || u.username) }}</div>
+                <div>
+                  <div class="user-fullname">{{ u.full_name || '—' }}</div>
+                  <div class="user-username">&#64;{{ u.username }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="contact-cell">
+                <div *ngIf="u.email">{{ u.email }}</div>
+                <div *ngIf="u.phone" class="contact-phone">{{ u.phone }}</div>
+                <div *ngIf="!u.email && !u.phone" class="no-contact">—</div>
+              </div>
+            </td>
+            <td>
+              <button class="status-toggle" [class.is-active]="u.is_active" [class.is-inactive]="!u.is_active"
+                      (click)="toggleSalesStatus(u)" [disabled]="u.user_id === currentUserId">
+                {{ u.is_active ? 'Active' : 'Inactive' }}
+              </button>
+            </td>
+            <td class="last-login-cell">
+              <span *ngIf="u.last_login_at">{{ u.last_login_at | date:'dd MMM, HH:mm' }}</span>
+              <span *ngIf="!u.last_login_at" class="never-logged">Never</span>
+            </td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-icon" (click)="openEditSalesModal(u)" title="Edit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-icon" (click)="openPwModal(u.user_id, u.full_name || u.username, true, selectedFirmCode)" title="Change password">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </button>
+                <button class="btn-icon btn-icon-danger" (click)="confirmDeleteSales(u)"
+                        [disabled]="u.user_id === currentUserId" title="Deactivate">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="salesUsers.length === 0 && !salesLoading">
+            <td colspan="5" class="empty-state">No users found. Click "+ Add Sales User" to create one.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- Loading -->
-  <div class="loading-state" *ngIf="loading">Loading users...</div>
+  <!-- ══════════════════ ADMIN USERS TAB ══════════════════ -->
+  <div *ngIf="activeTab === 'admins' && isSuperadmin">
 
-  <!-- Users Table -->
-  <div class="table-card" *ngIf="!loading">
-    <table class="users-table">
-      <thead>
-        <tr>
-          <th>User</th>
-          <th>Role</th>
-          <th>Contact</th>
-          <th>Status</th>
-          <th>Last Login</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let user of users" [class.inactive-row]="!user.isActive">
-          <td>
-            <div class="user-cell">
-              <div class="avatar" [class]="'avatar-' + user.role.toLowerCase()">
-                {{ initials(user.fullName || user.username) }}
+    <div class="alert alert-error" *ngIf="adminsError">
+      {{ adminsError }} <button class="alert-close" (click)="adminsError=''">×</button>
+    </div>
+    <div class="loading-state" *ngIf="adminsLoading">Loading admins...</div>
+
+    <div class="table-card" *ngIf="!adminsLoading">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Admin User</th>
+            <th>Contact</th>
+            <th>Firms Access</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of adminUsers" [class.inactive-row]="!a.is_active">
+            <td>
+              <div class="user-cell">
+                <div class="avatar avatar-admin">{{ initials(a.full_name || a.username) }}</div>
+                <div>
+                  <div class="user-fullname">{{ a.full_name || '—' }}</div>
+                  <div class="user-username">&#64;{{ a.username }}</div>
+                </div>
               </div>
-              <div>
-                <div class="user-fullname">{{ user.fullName || '—' }}</div>
-                <div class="user-username">&#64;{{ user.username }}</div>
+            </td>
+            <td>
+              <div class="contact-cell">
+                <div *ngIf="a.email">{{ a.email }}</div>
+                <div *ngIf="a.phone" class="contact-phone">{{ a.phone }}</div>
+                <div *ngIf="!a.email && !a.phone" class="no-contact">—</div>
               </div>
-            </div>
-          </td>
-          <td>
-            <span class="role-badge" [class]="'role-' + user.role.toLowerCase()">{{ user.role }}</span>
-          </td>
-          <td>
-            <div class="contact-cell">
-              <div *ngIf="user.email" class="contact-email">{{ user.email }}</div>
-              <div *ngIf="user.phone" class="contact-phone">{{ user.phone }}</div>
-              <div *ngIf="!user.email && !user.phone" class="no-contact">—</div>
-            </div>
-          </td>
-          <td>
-            <button class="status-toggle"
-                    [class.is-active]="user.isActive"
-                    [class.is-inactive]="!user.isActive"
-                    (click)="toggleStatus(user)"
-                    [disabled]="isSelf(user.userId)"
-                    [title]="isSelf(user.userId) ? 'Cannot change your own status' : (user.isActive ? 'Click to deactivate' : 'Click to activate')">
-              {{ user.isActive ? 'Active' : 'Inactive' }}
-            </button>
-          </td>
-          <td class="last-login-cell">
-            <span *ngIf="user.lastLoginAt">{{ user.lastLoginAt | date:'dd MMM, HH:mm' }}</span>
-            <span *ngIf="!user.lastLoginAt" class="never-logged">Never</span>
-          </td>
-          <td>
-            <div class="action-btns">
-              <button class="btn-icon" (click)="openEditModal(user)" title="Edit user">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button class="btn-icon" (click)="openPasswordModal(user)" title="Change password">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              </button>
-              <button class="btn-icon btn-icon-danger"
-                      (click)="confirmDelete(user)"
-                      [disabled]="isSelf(user.userId)"
-                      [title]="isSelf(user.userId) ? 'Cannot delete yourself' : 'Delete user'">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-              </button>
-            </div>
-          </td>
-        </tr>
-        <tr *ngIf="users.length === 0 && !loading">
-          <td colspan="6" class="empty-state">No users found. Click "Add User" to create one.</td>
-        </tr>
-      </tbody>
-    </table>
+            </td>
+            <td>
+              <div class="firm-badges">
+                <span *ngFor="let f of a.firms" class="firm-badge" [class.firm-inactive]="!f.is_active">
+                  {{ f.firm_name }}
+                </span>
+                <span *ngIf="!a.firms || a.firms.length === 0" class="no-firms">No firms</span>
+              </div>
+            </td>
+            <td>
+              <span class="status-badge" [class.is-active]="a.is_active" [class.is-inactive]="!a.is_active">
+                {{ a.is_active ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-icon" (click)="openEditAdminModal(a)" title="Edit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-icon btn-assign" (click)="openFirmAssignment(a)" title="Manage firm access">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4-4-4 4"/><path d="M12 3v4"/></svg>
+                </button>
+                <button class="btn-icon" (click)="openPwModal(a.user_id, a.full_name || a.username, false)" title="Change password">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="adminUsers.length === 0 && !adminsLoading">
+            <td colspan="5" class="empty-state">No admin users yet. Click "+ Add Admin" to create one.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
+
 </div>
 
-<!-- Create / Edit Modal -->
-<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+<!-- ══════════════════ SALES USER MODAL ══════════════════ -->
+<div class="modal-overlay" *ngIf="showSalesModal" (click)="closeSalesModal()">
   <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>{{ modalMode === 'create' ? 'Add New User' : 'Edit User' }}</h2>
-      <button class="modal-close" (click)="closeModal()">×</button>
+      <h2>{{ salesModalMode === 'create' ? 'Add Sales User' : 'Edit Sales User' }}</h2>
+      <button class="modal-close" (click)="closeSalesModal()">×</button>
     </div>
     <div class="modal-body">
-      <div class="alert alert-error" *ngIf="formError">{{ formError }}</div>
+      <div class="alert alert-error" *ngIf="salesFormError">{{ salesFormError }}</div>
+
+      <!-- Firm selector (superadmin create) -->
+      <div class="field-group" *ngIf="isSuperadmin && salesModalMode === 'create'">
+        <label>Firm *</label>
+        <select [(ngModel)]="salesForm.firmCode">
+          <option value="">— Select firm —</option>
+          <option *ngFor="let f of allFirms" [value]="firmCodeOf(f)">{{ firmNameOf(f) }}</option>
+        </select>
+      </div>
 
       <div class="form-row">
         <div class="field-group">
           <label>Username *</label>
-          <input [(ngModel)]="form.username" [disabled]="modalMode === 'edit'"
-                 placeholder="e.g. john_doe" autocomplete="off" />
+          <input [(ngModel)]="salesForm.username" [disabled]="salesModalMode === 'edit'" placeholder="e.g. ravi_sales" autocomplete="off" />
         </div>
         <div class="field-group">
           <label>Full Name *</label>
-          <input [(ngModel)]="form.fullName" placeholder="e.g. John Doe" />
+          <input [(ngModel)]="salesForm.fullName" placeholder="e.g. Ravi Kumar" />
         </div>
       </div>
-
       <div class="form-row">
         <div class="field-group">
           <label>Email</label>
-          <input [(ngModel)]="form.email" type="email" placeholder="email@example.com" />
+          <input [(ngModel)]="salesForm.email" type="email" placeholder="email@example.com" />
         </div>
         <div class="field-group">
           <label>Phone</label>
-          <input [(ngModel)]="form.phone" placeholder="+91 9876543210" />
+          <input [(ngModel)]="salesForm.phone" placeholder="+91 9876543210" />
         </div>
       </div>
-
       <div class="form-row">
         <div class="field-group">
-          <label>Role *</label>
-          <select [(ngModel)]="form.role">
-            <option value="SALES">SALES</option>
-            <option value="ADMIN">ADMIN</option>
-          </select>
+          <label>{{ salesModalMode === 'create' ? 'Password *' : 'New Password' }}</label>
+          <input [(ngModel)]="salesForm.password" type="password"
+                 [placeholder]="salesModalMode === 'create' ? 'Minimum 6 characters' : 'Leave blank to keep current'" />
         </div>
-        <div class="field-group" *ngIf="modalMode === 'edit'">
+        <div class="field-group" *ngIf="salesModalMode === 'edit'">
           <label>Status</label>
-          <select [(ngModel)]="form.isActive" [disabled]="editingUserId === currentUserId">
+          <select [(ngModel)]="salesForm.isActive">
             <option [ngValue]="true">Active</option>
             <option [ngValue]="false">Inactive</option>
           </select>
         </div>
       </div>
-
-      <div class="field-group">
-        <label>{{ modalMode === 'create' ? 'Password *' : 'New Password' }}</label>
-        <input [(ngModel)]="form.password" type="password"
-               [placeholder]="modalMode === 'create' ? 'Minimum 6 characters' : 'Leave blank to keep current'" />
-      </div>
-
-      <div class="role-hint">
-        <strong>ADMIN</strong> — Full access: manage users, products, bills, purchases and reports.<br>
-        <strong>SALES</strong> — Create and view bills and customers. Cannot manage users or delete records.
-      </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" (click)="closeModal()">Cancel</button>
-      <button class="btn-primary" (click)="saveUser()" [disabled]="formLoading">
-        {{ saveButtonLabel }}
+      <button class="btn-secondary" (click)="closeSalesModal()">Cancel</button>
+      <button class="btn-primary" (click)="saveSalesUser()" [disabled]="salesFormLoading">
+        {{ salesFormLoading ? 'Saving...' : (salesModalMode === 'create' ? 'Create User' : 'Save Changes') }}
       </button>
     </div>
   </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal-overlay" *ngIf="deleteConfirmId" (click)="cancelDelete()">
-  <div class="modal modal-sm" (click)="$event.stopPropagation()">
+<!-- ══════════════════ ADMIN USER MODAL ══════════════════ -->
+<div class="modal-overlay" *ngIf="showAdminModal" (click)="closeAdminModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>Delete User</h2>
-      <button class="modal-close" (click)="cancelDelete()">×</button>
+      <h2>{{ adminModalMode === 'create' ? 'Add Admin User' : 'Edit Admin User' }}</h2>
+      <button class="modal-close" (click)="closeAdminModal()">×</button>
     </div>
     <div class="modal-body">
-      <p class="confirm-text">
-        Are you sure you want to delete <strong>{{ deleteConfirmName }}</strong>?
-        This action cannot be undone.
-      </p>
+      <div class="alert alert-error" *ngIf="adminFormError">{{ adminFormError }}</div>
+      <div class="form-row">
+        <div class="field-group">
+          <label>Username *</label>
+          <input [(ngModel)]="adminForm.username" [disabled]="adminModalMode === 'edit'" placeholder="e.g. john_admin" autocomplete="off" />
+        </div>
+        <div class="field-group">
+          <label>Full Name *</label>
+          <input [(ngModel)]="adminForm.fullName" placeholder="e.g. John Manager" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field-group">
+          <label>Email</label>
+          <input [(ngModel)]="adminForm.email" type="email" placeholder="email@example.com" />
+        </div>
+        <div class="field-group">
+          <label>Phone</label>
+          <input [(ngModel)]="adminForm.phone" placeholder="+91 9876543210" />
+        </div>
+      </div>
+      <div class="field-group">
+        <label>{{ adminModalMode === 'create' ? 'Password *' : 'New Password' }}</label>
+        <input [(ngModel)]="adminForm.password" type="password"
+               [placeholder]="adminModalMode === 'create' ? 'Minimum 6 characters' : 'Leave blank to keep current'" />
+      </div>
+
+      <!-- Firm assignment checkboxes (create only) -->
+      <div class="field-group" *ngIf="adminModalMode === 'create'">
+        <label>Assign to Firms</label>
+        <div class="firms-checkbox-list">
+          <label *ngFor="let f of allFirms" class="firm-cb-label">
+            <input type="checkbox"
+                   [checked]="isFirmSelectedInAdminForm(firmCodeOf(f))"
+                   (change)="toggleFirmCodeInAdminForm(firmCodeOf(f))">
+            {{ firmNameOf(f) }}
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
-      <button class="btn-danger" (click)="doDelete()">Delete</button>
+      <button class="btn-secondary" (click)="closeAdminModal()">Cancel</button>
+      <button class="btn-primary" (click)="saveAdminUser()" [disabled]="adminFormLoading">
+        {{ adminFormLoading ? 'Saving...' : (adminModalMode === 'create' ? 'Create Admin' : 'Save Changes') }}
+      </button>
     </div>
   </div>
 </div>
 
-<!-- Change Password Modal -->
-<div class="modal-overlay" *ngIf="showPasswordModal" (click)="closePasswordModal()">
+<!-- ══════════════════ FIRM ASSIGNMENT PANEL ══════════════════ -->
+<div class="modal-overlay" *ngIf="assigningAdmin" (click)="closeFirmAssignment()">
+  <div class="modal modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Firm Access — {{ assigningAdmin?.full_name || assigningAdmin?.username }}</h2>
+      <button class="modal-close" (click)="closeFirmAssignment()">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-subtitle">Toggle access for each firm:</p>
+      <div class="firms-assign-list">
+        <div *ngFor="let f of allFirms" class="firm-assign-row"
+             [class.assigned]="adminHasFirm(f.firm_id)">
+          <span class="firm-assign-name">{{ firmNameOf(f) }}</span>
+          <button class="btn-assign-toggle"
+                  [class.btn-remove]="adminHasFirm(f.firm_id)"
+                  (click)="toggleAdminFirm(f.firm_id)">
+            {{ adminHasFirm(f.firm_id) ? 'Remove' : 'Assign' }}
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="closeFirmAssignment()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ CHANGE PASSWORD MODAL ══════════════════ -->
+<div class="modal-overlay" *ngIf="showPwModal" (click)="closePwModal()">
   <div class="modal modal-sm" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>Change Password</h2>
-      <button class="modal-close" (click)="closePasswordModal()">×</button>
+      <button class="modal-close" (click)="closePwModal()">×</button>
     </div>
     <div class="modal-body">
-      <p class="modal-subtitle">Setting new password for <strong>{{ pwUserName }}</strong></p>
+      <p class="modal-subtitle">Setting new password for <strong>{{ pwTarget?.name }}</strong></p>
       <div class="alert alert-error" *ngIf="pwError">{{ pwError }}</div>
       <div class="field-group">
         <label>New Password *</label>
@@ -219,10 +341,27 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" (click)="closePasswordModal()">Cancel</button>
-      <button class="btn-primary" (click)="savePassword()" [disabled]="pwLoading">
+      <button class="btn-secondary" (click)="closePwModal()">Cancel</button>
+      <button class="btn-primary" (click)="savePw()" [disabled]="pwLoading">
         {{ pwLoading ? 'Saving...' : 'Update Password' }}
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ DELETE CONFIRM ══════════════════ -->
+<div class="modal-overlay" *ngIf="deleteTarget" (click)="cancelDelete()">
+  <div class="modal modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Deactivate User</h2>
+      <button class="modal-close" (click)="cancelDelete()">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text">Deactivate <strong>{{ deleteTarget?.name }}</strong>? They will no longer be able to log in.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
+      <button class="btn-danger" (click)="doDelete()">Deactivate</button>
     </div>
   </div>
 </div>

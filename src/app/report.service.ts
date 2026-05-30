@@ -40,7 +40,19 @@ export class ReportService {
     return this.http.get<any>(`${this.base}/customer-sales?period=${period}`);
   }
 
+  getUserSales(period: 'today' | 'week' | 'month' | 'year'): Observable<any> {
+    return this.http.get<any>(`${this.base}/user-sales?period=${period}`);
+  }
+
   getLowStock(): Observable<any[]> {
     return this.http.get<any[]>(`${this.base}/low-stock`);
+  }
+
+  getChatAnalytics(period: 'today' | 'week' | 'month' | 'year'): Observable<any> {
+    return this.http.get<any>(`${this.base}/chat-analytics?period=${period}`);
+  }
+
+  getChatSummary(period: 'today' | 'week' | 'month' | 'year', force = false): Observable<any> {
+    return this.http.get<any>(`${this.base}/chat-summary?period=${period}&force=${force}`);
   }
 }

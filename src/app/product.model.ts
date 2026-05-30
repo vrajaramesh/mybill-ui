@@ -16,6 +16,7 @@ export interface Product {
   isOnline?: boolean;
   tags?: string;
   suitableFor?: string;
+  sizes?: string;
   createdAt?: string;
   updatedAt?: string;
 }

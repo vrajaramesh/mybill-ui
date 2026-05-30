@@ -3,16 +3,20 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FirmService, Firm, FirmRegistration } from '../firm.service';
 import { AuthService } from '../auth.service';
+import { UserManagementComponent } from '../user-management/user-management.component';
 
 @Component({
   selector: 'app-superadmin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UserManagementComponent],
   templateUrl: './superadmin-dashboard.component.html',
   styleUrls: ['./superadmin-dashboard.component.css']
 })
 export class SuperadminDashboardComponent implements OnInit {
   @Output() logout = new EventEmitter<void>();
+  @Output() enterFirm = new EventEmitter<string>();
+
+  activeTab: 'firms' | 'users' = 'firms';
 
   firms: Firm[] = [];
   loadingFirms = false;
@@ -96,6 +100,10 @@ export class SuperadminDashboardComponent implements OnInit {
         this.createError = err.error?.error || 'Failed to create firm';
       }
     });
+  }
+
+  onEnterFirm(firmCode: string): void {
+    this.enterFirm.emit(firmCode);
   }
 
   resetForm(): void {

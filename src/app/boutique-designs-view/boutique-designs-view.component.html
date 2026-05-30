@@ -1,0 +1,92 @@
+<div class="designs-toolbar">
+  <h2 class="designs-title">Boutique Designs</h2>
+  <button class="btn btn-primary" (click)="openForm()">+ Add Design</button>
+</div>
+
+<div *ngIf="loading" class="loading-state">Loading designs...</div>
+
+<div *ngIf="!loading && designs.length === 0" class="empty-state">
+  No designs yet. Upload your first design photo.
+</div>
+
+<div class="designs-grid" *ngIf="!loading && designs.length > 0">
+  <div class="design-card" *ngFor="let d of designs">
+    <!-- Image strip -->
+    <div class="design-img-strip">
+      <ng-container *ngIf="d.images && d.images.length > 0; else noImg">
+        <img *ngFor="let img of d.images.slice(0, 4); let i = index"
+             [src]="img.imageUrl || img"
+             [alt]="d.garmentType"
+             class="design-thumb"
+             [class.main-thumb]="i === 0">
+        <span *ngIf="d.images.length > 4" class="more-photos">+{{ d.images.length - 4 }}</span>
+      </ng-container>
+      <ng-template #noImg>
+        <div class="design-no-img">No Photos</div>
+      </ng-template>
+    </div>
+    <div class="design-info">
+      <span class="design-garment">{{ d.garmentType }}</span>
+      <span class="design-price" *ngIf="d.roughPrice">₹{{ d.roughPrice }}</span>
+      <span class="design-delivery" *ngIf="d.deliveryDays">~{{ d.deliveryDays }} days</span>
+      <p class="design-desc" *ngIf="d.description">{{ d.description }}</p>
+    </div>
+    <div class="design-actions">
+      <button class="btn-sm btn-edit" (click)="openForm(d)">Edit</button>
+      <button class="btn-sm btn-danger" (click)="remove(d.designId)">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Design form modal -->
+<div class="modal-overlay" *ngIf="showForm" (click)="closeForm()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <h3>{{ editingId ? 'Edit Design' : 'Add Design' }}</h3>
+
+    <label class="form-label">Garment Type *</label>
+    <select class="form-control" [(ngModel)]="form.garmentType">
+      <option value="">-- Select --</option>
+      <option *ngFor="let g of garmentTypes" [value]="g">{{ g }}</option>
+    </select>
+
+    <label class="form-label" style="margin-top:8px">Rough Price (₹)</label>
+    <input type="number" class="form-control" [(ngModel)]="form.roughPrice" placeholder="e.g. 1500">
+
+    <label class="form-label" style="margin-top:8px">Rough Delivery (days)</label>
+    <input type="number" class="form-control" [(ngModel)]="form.deliveryDays" placeholder="e.g. 7" min="1">
+
+    <label class="form-label" style="margin-top:8px">Description</label>
+    <textarea class="form-control" [(ngModel)]="form.description" rows="2"
+              placeholder="Style notes, fabric, etc."></textarea>
+
+    <!-- Photo gallery -->
+    <label class="form-label" style="margin-top:12px">
+      Photos
+      <span class="photo-count" *ngIf="formImages.length > 0">({{ formImages.length }})</span>
+    </label>
+    <div class="photo-grid">
+      <div class="photo-thumb" *ngFor="let img of formImages; let i = index">
+        <img [src]="img.imageUrl" alt="design photo" class="thumb-img">
+        <button class="thumb-remove" (click)="removeFormImage(i)" title="Remove">&times;</button>
+        <span class="thumb-new" *ngIf="img.pending">New</span>
+      </div>
+      <!-- Upload button as last cell -->
+      <label class="photo-add-btn" [class.uploading]="uploading">
+        <span *ngIf="!uploading">
+          <span class="plus-icon">＋</span>
+          Add Photo
+        </span>
+        <span *ngIf="uploading">Uploading...</span>
+        <input type="file" accept="image/*" (change)="onImagePick($event)" [disabled]="uploading" hidden>
+      </label>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-secondary" (click)="closeForm()">Cancel</button>
+      <button class="btn btn-primary" (click)="save()"
+              [disabled]="saving || uploading || !form.garmentType">
+        {{ saving ? 'Saving...' : 'Save' }}
+      </button>
+    </div>
+  </div>
+</div>

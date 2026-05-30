@@ -133,6 +133,17 @@
           <label>Notes</label>
           <input type="text" [(ngModel)]="currentBill!.notes" name="notes" placeholder="Optional" class="form-input">
         </div>
+        <div class="form-group" *ngIf="salesPersons.length > 0">
+          <label>Sales Person</label>
+          <select class="form-input"
+                  [ngModel]="selectedSalesPersonId"
+                  name="salesPerson"
+                  (ngModelChange)="onSalesPersonChange($event)">
+            <option *ngFor="let sp of salesPersons" [value]="sp.userId">
+              {{ sp.fullName || sp.username }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <!-- Customer Section -->

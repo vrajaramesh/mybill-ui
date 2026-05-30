@@ -23,6 +23,8 @@
 
   <ng-container *ngIf="!loading">
 
+    <ng-container *ngIf="!isSales">
+
     <!-- ── Overview Cards ─────────────────────────────── -->
     <div class="section-label">Overview — {{ selectedYear }}</div>
     <div class="overview-cards">
@@ -146,6 +148,94 @@
         </ng-template>
       </div>
     </div>
+
+    </ng-container><!-- /!isSales overview+customer sections -->
+
+    <!-- ── Sales by User ────────────────────────────────── -->
+    <div class="section-label">Sales by User</div>
+    <div class="card cs-card">
+
+      <div class="cs-tabs">
+        <button *ngFor="let p of periods"
+                class="cs-tab"
+                [class.active]="usPeriod === p.key"
+                (click)="selectUserPeriod(p.key)">
+          {{ p.label }}
+        </button>
+        <span class="cs-daterange" *ngIf="usData.from">{{ usDateRange() }}</span>
+      </div>
+
+      <div class="cs-summary" *ngIf="!usLoading">
+        <div class="cs-stat">
+          <div class="cs-stat-value">{{ fmt(usSummary.totalSales) }}</div>
+          <div class="cs-stat-label">Total Sales</div>
+        </div>
+        <div class="cs-stat">
+          <div class="cs-stat-value">{{ usSummary.totalBills ?? 0 }}</div>
+          <div class="cs-stat-label">Bills</div>
+        </div>
+        <div class="cs-stat">
+          <div class="cs-stat-value">{{ usSummary.activeUsers ?? 0 }}</div>
+          <div class="cs-stat-label">Active Users</div>
+        </div>
+        <div class="cs-stat cs-top-customer" *ngIf="usUsers.length">
+          <div class="cs-stat-value cs-name-value">{{ usUsers[0].userName }}</div>
+          <div class="cs-stat-label">Top Performer — {{ fmt(usUsers[0].totalSales) }}</div>
+        </div>
+      </div>
+
+      <div class="cs-loading" *ngIf="usLoading">
+        <div class="spinner-sm"></div> Loading...
+      </div>
+
+      <div class="cs-table-wrap" *ngIf="!usLoading">
+        <table class="cs-table" *ngIf="usUsers.length; else usEmpty">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>User</th>
+              <th>Bills</th>
+              <th>Avg Bill</th>
+              <th>Last Sale</th>
+              <th>Share</th>
+              <th style="text-align:right">Total Sales</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of usUsers" [class.cs-top-row]="u.rank === 1">
+              <td>
+                <span class="cs-rank" [class.gold]="u.rank===1" [class.silver]="u.rank===2" [class.bronze]="u.rank===3">
+                  {{ u.rank }}
+                </span>
+              </td>
+              <td>
+                <div class="cs-customer-cell">
+                  <div class="cs-avatar us-avatar">{{ u.userName?.[0]?.toUpperCase() || 'U' }}</div>
+                  <div class="cs-cname">{{ u.userName }}</div>
+                </div>
+              </td>
+              <td class="cs-center">{{ u.billCount }}</td>
+              <td class="cs-center">{{ fmt(u.avgBillValue) }}</td>
+              <td class="cs-center cs-date">{{ u.lastSale | date:'dd MMM' }}</td>
+              <td>
+                <div class="cs-share-cell">
+                  <div class="cs-bar-bg">
+                    <div class="cs-bar-fill us-bar-fill" [style.width]="(+u.totalSales / usMax * 100) + '%'"></div>
+                  </div>
+                  <span class="cs-pct">{{ u.sharePercent }}%</span>
+                </div>
+              </td>
+              <td class="cs-amount">{{ fmt(u.totalSales) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #usEmpty>
+          <div class="no-data">No user sales recorded for {{ userPeriodLabel() | lowercase }}.</div>
+        </ng-template>
+      </div>
+    </div>
+
+    <ng-container *ngIf="!isSales">
 
     <!-- ── Monthly Sales Trend ────────────────────────── -->
     <div class="section-label">Monthly Sales Trend</div>
@@ -285,6 +375,8 @@
         All products are adequately stocked.
       </div>
     </ng-template>
+
+    </ng-container><!-- /!isSales trend+products+customers sections -->
 
   </ng-container>
 </div>

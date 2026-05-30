@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { BillService } from '../bill.service';
 import { ThermalPrinterService } from '../thermal-printer.service';
 import { SettingsService } from '../settings.service';
+import { UserService, SalesPerson } from '../user.service';
+import { AuthService } from '../auth.service';
 import { Bill, BillItem } from '../bill.model';
 import { Customer } from '../customer.model';
 import { Product } from '../product.model';
@@ -87,10 +89,17 @@ export class BillingComponent implements OnInit, OnChanges {
   selectedCategory: string = '';
   selectedItemIndex: number = -1;
 
+  // Sales person selection
+  salesPersons: SalesPerson[] = [];
+  selectedSalesPersonId: number | null = null;
+  selectedSalesPersonName: string = '';
+
   constructor(
     private billService: BillService,
     private printer: ThermalPrinterService,
     private settings: SettingsService,
+    private userService: UserService,
+    private authService: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -98,6 +107,35 @@ export class BillingComponent implements OnInit, OnChanges {
     this.loadCustomers();
     this.loadProducts();
     this.loadCategories();
+    this.loadSalesPersons();
+  }
+
+  loadSalesPersons(): void {
+    this.userService.getSalesPersons().subscribe({
+      next: persons => {
+        this.salesPersons = persons;
+        const me = this.authService.getCurrentUser();
+        if (me) {
+          const match = persons.find(p => p.userId === me.userId || p.username === me.username);
+          if (match) {
+            this.selectedSalesPersonId = match.userId;
+            this.selectedSalesPersonName = match.fullName || match.username;
+          } else {
+            // Logged-in user not in SALES list (e.g. ADMIN) — default to first person
+            this.selectedSalesPersonId = persons[0]?.userId ?? null;
+            this.selectedSalesPersonName = persons[0]?.fullName ?? '';
+          }
+        }
+      },
+      error: () => { /* non-critical — billing still works without sales person */ }
+    });
+  }
+
+  onSalesPersonChange(userId: string): void {
+    const id = parseInt(userId, 10);
+    const person = this.salesPersons.find(p => p.userId === id);
+    this.selectedSalesPersonId = person?.userId ?? null;
+    this.selectedSalesPersonName = person?.fullName || person?.username || '';
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -125,8 +163,14 @@ export class BillingComponent implements OnInit, OnChanges {
     this.billService.getProductCategories().subscribe(data => { this.categories = data; });
   }
 
+  get isSales(): boolean { return this.authService.isSales(); }
+
   get filteredBills(): Bill[] {
     let bills = this.applyDateFilter(this.bills);
+
+    if (this.isSales && this.selectedSalesPersonId !== null) {
+      bills = bills.filter(b => b.salesPersonId === this.selectedSalesPersonId);
+    }
 
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
@@ -249,6 +293,10 @@ export class BillingComponent implements OnInit, OnChanges {
 
   saveBill(andPrint: boolean = false): void {
     if (!this.currentBill) return;
+
+    // Attach selected sales person
+    this.currentBill.salesPersonId = this.selectedSalesPersonId ?? undefined;
+    this.currentBill.salesPersonName = this.selectedSalesPersonName || undefined;
 
     // Drop rows that have neither a product nor a description
     this.currentBill.billItems = (this.currentBill.billItems || [])

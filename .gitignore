@@ -1,0 +1,25 @@
+# Dependencies — never commit these
+node_modules/
+
+# Build output — generated, not source
+dist/
+.angular/
+
+# Environment files with secrets
+src/environments/environment.local.ts
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

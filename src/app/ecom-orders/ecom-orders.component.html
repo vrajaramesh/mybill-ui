@@ -1,0 +1,137 @@
+<div class="eo-container">
+
+  <!-- Header -->
+  <div class="eo-header">
+    <div>
+      <h1 class="eo-title">Online Orders</h1>
+      <p class="eo-sub">Orders placed via your ecom store</p>
+    </div>
+    <button class="btn btn-secondary btn-sm" (click)="load()">↻ Refresh</button>
+  </div>
+
+  <!-- Status filter chips -->
+  <div class="eo-status-bar">
+    <button
+      *ngFor="let s of statuses"
+      class="status-chip"
+      [class.active]="statusFilter === s"
+      (click)="setFilter(s)">
+      {{ s === 'ALL' ? 'All' : (statusLabel[s] || s) }}
+    </button>
+  </div>
+
+  <!-- Search -->
+  <div class="eo-search-row">
+    <input type="text" class="search-input" [(ngModel)]="searchQuery"
+           (ngModelChange)="load()"
+           placeholder="Search by customer name or phone...">
+    <span class="order-count">{{ filteredOrders.length }} orders</span>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="eo-loading">Loading orders...</div>
+
+  <!-- Empty -->
+  <div *ngIf="!loading && filteredOrders.length === 0" class="eo-empty">
+    <p>No orders found.</p>
+    <p style="font-size:0.85rem;color:#9ca3af">Orders appear here once payment is confirmed.</p>
+  </div>
+
+  <!-- Orders list -->
+  <div class="eo-list" *ngIf="!loading && filteredOrders.length > 0">
+
+    <div class="eo-card" *ngFor="let order of filteredOrders">
+
+      <!-- Order header row -->
+      <div class="eo-card-head" (click)="toggleExpand(order.order_id)">
+        <div class="eo-card-left">
+          <span class="eo-order-num">#{{ order.order_id }}</span>
+          <span class="eo-status-badge" [style.background]="statusColor[order.status]">
+            {{ statusLabel[order.status] || order.status }}
+          </span>
+        </div>
+        <div class="eo-card-mid">
+          <span class="eo-customer">{{ order.delivery_name }}</span>
+          <span class="eo-phone">{{ order.delivery_phone }}</span>
+        </div>
+        <div class="eo-card-right">
+          <span class="eo-amount">₹{{ order.amount | number:'1.2-2' }}</span>
+          <span class="eo-date">{{ order.paid_at || order.created_at | date:'d MMM, h:mm a' }}</span>
+        </div>
+        <span class="eo-chevron">{{ expandedOrderId === order.order_id ? '▲' : '▼' }}</span>
+      </div>
+
+      <!-- Expanded detail -->
+      <div class="eo-card-body" *ngIf="expandedOrderId === order.order_id">
+
+        <div class="eo-two-col">
+          <!-- Delivery info -->
+          <div class="eo-section">
+            <h4>Delivery Address</h4>
+            <p>{{ order.delivery_name }}</p>
+            <p>{{ order.delivery_phone }} · {{ order.delivery_email }}</p>
+            <p>{{ order.delivery_address }}</p>
+            <p>{{ order.delivery_city }} – {{ order.delivery_pincode }}</p>
+            <p *ngIf="order.notes" class="eo-customer-note">Note: {{ order.notes }}</p>
+          </div>
+
+          <!-- Items -->
+          <div class="eo-section">
+            <h4>Items ({{ order.items.length }})</h4>
+            <table class="eo-items-table">
+              <tr *ngFor="let item of order.items">
+                <td class="eo-item-name">
+                  <span class="eo-product-code">#{{ item.product_id }}</span>
+                  {{ item.product_name }}
+                  <span *ngIf="item.size" class="eo-size-tag">{{ item.size }}</span>
+                </td>
+                <td class="eo-item-qty">
+                  {{ item.quantity }}
+                  {{ item.unit?.toLowerCase() === 'meters' ? 'm' : 'pcs' }}
+                </td>
+                <td class="eo-item-price">₹{{ item.total_price | number:'1.2-2' }}</td>
+              </tr>
+              <tr class="eo-total-row">
+                <td colspan="2">Total</td>
+                <td>₹{{ order.amount | number:'1.2-2' }}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Admin notes -->
+        <div class="eo-notes-row">
+          <label class="eo-label">Admin Notes (internal)</label>
+          <div class="eo-notes-edit">
+            <textarea class="eo-notes-input" rows="2"
+                      [placeholder]="order.admin_notes || 'Add internal notes...'"
+                      [(ngModel)]="editingNotes[order.order_id]"></textarea>
+            <button class="btn btn-sm btn-secondary"
+                    *ngIf="editingNotes[order.order_id] !== undefined"
+                    (click)="saveNotes(order)">Save Notes</button>
+          </div>
+          <p class="eo-saved-note" *ngIf="order.admin_notes && editingNotes[order.order_id] === undefined">
+            {{ order.admin_notes }}
+          </p>
+        </div>
+
+        <!-- Status actions -->
+        <div class="eo-actions" *ngIf="order.status !== 'DELIVERED' && order.status !== 'CANCELLED'">
+          <button class="btn btn-primary btn-sm"
+                  [disabled]="updatingOrderId === order.order_id"
+                  (click)="advanceStatus(order)">
+            {{ updatingOrderId === order.order_id ? '...' : '→ Mark as ' + (nextStatus[order.status] | titlecase) }}
+          </button>
+          <button class="btn btn-danger btn-sm" (click)="cancelOrder(order)"
+                  [disabled]="updatingOrderId === order.order_id">
+            Cancel Order
+          </button>
+        </div>
+        <div class="eo-final-badge" *ngIf="order.status === 'DELIVERED'">✓ Order Delivered</div>
+        <div class="eo-final-badge cancelled" *ngIf="order.status === 'CANCELLED'">✕ Order Cancelled</div>
+
+      </div>
+    </div>
+
+  </div>
+</div>

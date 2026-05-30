@@ -202,4 +202,30 @@ export class BoutiqueService {
     formData.append('upload_preset', CLOUDINARY_PRESET);
     return this.http.post(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, formData);
   }
+
+  // ── Boutique Designs ──────────────────────────────────────────────────────
+
+  getDesigns(): Observable<any[]> {
+    return this.http.get<any[]>('/api/boutique-designs');
+  }
+
+  createDesign(design: any): Observable<any> {
+    return this.http.post<any>('/api/boutique-designs', design);
+  }
+
+  updateDesign(id: number, design: any): Observable<any> {
+    return this.http.put<any>(`/api/boutique-designs/${id}`, design);
+  }
+
+  deleteDesign(id: number): Observable<any> {
+    return this.http.delete<any>(`/api/boutique-designs/${id}`);
+  }
+
+  addDesignImage(designId: number, imageUrl: string, publicId: string): Observable<any> {
+    return this.http.post<any>(`/api/boutique-designs/${designId}/images`, { imageUrl, publicId });
+  }
+
+  deleteDesignImage(designId: number, imageId: number): Observable<any> {
+    return this.http.delete<any>(`/api/boutique-designs/${designId}/images/${imageId}`);
+  }
 }

@@ -40,10 +40,12 @@ export interface LoginResponse {
   availableFirms?: FirmAccessInfo[];
 }
 
-const TOKEN_KEY = 'mybill_token';
-const USER_KEY  = 'mybill_user';
-const FIRMS_KEY = 'mybill_available_firms';
+const TOKEN_KEY    = 'mybill_token';
+const USER_KEY     = 'mybill_user';
+const FIRMS_KEY    = 'mybill_available_firms';
 const CURRENT_FIRM_KEY = 'mybill_current_firm';
+const SA_TOKEN_KEY = 'mybill_sa_token';
+const SA_USER_KEY  = 'mybill_sa_user';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -112,6 +114,65 @@ export class AuthService {
         }
       })
     );
+  }
+
+  /**
+   * Superadmin enters a specific firm context (stores SA token as backup)
+   */
+  enterFirmAsSuperadmin(firmCode: string): Observable<LoginResponse> {
+    const currentToken = this.getToken();
+    const currentUser  = localStorage.getItem(USER_KEY);
+    return this.http.post<LoginResponse>(
+      `${this.apiUrl}/superadmin/enter-firm`,
+      { firmCode },
+      { headers: { Authorization: `Bearer ${currentToken}` } }
+    ).pipe(
+      tap(resp => {
+        if (resp.token) {
+          // Stash original SA session
+          localStorage.setItem(SA_TOKEN_KEY, currentToken!);
+          if (currentUser) localStorage.setItem(SA_USER_KEY, currentUser);
+          // Activate firm-scoped session
+          localStorage.setItem(TOKEN_KEY, resp.token);
+          localStorage.setItem(USER_KEY, JSON.stringify({
+            userId: resp.userId,
+            username: resp.username,
+            fullName: resp.fullName,
+            role: resp.role,
+            email: resp.email,
+            phone: resp.phone,
+            firmId: resp.firmId,
+            firmName: resp.firmName,
+            isSuperadmin: true
+          }));
+          localStorage.setItem(CURRENT_FIRM_KEY, JSON.stringify({
+            firmId: resp.firmId,
+            firmName: resp.firmName,
+            firmCode: resp.firmCode
+          }));
+        }
+      })
+    );
+  }
+
+  /**
+   * Superadmin exits firm context and returns to SA session
+   */
+  exitFirmAsSuperadmin(): void {
+    const saToken = localStorage.getItem(SA_TOKEN_KEY);
+    const saUser  = localStorage.getItem(SA_USER_KEY);
+    if (saToken) {
+      localStorage.setItem(TOKEN_KEY, saToken);
+      if (saUser) localStorage.setItem(USER_KEY, saUser);
+      localStorage.removeItem(CURRENT_FIRM_KEY);
+      localStorage.removeItem(SA_TOKEN_KEY);
+      localStorage.removeItem(SA_USER_KEY);
+    }
+  }
+
+  /** True when superadmin has entered a firm context */
+  isInFirmContext(): boolean {
+    return localStorage.getItem(SA_TOKEN_KEY) !== null;
   }
 
   /**
@@ -187,6 +248,11 @@ export class AuthService {
   }
 
   isSuperadmin(): boolean {
+    return this.getCurrentUser()?.isSuperadmin === true && !this.isInFirmContext();
+  }
+
+  /** True when the current session is a superadmin (including when inside a firm context) */
+  isSuperadminIdentity(): boolean {
     return this.getCurrentUser()?.isSuperadmin === true;
   }
 
@@ -198,7 +264,7 @@ export class AuthService {
     return this.getCurrentUser()?.role === 'SALES';
   }
 
-  canEditProducts(): boolean { return this.isAdmin(); }
-  canDeleteBills(): boolean { return this.isAdmin(); }
-  canManageUsers(): boolean { return this.isAdmin(); }
+  canEditProducts(): boolean { return this.isAdmin() || this.isSuperadminIdentity(); }
+  canDeleteBills(): boolean  { return this.isAdmin() || this.isSuperadminIdentity(); }
+  canManageUsers(): boolean  { return this.isAdmin() || this.isSuperadminIdentity(); }
 }

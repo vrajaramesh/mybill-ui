@@ -15,6 +15,7 @@
     <button class="tab-btn" [class.active]="view==='new-order'" (click)="startNewOrder()">+ New Order</button>
     <button class="tab-btn" [class.active]="view==='measurements'" (click)="setView('measurements')">Measurements</button>
     <button class="tab-btn" [class.active]="view==='reports'" (click)="setView('reports')">Reports</button>
+    <button class="tab-btn" [class.active]="view==='designs'" (click)="setView('designs')">Designs</button>
   </div>
 
   <!-- ═══════════════════════════════════════════════════ -->
@@ -5509,4 +5510,11 @@
     <p>This is an internal work order. Not a payment receipt.</p>
   </div>
 
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- DESIGNS VIEW                                        -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div *ngIf="view==='designs'" class="view-content">
+  <app-boutique-designs-view></app-boutique-designs-view>
 </div>

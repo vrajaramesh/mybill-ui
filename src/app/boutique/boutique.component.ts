@@ -6,14 +6,15 @@ import { BillService } from '../bill.service';
 import { Customer } from '../customer.model';
 import { ThermalPrinterService } from '../thermal-printer.service';
 import { SettingsService } from '../settings.service';
+import { BoutiqueDesignsViewComponent } from '../boutique-designs-view/boutique-designs-view.component';
 
-type BoutiqueView = 'orders' | 'new-order' | 'measurements' | 'reports';
+type BoutiqueView = 'orders' | 'new-order' | 'measurements' | 'reports' | 'designs';
 type StatusFilter = 'ALL' | 'RECEIVED' | 'CUTTING' | 'STITCHING' | 'FINISHING' | 'READY' | 'DELIVERED' | 'CANCELLED';
 
 @Component({
   selector: 'app-boutique',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BoutiqueDesignsViewComponent],
   templateUrl: './boutique.component.html',
   styleUrl: './boutique.component.css'
 })
@@ -143,6 +144,7 @@ export class BoutiqueComponent implements OnInit {
     this.view = v;
     if (v === 'reports' && !this.summary) this.loadSummary();
   }
+
 
   // ── Orders ────────────────────────────────────────────
 

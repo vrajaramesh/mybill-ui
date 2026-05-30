@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { Chart, registerables } from 'chart.js';
 import { ReportService } from '../report.service';
+import { AuthService } from '../auth.service';
 
 Chart.register(...registerables);
 
@@ -41,6 +42,12 @@ export class ReportsComponent implements OnInit, OnDestroy {
   csLoading = false;
   csData: any = { summary: {}, customers: [], from: '', to: '' };
 
+  // ── User Sales by Period ──────────────────────────────
+  usPeriod: Period = 'month';
+  usLoading = false;
+  usData: any = { summary: {}, users: [], from: '', to: '' };
+
+
   readonly periods: { key: Period; label: string }[] = [
     { key: 'today', label: 'Today'      },
     { key: 'week',  label: 'This Week'  },
@@ -50,13 +57,16 @@ export class ReportsComponent implements OnInit, OnDestroy {
 
   private charts: Chart[] = [];
 
-  constructor(private svc: ReportService, private cdr: ChangeDetectorRef) {}
+  constructor(private svc: ReportService, private cdr: ChangeDetectorRef, private auth: AuthService) {}
+
+  get isSales(): boolean { return this.auth.isSales(); }
 
   ngOnInit(): void {
     const cur = new Date().getFullYear();
     for (let y = cur; y >= 2020; y--) this.years.push(y);
     this.loadAll();
     this.loadCustomerSales();
+    this.loadUserSales();
   }
 
   ngOnDestroy(): void { this.destroyCharts(); }
@@ -129,6 +139,34 @@ export class ReportsComponent implements OnInit, OnDestroy {
     if (!d) return '';
     const dt = new Date(d);
     return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  // ── User Sales ─────────────────────────────────────────
+  selectUserPeriod(p: Period): void {
+    this.usPeriod = p;
+    this.loadUserSales();
+  }
+
+  loadUserSales(): void {
+    this.usLoading = true;
+    this.svc.getUserSales(this.usPeriod).subscribe({
+      next: d => { this.usData = d; this.usLoading = false; this.cdr.detectChanges(); },
+      error: () => { this.usLoading = false; }
+    });
+  }
+
+  get usUsers(): any[]  { return this.usData.users   ?? []; }
+  get usSummary(): any  { return this.usData.summary  ?? {}; }
+  get usMax(): number   { return this.usUsers.length ? Number(this.usUsers[0].totalSales) : 1; }
+
+  userPeriodLabel(): string {
+    return this.periods.find(p => p.key === this.usPeriod)?.label ?? '';
+  }
+
+  usDateRange(): string {
+    if (!this.usData.from) return '';
+    if (this.usPeriod === 'today') return this.formatDate(this.usData.from);
+    return `${this.formatDate(this.usData.from)} – ${this.formatDate(this.usData.to)}`;
   }
 
   // ── Shared helpers ─────────────────────────────────────

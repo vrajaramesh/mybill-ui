@@ -12,10 +12,13 @@ import { ProductMediaComponent } from './product-media/product-media.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterFirmComponent } from './register-firm/register-firm.component';
 import { SuperadminDashboardComponent } from './superadmin-dashboard/superadmin-dashboard.component';
+import { EcomOrdersComponent } from './ecom-orders/ecom-orders.component';
+import { ChatInsightsComponent } from './chat-insights/chat-insights.component';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService, CurrentUser } from './auth.service';
 import { SettingsService } from './settings.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
@@ -25,7 +28,7 @@ import { SettingsService } from './settings.service';
     GstReportComponent, UserManagementComponent, ReportsComponent, BoutiqueComponent,
     SettingsComponent, ProductCategoryComponent, ProductMediaComponent,
     LoginComponent, RegisterFirmComponent, SuperadminDashboardComponent,
-    FormsModule, CommonModule
+    EcomOrdersComponent, ChatInsightsComponent, FormsModule, CommonModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
@@ -38,8 +41,13 @@ export class AppComponent implements OnInit {
   activeMenu: string = 'billing';
   activeSubMenu: string = 'transactions';
   billingView: 'list' | 'form' = 'list';
+  newOrderCount = 0;
 
-  constructor(private authService: AuthService, private settingsService: SettingsService) {}
+  constructor(
+    private authService: AuthService,
+    private settingsService: SettingsService,
+    private http: HttpClient
+  ) {}
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
@@ -47,8 +55,25 @@ export class AppComponent implements OnInit {
         this.currentView = 'superadmin';
       } else {
         this.currentView = 'app';
+        this.loadNewOrderCount();
       }
     }
+  }
+
+  loadNewOrderCount(): void {
+    const token = localStorage.getItem('mybill_token');
+    if (!token) return;
+    this.http.get<{ count: number }>('/api/ecom-orders/count/new',
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) })
+      .subscribe({ next: r => { this.newOrderCount = r.count; }, error: () => {} });
+  }
+
+  get isInFirmContext(): boolean {
+    return this.authService.isInFirmContext();
+  }
+
+  get firmContextName(): string {
+    return this.authService.getCurrentFirm()?.firmName || '';
   }
 
   get isLoggedIn(): boolean {
@@ -68,7 +93,11 @@ export class AppComponent implements OnInit {
   }
 
   get isAdmin(): boolean {
-    return this.authService.isAdmin();
+    return this.authService.isAdmin() || this.authService.isInFirmContext();
+  }
+
+  get isSales(): boolean {
+    return this.authService.isSales();
   }
 
   get currentUserInitials(): string {
@@ -84,7 +113,9 @@ export class AppComponent implements OnInit {
       return 'products';
     }
     if (this.activeMenu === 'reports') {
-      return this.activeSubMenu === 'gst' ? 'gst-report' : 'reports';
+      if (this.activeSubMenu === 'gst')   return 'gst-report';
+      if (this.activeSubMenu === 'chat')  return 'chat-insights';
+      return 'reports';
     }
     return this.activeMenu;
   }
@@ -104,6 +135,24 @@ export class AppComponent implements OnInit {
   onSuperadminLogout(): void {
     this.authService.logout();
     this.currentView = 'login';
+  }
+
+  onEnterFirm(firmCode: string): void {
+    this.authService.enterFirmAsSuperadmin(firmCode).subscribe({
+      next: () => {
+        this.currentView = 'app';
+        this.activeMenu = 'billing';
+        this.activeSubMenu = 'transactions';
+        this.billingView = 'list';
+        this.expandedMenus = new Set(['billing']);
+      },
+      error: err => alert(err.error?.error || 'Failed to enter firm')
+    });
+  }
+
+  backToSuperadmin(): void {
+    this.authService.exitFirmAsSuperadmin();
+    this.currentView = 'superadmin';
   }
 
   onRegisterFirmSuccess(): void {
@@ -149,6 +198,9 @@ export class AppComponent implements OnInit {
       }
     }
     this.expandedMenus.add(menu);
+    // Refresh new-order badge when opening any section
+    if (menu === 'ecom-orders') this.newOrderCount = 0; // clear badge on open
+    else this.loadNewOrderCount();
   }
 
   onBillingViewChange(view: 'list' | 'form'): void {

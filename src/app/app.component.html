@@ -7,7 +7,8 @@
 <!-- Superadmin dashboard -->
 <app-superadmin-dashboard
   *ngIf="currentView === 'superadmin'"
-  (logout)="onSuperadminLogout()">
+  (logout)="onSuperadminLogout()"
+  (enterFirm)="onEnterFirm($event)">
 </app-superadmin-dashboard>
 
 <!-- Register firm screen (legacy fallback) -->
@@ -17,7 +18,15 @@
   (backToLogin)="goBackToLogin()"></app-register-firm>
 
 <!-- Main app layout after login -->
-<div class="app-layout" *ngIf="currentView === 'app'">
+<div class="app-outer" *ngIf="currentView === 'app'">
+
+  <!-- Superadmin firm-context banner -->
+  <div class="sa-firm-banner" *ngIf="isInFirmContext">
+    <span>Viewing as Super Admin &rarr; <strong>{{ firmContextName }}</strong></span>
+    <button (click)="backToSuperadmin()">&#8592; Back to Super Admin</button>
+  </div>
+
+  <div class="app-layout">
 
   <!-- Sidebar -->
   <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
@@ -68,12 +77,12 @@
             <span class="nav-icon">📋</span>
             <span class="nav-label">Product List</span>
           </div>
-          <div class="nav-item sub" [class.active]="activeMenu==='products' && activeSubMenu==='categories'"
+          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='categories'"
                (click)="navigate('products','categories')">
             <span class="nav-icon">🏷️</span>
             <span class="nav-label">Categories</span>
           </div>
-          <div class="nav-item sub" [class.active]="activeMenu==='products' && activeSubMenu==='media'"
+          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='media'"
                (click)="navigate('products','media')">
             <span class="nav-icon">🖼️</span>
             <span class="nav-label">Media Upload</span>
@@ -82,7 +91,7 @@
       </div>
 
       <!-- Purchases -->
-      <div class="nav-group">
+      <div class="nav-group" *ngIf="!isSales">
         <div class="nav-item parent" [class.active]="activeMenu==='purchases'"
              (click)="navigate('purchases')">
           <span class="nav-icon">🛒</span>
@@ -104,16 +113,21 @@
             <span class="nav-icon">📈</span>
             <span class="nav-label">Sales Report</span>
           </div>
-          <div class="nav-item sub" [class.active]="activeMenu==='reports' && activeSubMenu==='gst'"
+          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='reports' && activeSubMenu==='gst'"
                (click)="navigate('reports','gst')">
             <span class="nav-icon">📊</span>
             <span class="nav-label">GST Report</span>
+          </div>
+          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='reports' && activeSubMenu==='chat'"
+               (click)="navigate('reports','chat')">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">Chat Insights</span>
           </div>
         </div>
       </div>
 
       <!-- Boutique -->
-      <div class="nav-group">
+      <div class="nav-group" *ngIf="!isSales">
         <div class="nav-item parent" [class.active]="activeMenu==='boutique'"
              (click)="navigate('boutique')">
           <span class="nav-icon">&#9986;</span>
@@ -127,6 +141,16 @@
              (click)="navigate('users')">
           <span class="nav-icon">👥</span>
           <span class="nav-label" *ngIf="!sidebarCollapsed">Users</span>
+        </div>
+      </div>
+
+      <!-- Online Orders -->
+      <div class="nav-group" *ngIf="!isSales">
+        <div class="nav-item parent" [class.active]="activeMenu==='ecom-orders'"
+             (click)="navigate('ecom-orders')">
+          <span class="nav-icon">🛍️</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Online Orders</span>
+          <span class="nav-badge" *ngIf="newOrderCount > 0">{{ newOrderCount }}</span>
         </div>
       </div>
 
@@ -176,9 +200,12 @@
     <app-purchase-list   *ngIf="activeSection==='purchases'"></app-purchase-list>
     <app-gst-report      *ngIf="activeSection==='gst-report'"></app-gst-report>
     <app-reports         *ngIf="activeSection==='reports'"></app-reports>
+    <app-chat-insights   *ngIf="activeSection==='chat-insights'"></app-chat-insights>
     <app-boutique        *ngIf="activeSection==='boutique'"></app-boutique>
     <app-user-management *ngIf="activeSection==='users'"></app-user-management>
+    <app-ecom-orders     *ngIf="activeSection==='ecom-orders'" (click)="loadNewOrderCount()"></app-ecom-orders>
     <app-settings        *ngIf="activeSection==='settings'"></app-settings>
   </main>
 
-</div>
+  </div><!-- /.app-layout -->
+</div><!-- /.app-outer -->

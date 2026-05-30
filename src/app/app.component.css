@@ -1,8 +1,41 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+.app-outer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f0f2f5;
+}
+
+.sa-firm-banner {
+  background: #ff6f00;
+  color: white;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.sa-firm-banner button {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.4);
+  padding: 4px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.sa-firm-banner button:hover { background: rgba(255,255,255,0.35); }
+
 .app-layout {
   display: flex;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #f0f2f5;
 }
@@ -107,6 +140,11 @@
 .nav-icon  { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
 .nav-label { flex: 1; }
 .arrow     { font-size: 11px; color: #7a8a99; }
+.nav-badge {
+  background: #ef4444; color: #fff; font-size: 0.68rem; font-weight: 700;
+  min-width: 18px; height: 18px; border-radius: 9px; display: inline-flex;
+  align-items: center; justify-content: center; padding: 0 4px; line-height: 1;
+}
 
 /* ── Main content ─────────────────────────────────────── */
 .main-content {

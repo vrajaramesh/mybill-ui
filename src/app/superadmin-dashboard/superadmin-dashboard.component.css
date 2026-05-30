@@ -16,6 +16,26 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
+.sa-header-center {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.sa-tab-btn {
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+.sa-tab-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+.sa-tab-btn.active { background: rgba(255,255,255,0.18); color: white; font-weight: 700; }
+
 .sa-brand { display: flex; align-items: center; gap: 10px; }
 .sa-logo { font-size: 22px; }
 .sa-title { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
@@ -104,3 +124,18 @@
 
 .empty-state { padding: 48px; text-align: center; color: #9ca3af; }
 .loading { padding: 24px; text-align: center; color: #6b7280; }
+
+.btn-enter {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-enter:hover:not(:disabled) { background: #bbdefb; }
+.btn-enter:disabled { opacity: 0.4; cursor: not-allowed; }

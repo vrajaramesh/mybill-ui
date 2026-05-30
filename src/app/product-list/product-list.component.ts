@@ -1,10 +1,12 @@
 import { Component, OnInit } from '@angular/core';
+import JsBarcode from 'jsbarcode';
 import { ProductService } from '../product.service';
 import { Product, ProductImage } from '../product.model';
 import { ProductCategory, ProductSubCategory } from '../product-category.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AiPhotoWorkflowComponent } from '../ai-photo-workflow/ai-photo-workflow.component';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-product-list',
@@ -30,11 +32,17 @@ export class ProductListComponent implements OnInit {
   productImages: ProductImage[] = [];
   uploadingCount = 0;
   generatingDesc = false;
+  printingLabel = false;
+  newProductId: number | null = null;
+  createdProductName: string = '';
 
   readonly availableTags = ['Casual', 'Formal', 'Party', 'Wedding', 'Festival', 'Traditional', 'Office', 'Bridal'];
   readonly availableUsages = ['Saree', 'Kurti', 'Dress', 'Frock', 'Blouse', 'Lehenga', 'Salwar', 'Dupatta', 'Kids Wear'];
+  readonly standardSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
-  constructor(private productService: ProductService) { }
+  constructor(private productService: ProductService, private auth: AuthService) {}
+
+  get isSales(): boolean { return this.auth.isSales(); }
 
   ngOnInit(): void {
     this.loadProducts();
@@ -82,9 +90,11 @@ export class ProductListComponent implements OnInit {
 
   get filteredProducts(): Product[] {
     return this.products.filter(product => {
-      const matchesSearch = !this.searchTerm ||
-        product.productName.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        (product.description && product.description.toLowerCase().includes(this.searchTerm.toLowerCase()));
+      const term = this.searchTerm.trim().toLowerCase();
+      const matchesSearch = !term ||
+        product.productName.toLowerCase().includes(term) ||
+        (product.productId != null && String(product.productId).includes(term)) ||
+        (product.description && product.description.toLowerCase().includes(term));
       const matchesCategory = !this.selectedCategory || product.category?.categoryName === this.selectedCategory;
       const matchesUnit = !this.selectedUnit || product.unit === this.selectedUnit;
       return matchesSearch && matchesCategory && matchesUnit;
@@ -136,6 +146,30 @@ export class ProductListComponent implements OnInit {
     this.selectedProduct.tags = current.join(', ');
   }
 
+  getSizeArray(product: Product): string[] {
+    if (!product.sizes) return [];
+    return product.sizes.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  isSizeSelected(size: string): boolean {
+    if (!this.selectedProduct?.sizes) return false;
+    return this.selectedProduct.sizes.split(',').map(s => s.trim()).includes(size);
+  }
+
+  toggleSize(size: string): void {
+    if (!this.selectedProduct) return;
+    const current = this.selectedProduct.sizes
+      ? this.selectedProduct.sizes.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+    const idx = current.indexOf(size);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(size);
+    }
+    this.selectedProduct.sizes = current.length > 0 ? current.join(',') : undefined;
+  }
+
   subCategoryLabel(product: Product): string {
     return product.subCategory?.subCatName ?? '—';
   }
@@ -178,6 +212,33 @@ export class ProductListComponent implements OnInit {
     this.productImages = [];
   }
 
+  cloneProduct(product: Product): void {
+    this.selectedProduct = {
+      productName: 'Copy of ' + product.productName,
+      description: product.description,
+      category: product.category,
+      subCategory: product.subCategory,
+      unit: product.unit,
+      costPrice: product.costPrice,
+      sellingPrice: product.sellingPrice,
+      stockQuantity: 0,
+      minStockLevel: product.minStockLevel,
+      isActive: product.isActive,
+      isOnline: product.isOnline,
+      tags: product.tags,
+      suitableFor: product.suitableFor,
+      sizes: product.sizes
+    };
+    this.filteredSubCategories = [];
+    this.productImages = [];
+    const catName = product.category?.categoryName;
+    if (catName) {
+      this.productService.getSubCategories(catName).subscribe(data => {
+        this.filteredSubCategories = data;
+      });
+    }
+  }
+
   saveProduct(): void {
     if (!this.selectedProduct) return;
     if (this.selectedProduct.productId) {
@@ -195,6 +256,8 @@ export class ProductListComponent implements OnInit {
           this.loadProducts();
           this.selectedProduct = created;
           this.productImages = [];
+          this.newProductId = created.productId ?? null;
+          this.createdProductName = created.productName;
         },
         error: (err) => alert('Error creating product: ' + (err.error?.message || err.message))
       });
@@ -220,6 +283,108 @@ export class ProductListComponent implements OnInit {
         alert('AI description generation failed. Please try again.');
         this.generatingDesc = false;
       }
+    });
+  }
+
+  dismissCreatedPopup(): void {
+    this.newProductId = null;
+  }
+
+  async printLabel(): Promise<void> {
+    if (!this.selectedProduct?.productId || this.printingLabel) return;
+    this.printingLabel = true;
+    try {
+      const productCode = String(this.selectedProduct.productId).padStart(6, '0');
+      const barcodeDataUrl = this.generateBarcodeDataUrl(productCode);
+      const html = this.buildLabelHtml(productCode, barcodeDataUrl);
+
+      const qz = await this.loadQzTray();
+      if (!qz.websocket.isActive()) {
+        await qz.websocket.connect({ retries: 2, delay: 500 });
+      }
+      const printer = await qz.printers.getDefault();
+      const config = qz.configs.create(printer, {
+        size: { width: 2, height: 1 },
+        units: 'in',
+        scaleContent: false,
+        margins: 0,
+        colorType: 'blackwhite'
+      });
+      await qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
+    } catch (err: any) {
+      const msg: string = err?.message ?? String(err);
+      if (/unable to establish|websocket|connect/i.test(msg)) {
+        alert(
+          'QZ Tray is not running.\n\n' +
+          'To enable direct thermal printing:\n' +
+          '1. Download and install QZ Tray from  qz.io\n' +
+          '2. Start QZ Tray (runs in system tray)\n' +
+          '3. Click "Print Label" again — QZ Tray will ask you to allow this site once\n' +
+          '4. After approving, labels print silently with no dialog'
+        );
+      } else {
+        alert('Print failed: ' + msg);
+      }
+    } finally {
+      this.printingLabel = false;
+    }
+  }
+
+  private generateBarcodeDataUrl(code: string): string {
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, code, {
+      format: 'CODE128',
+      width: 1.5,
+      height: 28,
+      displayValue: false,
+      margin: 2,
+      background: '#ffffff'
+    });
+    return canvas.toDataURL('image/png');
+  }
+
+  private buildLabelHtml(productCode: string, barcodeDataUrl: string): string {
+    const p = this.selectedProduct!;
+    const safeName = (p.productName ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const price = p.sellingPrice != null ? Number(p.sellingPrice).toFixed(2) : '0.00';
+    return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  @page { size: 2in 1in; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; width: 2in; height: 1in; overflow: hidden; background: #fff; }
+  .lbl { width: 2in; height: 1in; padding: 4px 6px; display: flex; flex-direction: column; justify-content: space-between; }
+  .name { font-size: 8pt; font-weight: bold; line-height: 1.2; overflow: hidden; max-height: 20pt; }
+  .bc { display: flex; justify-content: center; }
+  .bc img { height: 28px; max-width: 100%; }
+  .foot { display: flex; justify-content: space-between; align-items: flex-end; }
+  .code { font-size: 6.5pt; color: #333; }
+  .price { font-size: 9.5pt; font-weight: bold; }
+</style>
+</head><body>
+<div class="lbl">
+  <div class="name">${safeName}</div>
+  <div class="bc"><img src="${barcodeDataUrl}" alt=""></div>
+  <div class="foot">
+    <span class="code">Code: ${productCode}</span>
+    <span class="price">&#8377;${price}</span>
+  </div>
+</div>
+</body></html>`;
+  }
+
+  private loadQzTray(): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const w = window as any;
+      if (w.qz?.websocket) { resolve(w.qz); return; }
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js';
+      script.onload = () => {
+        const qz = (window as any).qz;
+        qz?.websocket ? resolve(qz) : reject(new Error('QZ Tray script loaded but qz object missing'));
+      };
+      script.onerror = () => reject(new Error('Unable to establish connection — QZ Tray is not running'));
+      document.head.appendChild(script);
     });
   }
 

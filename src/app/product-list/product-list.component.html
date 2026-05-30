@@ -1,12 +1,12 @@
 <div class="product-container">
   <div class="product-card">
     <h2 class="card-title">Product Management</h2>
-    <button class="add-btn" (click)="addNewProduct()">Add New Product</button>
+    <button class="add-btn" *ngIf="!isSales" (click)="addNewProduct()">Add New Product</button>
 
     <div class="filters">
       <div class="filter-group">
         <label for="search">Search:</label>
-        <input id="search" type="text" [(ngModel)]="searchTerm" placeholder="Search by name or description" class="filter-input">
+        <input id="search" type="text" [(ngModel)]="searchTerm" placeholder="Search by name, ID or description" class="filter-input">
       </div>
       <div class="filter-group">
         <label for="categoryFilter">Category:</label>
@@ -61,7 +61,13 @@
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </button>
-              <button class="icon-btn delete-btn" (click)="deleteProduct(product.productId!)" title="Delete">
+              <button class="icon-btn clone-btn" *ngIf="!isSales" (click)="cloneProduct(product)" title="Clone product">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+              <button class="icon-btn delete-btn" *ngIf="!isSales" (click)="deleteProduct(product.productId!)" title="Delete">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -80,10 +86,25 @@
   <div *ngIf="selectedProduct" class="modal-overlay" (click)="cancelEdit()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3 class="modal-title">{{ selectedProduct.productId ? 'Edit' : 'Add' }} Product</h3>
+        <h3 class="modal-title">{{ isSales ? 'Print Label' : (selectedProduct.productId ? 'Edit' : (selectedProduct.productName.startsWith('Copy of ') ? 'Clone' : 'Add')) }} Product</h3>
         <button type="button" class="modal-close" (click)="cancelEdit()">×</button>
       </div>
-      <form class="product-form" (ngSubmit)="saveProduct()">
+
+      <!-- SALES users: label-only view -->
+      <div *ngIf="isSales" class="label-print-panel">
+        <div class="label-product-name">{{ selectedProduct.productName }}</div>
+        <div class="label-product-meta" *ngIf="selectedProduct.category?.categoryName">{{ selectedProduct.category?.categoryName }}</div>
+        <div class="label-product-meta">Price: {{ selectedProduct.sellingPrice | currency:'INR':'symbol':'1.2-2' }}</div>
+        <div class="form-actions">
+          <button *ngIf="selectedProduct.productId" type="button" class="print-label-btn"
+                  (click)="printLabel()" [disabled]="printingLabel">
+            {{ printingLabel ? 'Printing...' : 'Print Label' }}
+          </button>
+          <button type="button" class="cancel-btn" (click)="cancelEdit()">Close</button>
+        </div>
+      </div>
+
+      <form *ngIf="!isSales" class="product-form" (ngSubmit)="saveProduct()">
 
         <!-- Row: Product Name (full width) -->
         <div class="form-group span-2">
@@ -107,6 +128,17 @@
             <option value="Meters">Meters</option>
             <option value="Pieces">Pieces</option>
           </select>
+        </div>
+
+        <!-- Available Sizes (only for Pieces) -->
+        <div class="form-group span-2" *ngIf="selectedProduct.unit?.toLowerCase() === 'pieces'">
+          <label>Available Sizes</label>
+          <div class="sizes-grid">
+            <label *ngFor="let s of standardSizes" class="size-checkbox">
+              <input type="checkbox" [checked]="isSizeSelected(s)" (change)="toggleSize(s)">
+              {{ s }}
+            </label>
+          </div>
         </div>
 
         <!-- Sub-Category (single selection) -->
@@ -230,10 +262,25 @@
 
         <div class="form-actions">
           <button type="submit" class="save-btn">Save</button>
+          <button *ngIf="selectedProduct.productId" type="button" class="print-label-btn"
+                  (click)="printLabel()" [disabled]="printingLabel">
+            {{ printingLabel ? 'Printing...' : 'Print Label' }}
+          </button>
           <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancel</button>
         </div>
       </form>
     </div>
+  </div>
+</div>
+
+<!-- Product Created Popup -->
+<div *ngIf="newProductId" class="popup-overlay" (click)="dismissCreatedPopup()">
+  <div class="created-popup" (click)="$event.stopPropagation()">
+    <div class="created-check">&#10003;</div>
+    <h3 class="created-title">Product Created!</h3>
+    <div class="created-id-badge">#{{ newProductId }}</div>
+    <p class="created-name-text">{{ createdProductName }}</p>
+    <button class="created-ok-btn" (click)="dismissCreatedPopup()">OK &mdash; View / Edit Product</button>
   </div>
 </div>
 
