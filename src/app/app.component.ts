@@ -14,6 +14,9 @@ import { RegisterFirmComponent } from './register-firm/register-firm.component';
 import { SuperadminDashboardComponent } from './superadmin-dashboard/superadmin-dashboard.component';
 import { EcomOrdersComponent } from './ecom-orders/ecom-orders.component';
 import { ChatInsightsComponent } from './chat-insights/chat-insights.component';
+import { AiConfigComponent } from './ai-config/ai-config.component';
+import { EcomCoverageComponent } from './ecom-coverage/ecom-coverage.component';
+import { HermesComponent } from './hermes/hermes.component';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService, CurrentUser } from './auth.service';
@@ -28,7 +31,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
     GstReportComponent, UserManagementComponent, ReportsComponent, BoutiqueComponent,
     SettingsComponent, ProductCategoryComponent, ProductMediaComponent,
     LoginComponent, RegisterFirmComponent, SuperadminDashboardComponent,
-    EcomOrdersComponent, ChatInsightsComponent, FormsModule, CommonModule
+    EcomOrdersComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
+    EcomCoverageComponent, FormsModule, CommonModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
@@ -108,8 +112,10 @@ export class AppComponent implements OnInit {
 
   get activeSection(): string {
     if (this.activeMenu === 'products') {
-      if (this.activeSubMenu === 'categories') return 'categories';
-      if (this.activeSubMenu === 'media') return 'media';
+      if (this.activeSubMenu === 'categories')   return 'categories';
+      if (this.activeSubMenu === 'media')        return 'media';
+      if (this.activeSubMenu === 'ai-config')    return 'ai-config';
+      if (this.activeSubMenu === 'ecom-coverage') return 'ecom-coverage';
       return 'products';
     }
     if (this.activeMenu === 'reports') {
@@ -117,6 +123,7 @@ export class AppComponent implements OnInit {
       if (this.activeSubMenu === 'chat')  return 'chat-insights';
       return 'reports';
     }
+    if (this.activeMenu === 'hermes') return 'hermes';
     return this.activeMenu;
   }
 

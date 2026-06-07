@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AiPhotoWorkflowComponent } from '../ai-photo-workflow/ai-photo-workflow.component';
 import { AuthService } from '../auth.service';
+import { ThermalPrinterService } from '../thermal-printer.service';
 
 @Component({
   selector: 'app-product-list',
@@ -27,6 +28,7 @@ export class ProductListComponent implements OnInit {
   loadError: string = '';
   isLoading = false;
   aiPhotoProduct: Product | null = null;
+  aiPhotoInitialFile: File | undefined = undefined;
 
   filteredSubCategories: ProductSubCategory[] = [];
   productImages: ProductImage[] = [];
@@ -40,7 +42,11 @@ export class ProductListComponent implements OnInit {
   readonly availableUsages = ['Saree', 'Kurti', 'Dress', 'Frock', 'Blouse', 'Lehenga', 'Salwar', 'Dupatta', 'Kids Wear'];
   readonly standardSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
-  constructor(private productService: ProductService, private auth: AuthService) {}
+  constructor(
+    private productService: ProductService,
+    private auth: AuthService,
+    public  printer: ThermalPrinterService,
+  ) {}
 
   get isSales(): boolean { return this.auth.isSales(); }
 
@@ -203,7 +209,7 @@ export class ProductListComponent implements OnInit {
     this.selectedProduct = {
       productName: '',
       sellingPrice: 0,
-      unit: 'Meters',
+      unit: 'MTS',
       isOnline: true,
       isActive: true,
       subCategory: undefined
@@ -293,7 +299,32 @@ export class ProductListComponent implements OnInit {
   async printLabel(): Promise<void> {
     if (!this.selectedProduct?.productId || this.printingLabel) return;
     this.printingLabel = true;
+    console.log('[PRINT-LABEL] triggered for product:', {
+      productId: this.selectedProduct.productId,
+      productName: this.selectedProduct.productName,
+      sellingPrice: this.selectedProduct.sellingPrice,
+      category: this.selectedProduct.category?.categoryName,
+      labelConnected: this.printer.labelConnected,
+      labelDeviceName: this.printer.labelDeviceName,
+    });
     try {
+      // Try DTPWeb SDK (SEZNIK JOSH / DothanTech via Windows service) or BLE label printer
+      const dtpAvailable = await this.printer.isDtpWebAvailable();
+      console.log('[PRINT-LABEL] dtpWebAvailable:', dtpAvailable,
+        '| labelConnected:', this.printer.labelConnected);
+
+      if (dtpAvailable || this.printer.labelConnected || await this.printer.reconnectLabel()) {
+        console.log('[PRINT-LABEL] label printer available (dtp=%s ble=%s) — sending print job',
+          dtpAvailable, this.printer.labelConnected);
+        const ok = await this.printer.printLabel(this.selectedProduct);
+        console.log('[PRINT-LABEL] printLabel result:', ok);
+        if (ok) return;
+        console.warn('[PRINT-LABEL] printLabel returned false — falling through to QZ Tray');
+      } else {
+        console.warn('[PRINT-LABEL] No label printer available (no DTPWeb, no BLE) — falling through to QZ Tray');
+      }
+
+      // Fall back to QZ Tray (USB / network label printer)
       const productCode = String(this.selectedProduct.productId).padStart(6, '0');
       const barcodeDataUrl = this.generateBarcodeDataUrl(productCode);
       const html = this.buildLabelHtml(productCode, barcodeDataUrl);
@@ -302,8 +333,8 @@ export class ProductListComponent implements OnInit {
       if (!qz.websocket.isActive()) {
         await qz.websocket.connect({ retries: 2, delay: 500 });
       }
-      const printer = await qz.printers.getDefault();
-      const config = qz.configs.create(printer, {
+      const qzPrinter = await qz.printers.getDefault();
+      const config = qz.configs.create(qzPrinter, {
         size: { width: 2, height: 1 },
         units: 'in',
         scaleContent: false,
@@ -315,12 +346,16 @@ export class ProductListComponent implements OnInit {
       const msg: string = err?.message ?? String(err);
       if (/unable to establish|websocket|connect/i.test(msg)) {
         alert(
-          'QZ Tray is not running.\n\n' +
-          'To enable direct thermal printing:\n' +
-          '1. Download and install QZ Tray from  qz.io\n' +
+          'No label printer connected.\n\n' +
+          'Option 1 — SEZNIK JOSH / DothanTech printer:\n' +
+          '1. Install DTPWeb-Inst on this Windows PC (provided with printer)\n' +
+          '2. Start the DTPWeb service\n' +
+          '3. Click "Print Label" again\n\n' +
+          'Option 2 — Bluetooth: Go to Settings → Label Printer and pair your BLE label printer.\n\n' +
+          'Option 3 — QZ Tray (USB/network):\n' +
+          '1. Download and install QZ Tray from qz.io\n' +
           '2. Start QZ Tray (runs in system tray)\n' +
-          '3. Click "Print Label" again — QZ Tray will ask you to allow this site once\n' +
-          '4. After approving, labels print silently with no dialog'
+          '3. Click "Print Label" again'
         );
       } else {
         alert('Print failed: ' + msg);
@@ -399,19 +434,24 @@ export class ProductListComponent implements OnInit {
     const files = Array.from(input.files);
     input.value = '';
     files.forEach(file => {
-      this.uploadingCount++;
-      const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
-      this.productService.uploadToCloudinary(file).subscribe({
-        next: (res: any) => {
-          const productId = this.selectedProduct?.productId;
-          if (!productId) { this.uploadingCount--; return; }
-          this.productService.saveProductImage(productId, res.secure_url, res.public_id, mediaType).subscribe({
-            next: (img) => { this.productImages.push(img); this.uploadingCount--; },
-            error: (err) => { alert('File saved to cloud but DB failed: ' + (err.error?.message || err.message)); this.uploadingCount--; }
-          });
-        },
-        error: () => { alert('Failed to upload file. Please try again.'); this.uploadingCount--; }
-      });
+      if (file.type.startsWith('image/')) {
+        // Route image uploads through the AI photo workflow
+        this.openAIPhotoWorkflow(this.selectedProduct!, file);
+      } else {
+        // Videos upload directly to Cloudinary
+        this.uploadingCount++;
+        this.productService.uploadToCloudinary(file).subscribe({
+          next: (res: any) => {
+            const productId = this.selectedProduct?.productId;
+            if (!productId) { this.uploadingCount--; return; }
+            this.productService.saveProductImage(productId, res.secure_url, res.public_id, 'video').subscribe({
+              next: (img) => { this.productImages.push(img); this.uploadingCount--; },
+              error: (err) => { alert('File saved but DB failed: ' + (err.error?.message || err.message)); this.uploadingCount--; }
+            });
+          },
+          error: () => { alert('Failed to upload video. Please try again.'); this.uploadingCount--; }
+        });
+      }
     });
   }
 
@@ -424,8 +464,9 @@ export class ProductListComponent implements OnInit {
 
   get isUploading(): boolean { return this.uploadingCount > 0; }
 
-  openAIPhotoWorkflow(product: Product): void {
+  openAIPhotoWorkflow(product: Product, initialFile?: File): void {
     this.aiPhotoProduct = product;
+    this.aiPhotoInitialFile = initialFile;
   }
 
   onAIPhotoSaved(): void {
@@ -440,5 +481,6 @@ export class ProductListComponent implements OnInit {
 
   closeAIPhotoWorkflow(): void {
     this.aiPhotoProduct = null;
+    this.aiPhotoInitialFile = undefined;
   }
 }

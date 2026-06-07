@@ -301,7 +301,7 @@ export class BoutiqueComponent implements OnInit {
 
   async printBill() {
     if (!this.selectedOrder) return;
-    if (this.printer.connected || await this.printer.reconnect()) {
+    if (this.printer.receiptConnected || await this.printer.reconnectReceipt()) {
       const ok = await this.printer.printBoutiqueOrder(this.selectedOrder);
       if (ok) return;
     }

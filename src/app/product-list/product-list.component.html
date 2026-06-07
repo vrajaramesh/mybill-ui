@@ -125,13 +125,13 @@
         <div class="form-group">
           <label for="unit">Unit</label>
           <select id="unit" [(ngModel)]="selectedProduct.unit" name="unit" class="form-input">
-            <option value="Meters">Meters</option>
-            <option value="Pieces">Pieces</option>
+            <option value="MTS">MTS</option>
+            <option value="PCS">PCS</option>
           </select>
         </div>
 
-        <!-- Available Sizes (only for Pieces) -->
-        <div class="form-group span-2" *ngIf="selectedProduct.unit?.toLowerCase() === 'pieces'">
+        <!-- Available Sizes (only for PCS) -->
+        <div class="form-group span-2" *ngIf="selectedProduct.unit === 'PCS'">
           <label>Available Sizes</label>
           <div class="sizes-grid">
             <label *ngFor="let s of standardSizes" class="size-checkbox">
@@ -177,16 +177,8 @@
 
         <!-- Description (full width) -->
         <div class="form-group span-2">
-          <label for="description" class="desc-label-row">
-            Description / HSN Code
-            <button type="button" class="ai-gen-btn"
-                    (click)="generateDescription()"
-                    [disabled]="generatingDesc || !selectedProduct.productName">
-              <span *ngIf="!generatingDesc">✨ Generate with AI</span>
-              <span *ngIf="generatingDesc">Generating...</span>
-            </button>
-          </label>
-          <textarea id="description" [(ngModel)]="selectedProduct.description" name="description" class="form-textarea" placeholder="HSN code or product description"></textarea>
+          <label for="description">Description</label>
+          <textarea id="description" [(ngModel)]="selectedProduct.description" name="description" class="form-textarea" placeholder="Product description"></textarea>
         </div>
 
         <!-- Suitable For (full width) -->
@@ -243,12 +235,6 @@
             </div>
             <div class="no-images" *ngIf="productImages.length === 0 && !isUploading">No media yet</div>
 
-            <!-- AI button (only if isOnline) -->
-            <button *ngIf="selectedProduct.isOnline" type="button" class="upload-btn ai-upload-btn" (click)="openAIPhotoWorkflow(selectedProduct)">
-              ✨ Generate AI Catalog Photos
-            </button>
-            <p *ngIf="selectedProduct.isOnline" class="images-note">Will generate professional catalog photos using AI based on "Suitable For" settings.</p>
-
             <!-- Direct upload (always shown) -->
             <label class="upload-btn" for="mediaUpload">📷 Add Photos / Videos</label>
             <input id="mediaUpload" type="file" accept="image/*,video/*" multiple
@@ -288,6 +274,7 @@
 <app-ai-photo-workflow
   *ngIf="aiPhotoProduct"
   [product]="aiPhotoProduct"
+  [initialFile]="aiPhotoInitialFile"
   (close)="closeAIPhotoWorkflow()"
   (saved)="onAIPhotoSaved()">
 </app-ai-photo-workflow>

@@ -91,10 +91,14 @@ export class ProductService {
     return this.http.delete<void>(`${this.apiUrl}/${productId}/images/${imageId}`);
   }
 
+  reorderProductImages(productId: number, order: { imageId: number; sortOrder: number }[]): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/${productId}/images/reorder`, order);
+  }
+
   // ── AI Photo Generation ─────────────────────────────────────────────────
 
-  generateAIPhotos(productId: number, imageBase64: string, mimeType: string): Observable<string[]> {
-    return this.http.post<string[]>(`${this.apiUrl}/${productId}/ai-photos/generate`, { imageBase64, mimeType });
+  generateAIPhotos(productId: number, imageBase64: string, mimeType: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${productId}/ai-photos/generate`, { imageBase64, mimeType }, { observe: 'response' });
   }
 
   saveAIPhotos(productId: number, imageUrls: string[]): Observable<any[]> {

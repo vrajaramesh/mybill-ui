@@ -27,5 +27,6 @@ export interface ProductImage {
   publicId?: string;
   imageType?: string;
   mediaType?: string;
+  sortOrder?: number;
   createdAt?: string;
 }

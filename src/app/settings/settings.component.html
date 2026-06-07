@@ -85,13 +85,13 @@
       </div>
     </div>
 
-    <!-- ── Thermal Printer ── -->
+    <!-- ── Receipt Printer ── -->
     <div class="settings-card">
       <div class="card-header">
         <span class="card-icon">🖨️</span>
-        <h2 class="card-title">Thermal Printer</h2>
+        <h2 class="card-title">Receipt Printer</h2>
       </div>
-      <p class="card-desc">Pair a Bluetooth thermal printer to print bills directly without a browser dialog.</p>
+      <p class="card-desc">Bluetooth thermal printer for billing receipts and boutique order bills (80 mm roll).</p>
 
       <div *ngIf="!printer.supported" class="notice notice-warn">
         Web Bluetooth is not supported in this browser. Use <strong>Chrome</strong> or <strong>Edge</strong> (desktop) served over HTTPS or localhost.
@@ -99,26 +99,64 @@
 
       <ng-container *ngIf="printer.supported">
         <div class="printer-status-row">
-          <span class="status-dot" [class.connected]="printer.connected"></span>
+          <span class="status-dot" [class.connected]="printer.receiptConnected"></span>
           <span class="status-label">
-            <ng-container *ngIf="printer.connected">
-              Connected &mdash; <strong>{{ printer.deviceName || 'Thermal Printer' }}</strong>
+            <ng-container *ngIf="printer.receiptConnected">
+              Connected &mdash; <strong>{{ printer.receiptDeviceName || 'Receipt Printer' }}</strong>
             </ng-container>
-            <ng-container *ngIf="!printer.connected">Not connected</ng-container>
+            <ng-container *ngIf="!printer.receiptConnected">Not connected</ng-container>
           </span>
         </div>
 
         <div class="printer-actions">
-          <button *ngIf="!printer.connected" class="action-btn primary"
-            (click)="pairPrinter()" [disabled]="printerPairing">
-            {{ printerPairing ? '🔄 Pairing…' : '📡 Pair Printer' }}
+          <button *ngIf="!printer.receiptConnected" class="action-btn primary"
+            (click)="pairReceiptPrinter()" [disabled]="receiptPrinterPairing">
+            {{ receiptPrinterPairing ? '🔄 Pairing…' : '📡 Pair Receipt Printer' }}
           </button>
-          <button *ngIf="printer.connected" class="action-btn danger"
-            (click)="disconnectPrinter()">Disconnect</button>
+          <button *ngIf="printer.receiptConnected" class="action-btn danger"
+            (click)="disconnectReceiptPrinter()">Disconnect</button>
         </div>
 
-        <p class="field-hint" *ngIf="!printer.connected">
-          Turn on your Bluetooth thermal printer, put it in pairing mode, then click Pair Printer.
+        <p class="field-hint" *ngIf="!printer.receiptConnected">
+          Turn on your 80 mm Bluetooth thermal printer, put it in pairing mode, then click Pair.
+        </p>
+      </ng-container>
+    </div>
+
+    <!-- ── Label Printer ── -->
+    <div class="settings-card">
+      <div class="card-header">
+        <span class="card-icon">🏷️</span>
+        <h2 class="card-title">Label Printer</h2>
+      </div>
+      <p class="card-desc">Bluetooth thermal label printer for product price labels (58 mm roll). Used from the Products module.</p>
+
+      <div *ngIf="!printer.supported" class="notice notice-warn">
+        Web Bluetooth is not supported in this browser. Use <strong>Chrome</strong> or <strong>Edge</strong> (desktop) served over HTTPS or localhost.
+      </div>
+
+      <ng-container *ngIf="printer.supported">
+        <div class="printer-status-row">
+          <span class="status-dot" [class.connected]="printer.labelConnected"></span>
+          <span class="status-label">
+            <ng-container *ngIf="printer.labelConnected">
+              Connected &mdash; <strong>{{ printer.labelDeviceName || 'Label Printer' }}</strong>
+            </ng-container>
+            <ng-container *ngIf="!printer.labelConnected">Not connected</ng-container>
+          </span>
+        </div>
+
+        <div class="printer-actions">
+          <button *ngIf="!printer.labelConnected" class="action-btn primary"
+            (click)="pairLabelPrinter()" [disabled]="labelPrinterPairing">
+            {{ labelPrinterPairing ? '🔄 Pairing…' : '📡 Pair Label Printer' }}
+          </button>
+          <button *ngIf="printer.labelConnected" class="action-btn danger"
+            (click)="disconnectLabelPrinter()">Disconnect</button>
+        </div>
+
+        <p class="field-hint" *ngIf="!printer.labelConnected">
+          Turn on your 58 mm Bluetooth label printer, put it in pairing mode, then click Pair.
         </p>
       </ng-container>
     </div>

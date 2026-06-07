@@ -17,16 +17,11 @@
     <!-- Stage: Upload -->
     <div *ngIf="stage === 'upload'" class="stage-upload">
       <div class="upload-info">
-        <p>Upload a reference photo of the product. The AI will analyze it and generate
-           <strong>4 professional catalog photos</strong> tailored to the
-           <strong>{{ product.category?.categoryName || 'product' }}</strong> category.</p>
-        <ul class="style-list">
-          <li>📷 Display / flat lay shot</li>
-          <li>☀️ Day wear on model</li>
-          <li>🌙 Evening / festive look</li>
-          <li>🔍 Fabric / detail close-up</li>
+        <p>Upload a fabric photo. AI will generate professional catalog photos for each garment type.</p>
+        <ul class="style-list" *ngIf="product.suitableFor">
+          <li *ngFor="let use of product.suitableFor!.split(',')">👗 {{ use.trim() }}</li>
         </ul>
-        <p class="time-note">⏱ Generation takes approximately 30–60 seconds.</p>
+        <p class="time-note">📸 Photos generate in the background — you can close this and move on to the next product immediately.</p>
       </div>
       <label class="upload-drop-zone" for="aiFileInput">
         <span class="drop-icon">📸</span>
@@ -37,57 +32,11 @@
              (change)="onFileSelected($event)" class="hidden-input">
     </div>
 
-    <!-- Stage: Analyzing -->
-    <div *ngIf="stage === 'analyzing'" class="stage-progress">
-      <div class="progress-spinner"></div>
-      <div class="progress-label">Analyzing your product photo with GPT-4o...</div>
-      <div class="progress-sub">Reading fabric, color, pattern and design details</div>
-    </div>
-
-    <!-- Stage: Generating -->
-    <div *ngIf="stage === 'generating'" class="stage-progress">
-      <div class="progress-spinner"></div>
-      <div class="progress-label">Generating 4 catalog photos with DALL-E 3...</div>
-      <div class="progress-sub">Creating display shot · day wear · evening look · detail shot</div>
-      <div class="progress-dots">
-        <span class="dot d1"></span>
-        <span class="dot d2"></span>
-        <span class="dot d3"></span>
-        <span class="dot d4"></span>
-      </div>
-    </div>
-
-    <!-- Stage: Review -->
-    <div *ngIf="stage === 'review'" class="stage-review">
-      <p class="review-hint">Drag photos to reorder. The order here is the order they'll appear on the product.</p>
-      <div class="photo-grid">
-        <div *ngFor="let url of orderedUrls; let i = index"
-             class="photo-card"
-             draggable="true"
-             (dragstart)="onDragStart(i)"
-             (dragover)="onDragOver($event)"
-             (drop)="onDrop(i)">
-          <div class="photo-badge">{{ i + 1 }}</div>
-          <img [src]="url" [alt]="'AI photo ' + (i+1)">
-          <div class="photo-label">{{ photoLabel(i) }}</div>
-        </div>
-      </div>
-      <div class="review-actions">
-        <button class="btn-secondary" (click)="regenerate()">↺ Regenerate</button>
-        <button class="btn-primary" (click)="save()">Save {{ orderedUrls.length }} Photos to Product</button>
-      </div>
-    </div>
-
-    <!-- Stage: Saving -->
-    <div *ngIf="stage === 'saving'" class="stage-progress">
-      <div class="progress-spinner"></div>
-      <div class="progress-label">Saving photos to product...</div>
-    </div>
-
     <!-- Stage: Done -->
     <div *ngIf="stage === 'done'" class="stage-done">
       <div class="done-icon">✅</div>
-      <div class="done-label">Photos saved successfully!</div>
+      <div class="done-label">Photo uploaded successfully!</div>
+      <div class="done-sub">AI is generating catalog photos in the background. They will appear in the product gallery automatically.</div>
     </div>
 
   </div>

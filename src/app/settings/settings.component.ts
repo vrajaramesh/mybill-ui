@@ -32,7 +32,8 @@ export class SettingsComponent implements OnInit {
   addressSaved = false;
   logoSaved    = false;
   waSaved      = false;
-  printerPairing = false;
+  receiptPrinterPairing = false;
+  labelPrinterPairing   = false;
 
   constructor(
     private settings: SettingsService,
@@ -118,19 +119,36 @@ export class SettingsComponent implements OnInit {
     this.settings.clearLogo();
   }
 
-  async pairPrinter(): Promise<void> {
+  private _checkBt(): boolean {
     if (!this.printer.supported) {
       alert('Web Bluetooth is not supported.\nUse Chrome or Edge over HTTPS / localhost.');
-      return;
+      return false;
     }
-    this.printerPairing = true;
-    const ok = await this.printer.pair();
-    this.printerPairing = false;
-    if (!ok) alert('Could not connect to printer.\nMake sure your Bluetooth thermal printer is powered on and in pairing mode.');
+    return true;
   }
 
-  disconnectPrinter(): void {
-    this.printer.disconnect();
+  async pairReceiptPrinter(): Promise<void> {
+    if (!this._checkBt()) return;
+    this.receiptPrinterPairing = true;
+    const err = await this.printer.pairReceipt();
+    this.receiptPrinterPairing = false;
+    if (err) alert(err);
+  }
+
+  disconnectReceiptPrinter(): void {
+    this.printer.disconnectReceipt();
+  }
+
+  async pairLabelPrinter(): Promise<void> {
+    if (!this._checkBt()) return;
+    this.labelPrinterPairing = true;
+    const err = await this.printer.pairLabel();
+    this.labelPrinterPairing = false;
+    if (err) alert(err);
+  }
+
+  disconnectLabelPrinter(): void {
+    this.printer.disconnectLabel();
   }
 
   saveWaApi(): void {

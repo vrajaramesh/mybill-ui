@@ -32,7 +32,9 @@
             "styles": [
               "src/styles.css"
             ],
-            "scripts": []
+            "scripts": [
+              "src/assets/dtpweb.js"
+            ]
           },
           "configurations": {
             "production": {

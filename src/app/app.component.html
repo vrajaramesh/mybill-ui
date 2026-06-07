@@ -87,6 +87,16 @@
             <span class="nav-icon">🖼️</span>
             <span class="nav-label">Media Upload</span>
           </div>
+          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='ai-config'"
+               (click)="navigate('products','ai-config')">
+            <span class="nav-icon">✨</span>
+            <span class="nav-label">AI Image Config</span>
+          </div>
+          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='ecom-coverage'"
+               (click)="navigate('products','ecom-coverage')">
+            <span class="nav-icon">📸</span>
+            <span class="nav-label">Ecom Coverage</span>
+          </div>
         </div>
       </div>
 
@@ -154,6 +164,15 @@
         </div>
       </div>
 
+      <!-- Hermes Marketing -->
+      <div class="nav-group" *ngIf="!isSales">
+        <div class="nav-item parent" [class.active]="activeMenu==='hermes'"
+             (click)="navigate('hermes')">
+          <span class="nav-icon">&#9889;</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Hermes Marketing</span>
+        </div>
+      </div>
+
       <!-- Settings -->
       <div class="nav-group">
         <div class="nav-item parent" [class.active]="activeMenu==='settings'"
@@ -197,6 +216,8 @@
     <app-product-list        *ngIf="activeSection==='products'"></app-product-list>
     <app-product-category    *ngIf="activeSection==='categories'"></app-product-category>
     <app-product-media       *ngIf="activeSection==='media'"></app-product-media>
+    <app-ai-config           *ngIf="activeSection==='ai-config'"></app-ai-config>
+    <app-ecom-coverage       *ngIf="activeSection==='ecom-coverage'"></app-ecom-coverage>
     <app-purchase-list   *ngIf="activeSection==='purchases'"></app-purchase-list>
     <app-gst-report      *ngIf="activeSection==='gst-report'"></app-gst-report>
     <app-reports         *ngIf="activeSection==='reports'"></app-reports>
@@ -205,6 +226,7 @@
     <app-user-management *ngIf="activeSection==='users'"></app-user-management>
     <app-ecom-orders     *ngIf="activeSection==='ecom-orders'" (click)="loadNewOrderCount()"></app-ecom-orders>
     <app-settings        *ngIf="activeSection==='settings'"></app-settings>
+    <app-hermes          *ngIf="activeSection==='hermes'"></app-hermes>
   </main>
 
   </div><!-- /.app-layout -->

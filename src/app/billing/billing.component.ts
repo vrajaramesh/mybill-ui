@@ -703,7 +703,7 @@ export class BillingComponent implements OnInit, OnChanges {
 
   private async _doPrint(bill: Bill): Promise<void> {
     // Try BLE thermal printer first
-    if (this.printer.connected || await this.printer.reconnect()) {
+    if (this.printer.receiptConnected || await this.printer.reconnectReceipt()) {
       const ok = await this.printer.printReceipt(bill);
       if (ok) return;
     }
