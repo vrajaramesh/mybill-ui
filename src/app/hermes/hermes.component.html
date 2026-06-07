@@ -1,0 +1,248 @@
+<div class="hermes-root">
+
+  <!-- Header -->
+  <div class="hermes-header">
+    <div class="hermes-title">
+      <span class="hermes-icon">&#9889;</span>
+      <div>
+        <h2>Hermes Marketing</h2>
+        <p>Scheduled content generation, campaigns &amp; WhatsApp broadcasts</p>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-chip">
+        <span class="stat-num">{{ stats.contentGenerated }}</span>
+        <span class="stat-lbl">Content Generated</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-num">{{ stats.campaignsSent }}</span>
+        <span class="stat-lbl">Campaigns Sent</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-num">{{ stats.totalMessagesSent }}</span>
+        <span class="stat-lbl">Messages Sent</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-num">{{ stats.activeContacts }}</span>
+        <span class="stat-lbl">Active Contacts</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn" [class.active]="activeTab==='content'" (click)="selectTab('content')">
+      Product Content
+    </button>
+    <button class="tab-btn" [class.active]="activeTab==='campaigns'" (click)="selectTab('campaigns')">
+      Campaigns
+    </button>
+    <button class="tab-btn" [class.active]="activeTab==='contacts'" (click)="selectTab('contacts')">
+      Contacts ({{ stats.activeContacts }})
+    </button>
+  </div>
+
+  <div class="error-banner" *ngIf="error">{{ error }}</div>
+  <div class="loading-bar" *ngIf="loading">Loading...</div>
+
+  <!-- ── Tab: Product Content ─────────────────────────────────────────────── -->
+  <div *ngIf="activeTab==='content'" class="tab-content">
+
+    <div class="section-hint">
+      Hermes auto-generates marketing copy when a product is saved.
+      Click <strong>Regenerate</strong> to refresh content for any product.
+    </div>
+
+    <div class="content-grid">
+      <div class="content-card" *ngFor="let c of contents">
+
+        <div class="card-top">
+          <img *ngIf="c.imageUrl" [src]="c.imageUrl" class="product-thumb" alt="">
+          <div class="product-thumb placeholder" *ngIf="!c.imageUrl">?</div>
+          <div class="card-meta">
+            <div class="product-name">{{ c.productName }}</div>
+            <div class="product-price" *ngIf="c.sellingPrice">&#8377;{{ c.sellingPrice }}/m</div>
+            <div class="generated-at" *ngIf="c.generatedAt">
+              Generated {{ c.generatedAt | date:'dd MMM, h:mm a' }}
+            </div>
+            <div class="generated-at no-content" *ngIf="!c.instagramCaption">
+              No content yet
+            </div>
+          </div>
+          <button class="regen-btn" (click)="regenerate(c.productId)"
+                  [disabled]="isRegenrating(c.productId)">
+            <span *ngIf="!isRegenrating(c.productId)">&#8635; Regenerate</span>
+            <span *ngIf="isRegenrating(c.productId)">Generating...</span>
+          </button>
+          <button class="expand-btn" (click)="toggleExpand(c.productId)">
+            {{ expandedId === c.productId ? '&#9650;' : '&#9660;' }}
+          </button>
+        </div>
+
+        <div class="card-detail" *ngIf="expandedId === c.productId && c.instagramCaption">
+
+          <div class="content-block">
+            <div class="content-label">
+              Instagram Caption
+              <button class="copy-btn" (click)="copyText(c.instagramCaption, c.productId * 1)">
+                {{ copiedId === c.productId * 1 ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+            <div class="content-text">{{ c.instagramCaption }}</div>
+          </div>
+
+          <div class="content-block">
+            <div class="content-label">
+              WhatsApp Text
+              <button class="copy-btn" (click)="copyText(c.whatsappText, c.productId * 10)">
+                {{ copiedId === c.productId * 10 ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+            <div class="content-text">{{ c.whatsappText }}</div>
+          </div>
+
+          <div class="content-block">
+            <div class="content-label">
+              Hashtags
+              <button class="copy-btn" (click)="copyText(c.hashtags, c.productId * 100)">
+                {{ copiedId === c.productId * 100 ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+            <div class="content-text hashtags">{{ c.hashtags }}</div>
+          </div>
+
+          <div class="content-block">
+            <div class="content-label">
+              SEO Description
+              <button class="copy-btn" (click)="copyText(c.seoDescription, c.productId * 1000)">
+                {{ copiedId === c.productId * 1000 ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+            <div class="content-text">{{ c.seoDescription }}</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="empty-state" *ngIf="!loading && contents.length === 0">
+        No products yet. Add products and Hermes will auto-generate content.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Campaigns ───────────────────────────────────────────────────── -->
+  <div *ngIf="activeTab==='campaigns'" class="tab-content">
+
+    <!-- Manual broadcast form -->
+    <div class="broadcast-form">
+      <h3>Send Broadcast Now</h3>
+      <div class="form-row">
+        <textarea [(ngModel)]="broadcastCaption" placeholder="Broadcast message / caption..."
+                  class="broadcast-caption" rows="3"></textarea>
+      </div>
+      <div class="form-row">
+        <input type="text" [(ngModel)]="broadcastImageUrl" placeholder="Image URL (optional — Cloudinary URL)"
+               class="broadcast-url">
+      </div>
+      <div class="form-actions">
+        <button class="send-btn" (click)="sendBroadcast()"
+                [disabled]="broadcastSending || !broadcastCaption.trim()">
+          {{ broadcastSending ? 'Sending...' : 'Send to All Contacts' }}
+        </button>
+        <span class="broadcast-result" *ngIf="broadcastResult">{{ broadcastResult }}</span>
+      </div>
+      <div class="broadcast-hint">
+        Sends to all opted-in contacts. Scheduled campaigns run automatically every Monday 9am.
+      </div>
+    </div>
+
+    <!-- Campaign history -->
+    <h3 class="section-title">Campaign History</h3>
+    <div class="campaigns-table-wrap">
+      <table class="campaigns-table" *ngIf="campaigns.length > 0">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Caption</th>
+            <th>Channel</th>
+            <th>Status</th>
+            <th>Sent</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of campaigns">
+            <td><span class="type-badge">{{ campaignLabel(c.campaignType) }}</span></td>
+            <td class="caption-cell">{{ c.caption | slice:0:80 }}{{ (c.caption?.length ?? 0) > 80 ? '...' : '' }}</td>
+            <td>{{ c.channel }}</td>
+            <td><span class="status-badge" [ngClass]="statusClass(c.status)">{{ c.status }}</span></td>
+            <td>{{ c.sentCount }} / {{ c.sentCount + c.failedCount }}</td>
+            <td>{{ c.createdAt | date:'dd MMM' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="empty-state" *ngIf="!loading && campaigns.length === 0">
+        No campaigns yet. Send your first broadcast above.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Contacts ────────────────────────────────────────────────────── -->
+  <div *ngIf="activeTab==='contacts'" class="tab-content">
+
+    <!-- Add contact form -->
+    <div class="add-contact-form">
+      <h3>Add Broadcast Contact</h3>
+      <div class="add-contact-row">
+        <input type="text" [(ngModel)]="newPhone" placeholder="Phone (e.g. 919876543210)"
+               class="contact-input">
+        <input type="text" [(ngModel)]="newName" placeholder="Name (optional)"
+               class="contact-input">
+        <button class="add-btn" (click)="addContact()" [disabled]="!newPhone.trim()">Add</button>
+      </div>
+      <div class="contact-hint">
+        Include country code, no spaces or +. Example: 919876543210 for an Indian number.
+      </div>
+    </div>
+
+    <!-- Contacts list -->
+    <div class="contacts-table-wrap">
+      <table class="contacts-table" *ngIf="contacts.length > 0">
+        <thead>
+          <tr>
+            <th>Phone</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Added By</th>
+            <th>Last Messaged</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of contacts" [class.opted-out]="!c.optedIn">
+            <td>{{ c.phone }}</td>
+            <td>{{ c.customerName || '—' }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="c.optedIn ? 'badge-sent' : 'badge-failed'">
+                {{ c.optedIn ? 'Active' : 'Opted Out' }}
+              </span>
+            </td>
+            <td>{{ c.addedBy }}</td>
+            <td>{{ c.lastMessaged ? (c.lastMessaged | date:'dd MMM') : '—' }}</td>
+            <td>
+              <button class="remove-btn" (click)="removeContact(c.id)" *ngIf="c.optedIn">
+                Opt Out
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="empty-state" *ngIf="!loading && contacts.length === 0">
+        No contacts yet. Add phone numbers to start broadcasting.
+      </div>
+    </div>
+  </div>
+
+</div>

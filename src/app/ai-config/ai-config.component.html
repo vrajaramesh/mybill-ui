@@ -1,0 +1,263 @@
+<div class="ai-config-page">
+
+  <div class="page-header">
+    <h2>AI Image Config</h2>
+    <p class="page-desc">Configure generation prompts and model references used when fabric images are uploaded to a product.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn" [class.active]="activeTab === 'prompts'" (click)="setTab('prompts')">
+      Generation Prompts
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'models'" (click)="setTab('models')">
+      Model Gallery
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'firm-map'" (click)="setTab('firm-map')">
+      Firm Image Map
+    </button>
+  </div>
+
+  <!-- ── PROMPTS TAB ─────────────────────────────────────────────────────── -->
+  <div *ngIf="activeTab === 'prompts'" class="tab-content">
+
+    <div class="section-header">
+      <h3>Generation Prompts</h3>
+      <p class="section-desc">
+        One prompt per <em>Suitable For</em> value (garment type). Optionally restrict it to a specific fabric category.
+        When a fabric photo is uploaded, the matching prompt is sent to DALL-E 3 along with the fabric description.
+      </p>
+      <button class="btn-add" (click)="startAddPrompt()">+ Add Prompt</button>
+    </div>
+
+    <div class="error-msg" *ngIf="promptError">{{ promptError }}</div>
+
+    <!-- Inline form (add / edit) -->
+    <div class="inline-form" *ngIf="showPromptForm">
+      <div class="form-row">
+        <h4>{{ editingPrompt ? 'Edit Prompt — ' + editingPrompt.suitableFor : 'New Prompt' }}</h4>
+      </div>
+
+      <div class="form-row">
+        <label>Suitable For *</label>
+        <select [(ngModel)]="promptForm.suitableFor" class="form-select">
+          <option value="">Select garment type...</option>
+          <option *ngFor="let g of garmentOptions" [value]="g">{{ g }}</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>Category <span class="optional">(optional — leave blank to match any category)</span></label>
+        <input type="text" [(ngModel)]="promptForm.category" placeholder="e.g. Cotton, Silk, Polyester"
+               class="form-input">
+      </div>
+
+      <div class="form-row">
+        <label>Prompt *</label>
+        <textarea [(ngModel)]="promptForm.prompt" rows="5" class="form-textarea"
+          placeholder="Ultra-realistic 8K Indian fashion catalog photo. Show [model name] wearing the fabric stitched as a [garment]..."></textarea>
+        <p class="field-hint">The fabric analysis description will be appended automatically.</p>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-save" (click)="savePrompt()" [disabled]="promptSaving">
+          {{ promptSaving ? 'Saving...' : 'Save' }}
+        </button>
+        <button class="btn-cancel" (click)="cancelPrompt()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="config-table-wrap" *ngIf="prompts.length > 0">
+      <table class="config-table">
+        <thead>
+          <tr>
+            <th>Garment Type</th>
+            <th>Category Filter</th>
+            <th>Prompt (preview)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of prompts">
+            <td><span class="badge-garment">{{ p.suitableFor }}</span></td>
+            <td>{{ p.category || '— any —' }}</td>
+            <td class="prompt-preview">{{ p.prompt | slice:0:120 }}{{ p.prompt.length > 120 ? '…' : '' }}</td>
+            <td class="action-cell">
+              <button class="btn-icon" (click)="startEditPrompt(p)" title="Edit">✏️</button>
+              <button class="btn-icon danger" (click)="deletePrompt(p)" title="Delete">🗑</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" *ngIf="prompts.length === 0">
+      No prompts configured yet. Add one above to start using DB-driven AI generation.
+    </div>
+  </div>
+
+  <!-- ── MODELS TAB ──────────────────────────────────────────────────────── -->
+  <div *ngIf="activeTab === 'models'" class="tab-content">
+
+    <div class="section-header">
+      <h3>Model Gallery</h3>
+      <p class="section-desc">
+        One model photo per garment type. When the fabric photo is uploaded, the model's photo is sent
+        alongside the fabric to GPT-4o so the generated image shows <em>that specific model</em>
+        wearing the fabric.
+      </p>
+      <button class="btn-add" (click)="startAddModel()">+ Add Model</button>
+    </div>
+
+    <div class="error-msg" *ngIf="modelError">{{ modelError }}</div>
+
+    <!-- Inline form -->
+    <div class="inline-form" *ngIf="showModelForm">
+      <div class="form-row">
+        <h4>{{ editingModel ? 'Edit Model — ' + editingModel.garmentType : 'New Model' }}</h4>
+      </div>
+
+      <div class="form-row two-col">
+        <div>
+          <label>Garment Type *</label>
+          <select [(ngModel)]="modelForm.garmentType" class="form-select">
+            <option value="">Select garment type...</option>
+            <option *ngFor="let g of garmentOptions" [value]="g">{{ g }}</option>
+          </select>
+        </div>
+        <div>
+          <label>Model Name <span class="optional">(for your reference)</span></label>
+          <input type="text" [(ngModel)]="modelForm.modelName" placeholder="e.g. Priya" class="form-input">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Model Photo *</label>
+
+        <!-- Preview + change button when image exists -->
+        <div class="model-upload-area" *ngIf="modelPreviewUrl; else uploadZone">
+          <div class="model-upload-preview">
+            <img [src]="modelPreviewUrl" alt="Model preview" class="model-upload-img">
+            <div class="model-upload-overlay">
+              <label class="btn-change-photo" for="modelImageInput">
+                {{ modelUploading ? 'Uploading…' : 'Change Photo' }}
+              </label>
+            </div>
+          </div>
+          <p class="field-hint" *ngIf="modelUploading">Uploading to cloud storage…</p>
+          <p class="field-hint" *ngIf="!modelUploading && modelForm.modelImageUrl">Saved to cloud storage.</p>
+        </div>
+
+        <!-- Empty upload zone -->
+        <ng-template #uploadZone>
+          <label class="model-drop-zone" for="modelImageInput" [class.uploading]="modelUploading">
+            <span class="drop-icon" *ngIf="!modelUploading">📸</span>
+            <span class="drop-spinner" *ngIf="modelUploading"></span>
+            <span>{{ modelUploading ? 'Uploading…' : 'Click to upload model photo' }}</span>
+            <span class="drop-sub" *ngIf="!modelUploading">JPG, PNG, WEBP</span>
+          </label>
+        </ng-template>
+
+        <input id="modelImageInput" type="file" accept="image/jpeg,image/png,image/webp"
+               (change)="onModelImageSelected($event)" class="hidden-file-input">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-save" (click)="saveModel()" [disabled]="modelSaving || modelUploading">
+          {{ modelSaving ? 'Saving...' : 'Save' }}
+        </button>
+        <button class="btn-cancel" (click)="cancelModel()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Model cards -->
+    <div class="model-cards" *ngIf="models.length > 0">
+      <div class="model-card" *ngFor="let m of models">
+        <img [src]="m.modelImageUrl" [alt]="m.garmentType" class="model-card-img"
+             (error)="$any($event.target).src = ''">
+        <div class="model-card-info">
+          <div class="model-card-garment">{{ m.garmentType }}</div>
+          <div class="model-card-name" *ngIf="m.modelName">{{ m.modelName }}</div>
+        </div>
+        <div class="model-card-actions">
+          <button class="btn-icon" (click)="startEditModel(m)" title="Edit">✏️</button>
+          <button class="btn-icon danger" (click)="deleteModel(m)" title="Delete">🗑</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="models.length === 0">
+      No model photos configured yet. Add one to enable model-fabric composite generation.
+    </div>
+  </div>
+
+  <!-- ── FIRM IMAGE MAP TAB ──────────────────────────────────────────────── -->
+  <div *ngIf="activeTab === 'firm-map'" class="tab-content">
+
+    <div class="section-header">
+      <h3>Firm Image Map</h3>
+      <p class="section-desc">
+        Copy product images from <strong>firm_srihitha</strong> to a product in this firm — no duplicate
+        image files are created, only the Cloudinary URLs are referenced. Useful when both firms sell
+        the same fabric and one firm's photos are already AI-generated.
+      </p>
+    </div>
+
+    <div class="error-msg" *ngIf="firmMapError">{{ firmMapError }}</div>
+    <div class="success-msg" *ngIf="firmMapSuccess">✅ {{ firmMapSuccess }}</div>
+
+    <div class="firm-map-form">
+
+      <!-- Source firm -->
+      <div class="firm-map-section">
+        <label class="fm-label">Source Firm</label>
+        <select [(ngModel)]="sourceFirmCode" class="form-select fm-select">
+          <option value="srihitha">Srihitha</option>
+          <option value="srisa">Srisa</option>
+        </select>
+        <button class="btn-load" (click)="loadSourceProducts()">Load Products</button>
+      </div>
+
+      <div class="firm-map-section" *ngIf="sourceProducts.length > 0">
+        <label class="fm-label">Source Product (from {{ sourceFirmCode }})</label>
+        <input type="text" [(ngModel)]="sourceSearchTerm" placeholder="Search by name or ID..."
+               class="form-input fm-search">
+        <div class="product-list-scroll">
+          <div class="product-radio-item" *ngFor="let p of filteredSourceProducts"
+               [class.selected]="sourceProductId === p.productId"
+               (click)="sourceProductId = p.productId!">
+            <span class="p-id">#{{ p.productId }}</span>
+            <span class="p-name">{{ p.productName }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Target product (current firm) -->
+      <div class="firm-map-section">
+        <label class="fm-label">Target Product (this firm)</label>
+        <input type="text" [(ngModel)]="targetSearchTerm" placeholder="Search by name or ID..."
+               class="form-input fm-search">
+        <div class="product-list-scroll">
+          <div class="product-radio-item" *ngFor="let p of filteredTargetProducts"
+               [class.selected]="targetProductId === p.productId"
+               (click)="targetProductId = p.productId!">
+            <span class="p-id">#{{ p.productId }}</span>
+            <span class="p-name">{{ p.productName }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fm-summary" *ngIf="sourceProductId && targetProductId">
+        Copy images of product <strong>#{{ sourceProductId }}</strong> from <em>{{ sourceFirmCode }}</em>
+        → product <strong>#{{ targetProductId }}</strong> in this firm.
+      </div>
+
+      <button class="btn-copy" (click)="copyImages()" [disabled]="firmMapBusy || !sourceProductId || !targetProductId">
+        {{ firmMapBusy ? 'Copying...' : 'Copy Images' }}
+      </button>
+    </div>
+
+  </div>
+
+</div>
