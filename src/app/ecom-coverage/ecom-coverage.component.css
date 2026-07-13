@@ -64,6 +64,7 @@
 .summary-card.danger  { background: #fef2f2; color: #dc2626; }
 .summary-card.warning { background: #fffbeb; color: #d97706; }
 .summary-card.success { background: #f0fdf4; color: #16a34a; }
+.summary-card.info    { background: #eff6ff; color: #2563eb; }
 .card-num   { font-size: 2rem; font-weight: 800; line-height: 1; }
 .card-label { font-size: 0.78rem; margin-top: 4px; font-weight: 600; }
 

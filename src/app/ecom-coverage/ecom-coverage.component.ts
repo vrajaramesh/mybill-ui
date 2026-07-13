@@ -451,10 +451,11 @@ export class EcomCoverageComponent implements OnInit {
 
   // ── Summary counts ──────────────────────────────────────────────────────────
 
-  get totalCount(): number    { return this.rows.length; }
-  get noneCount(): number     { return this.rows.filter(r => r.status === 'none').length; }
-  get partialCount(): number  { return this.rows.filter(r => r.status === 'partial').length; }
-  get goodCount(): number     { return this.rows.filter(r => r.status === 'good').length; }
+  get totalCount(): number      { return this.rows.length; }
+  get noneCount(): number       { return this.rows.filter(r => r.status === 'none').length; }
+  get partialCount(): number    { return this.rows.filter(r => r.status === 'partial').length; }
+  get goodCount(): number       { return this.rows.filter(r => r.status === 'good').length; }
+  get totalImageCount(): number { return this.rows.reduce((sum, r) => sum + r.imageCount, 0); }
 
   get progressPct(): number {
     return this.totalToLoad ? Math.round(this.loadedCount / this.totalToLoad * 100) : 0;
