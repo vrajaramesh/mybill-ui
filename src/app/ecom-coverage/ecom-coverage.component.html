@@ -165,6 +165,7 @@
                           ⬇
                         </button>
                         <button class="thumb-btn delete-btn"
+                                *ngIf="!isEcom"
                                 title="Delete"
                                 (click)="deleteImage(row, img)">
                           ✕

@@ -42,7 +42,7 @@
     <nav class="sidebar-nav">
 
       <!-- Billing -->
-      <div class="nav-group">
+      <div class="nav-group" *ngIf="!isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='billing'"
              (click)="toggleMenu('billing'); navigate('billing', activeSubMenu || 'transactions')">
           <span class="nav-icon">🧾</span>
@@ -72,27 +72,27 @@
           <span class="arrow" *ngIf="!sidebarCollapsed">{{ isMenuExpanded('products') ? '▾' : '▸' }}</span>
         </div>
         <div class="submenu" *ngIf="!sidebarCollapsed && isMenuExpanded('products')">
-          <div class="nav-item sub" [class.active]="activeMenu==='products' && activeSubMenu==='list'"
+          <div class="nav-item sub" *ngIf="!isEcom" [class.active]="activeMenu==='products' && activeSubMenu==='list'"
                (click)="navigate('products','list')">
             <span class="nav-icon">📋</span>
             <span class="nav-label">Product List</span>
           </div>
-          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='categories'"
+          <div class="nav-item sub" *ngIf="!isSales && !isEcom" [class.active]="activeMenu==='products' && activeSubMenu==='categories'"
                (click)="navigate('products','categories')">
             <span class="nav-icon">🏷️</span>
             <span class="nav-label">Categories</span>
           </div>
-          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='media'"
+          <div class="nav-item sub" *ngIf="!isSales && !isEcom" [class.active]="activeMenu==='products' && activeSubMenu==='media'"
                (click)="navigate('products','media')">
             <span class="nav-icon">🖼️</span>
             <span class="nav-label">Media Upload</span>
           </div>
-          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='ai-config'"
+          <div class="nav-item sub" *ngIf="!isSales && !isEcom" [class.active]="activeMenu==='products' && activeSubMenu==='ai-config'"
                (click)="navigate('products','ai-config')">
             <span class="nav-icon">✨</span>
             <span class="nav-label">AI Image Config</span>
           </div>
-          <div class="nav-item sub" *ngIf="!isSales" [class.active]="activeMenu==='products' && activeSubMenu==='ecom-coverage'"
+          <div class="nav-item sub" *ngIf="!isSales || isEcom" [class.active]="activeMenu==='products' && activeSubMenu==='ecom-coverage'"
                (click)="navigate('products','ecom-coverage')">
             <span class="nav-icon">📸</span>
             <span class="nav-label">Ecom Coverage</span>
@@ -101,7 +101,7 @@
       </div>
 
       <!-- Purchases -->
-      <div class="nav-group" *ngIf="!isSales">
+      <div class="nav-group" *ngIf="!isSales && !isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='purchases'"
              (click)="navigate('purchases')">
           <span class="nav-icon">🛒</span>
@@ -110,7 +110,7 @@
       </div>
 
       <!-- Reports -->
-      <div class="nav-group">
+      <div class="nav-group" *ngIf="!isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='reports'"
              (click)="toggleMenu('reports'); navigate('reports', activeSubMenu || 'sales')">
           <span class="nav-icon">📈</span>
@@ -137,7 +137,7 @@
       </div>
 
       <!-- Boutique -->
-      <div class="nav-group" *ngIf="!isSales">
+      <div class="nav-group" *ngIf="!isSales && !isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='boutique'"
              (click)="navigate('boutique')">
           <span class="nav-icon">&#9986;</span>
@@ -146,7 +146,7 @@
       </div>
 
       <!-- Users (admin only) -->
-      <div class="nav-group" *ngIf="isAdmin">
+      <div class="nav-group" *ngIf="isAdmin && !isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='users'"
              (click)="navigate('users')">
           <span class="nav-icon">👥</span>
@@ -155,7 +155,7 @@
       </div>
 
       <!-- Online Orders -->
-      <div class="nav-group" *ngIf="!isSales">
+      <div class="nav-group" *ngIf="!isSales && !isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='ecom-orders'"
              (click)="navigate('ecom-orders')">
           <span class="nav-icon">🛍️</span>
@@ -165,7 +165,7 @@
       </div>
 
       <!-- Hermes Marketing -->
-      <div class="nav-group" *ngIf="!isSales">
+      <div class="nav-group" *ngIf="!isSales && !isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='hermes'"
              (click)="navigate('hermes')">
           <span class="nav-icon">&#9889;</span>
@@ -174,7 +174,7 @@
       </div>
 
       <!-- Settings -->
-      <div class="nav-group">
+      <div class="nav-group" *ngIf="!isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='settings'"
              (click)="navigate('settings')">
           <span class="nav-icon">⚙️</span>

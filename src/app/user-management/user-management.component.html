@@ -3,8 +3,9 @@
   <div class="page-header">
     <h1 class="page-title">User Management</h1>
     <div class="header-actions">
-      <button class="btn-primary" (click)="activeTab === 'sales' ? openCreateSalesModal() : openCreateAdminModal()">
-        + {{ activeTab === 'sales' ? 'Add Sales User' : 'Add Admin' }}
+      <button class="btn-primary"
+              (click)="activeTab === 'sales' ? openCreateSalesModal() : activeTab === 'ecom' ? openCreateEcomModal() : openCreateAdminModal()">
+        + {{ activeTab === 'sales' ? 'Add Sales User' : activeTab === 'ecom' ? 'Add Ecom User' : 'Add Admin' }}
       </button>
     </div>
   </div>
@@ -13,6 +14,9 @@
   <div class="tabs-row">
     <button class="tab-btn" [class.active]="activeTab === 'sales'" (click)="activeTab = 'sales'">
       Sales Users
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'ecom'" (click)="activeTab = 'ecom'; loadEcomUsers()">
+      Ecom Users
     </button>
     <button class="tab-btn" *ngIf="isSuperadmin" [class.active]="activeTab === 'admins'" (click)="activeTab = 'admins'">
       Admin Users
@@ -94,6 +98,59 @@
           </tr>
           <tr *ngIf="salesUsers.length === 0 && !salesLoading">
             <td colspan="5" class="empty-state">No users found. Click "+ Add Sales User" to create one.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════ ECOM USERS TAB ══════════════════ -->
+  <div *ngIf="activeTab === 'ecom'">
+    <div class="alert alert-error" *ngIf="ecomError">
+      {{ ecomError }} <button class="alert-close" (click)="ecomError=''">×</button>
+    </div>
+    <div class="loading-state" *ngIf="ecomLoading">Loading Ecom users...</div>
+    <div class="table-card" *ngIf="!ecomLoading">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Contact</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of ecomUsers" [class.inactive-row]="!u.is_active">
+            <td>
+              <div class="user-cell">
+                <div class="avatar">{{ initials(u.full_name || u.username) }}</div>
+                <div>
+                  <div class="user-fullname">{{ u.full_name || '—' }}</div>
+                  <div class="user-username">&#64;{{ u.username }}</div>
+                  <div class="role-chip role-chip-ecom">ECOM</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="contact-cell">
+                <div *ngIf="u.email">{{ u.email }}</div>
+                <div *ngIf="u.phone" class="contact-phone">{{ u.phone }}</div>
+                <div *ngIf="!u.email && !u.phone" class="no-contact">—</div>
+              </div>
+            </td>
+            <td>
+              <label class="toggle-switch">
+                <input type="checkbox" [checked]="u.is_active" (change)="toggleEcomStatus(u)">
+                <span class="toggle-slider"></span>
+              </label>
+            </td>
+            <td>
+              <span class="muted-text">Ecom Coverage only · No delete</span>
+            </td>
+          </tr>
+          <tr *ngIf="ecomUsers.length === 0">
+            <td colspan="4" class="empty-state">No Ecom users yet. Click "+ Add Ecom User" to create one.</td>
           </tr>
         </tbody>
       </table>
@@ -362,6 +419,50 @@
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
       <button class="btn-danger" (click)="doDelete()">Deactivate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ ECOM USER MODAL ══════════════════ -->
+<div class="modal-overlay" *ngIf="showEcomModal" (click)="closeEcomModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Add Ecom User</h2>
+      <button class="modal-close" (click)="closeEcomModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" *ngIf="ecomFormError">{{ ecomFormError }}</div>
+      <div class="form-group" *ngIf="isSuperadmin">
+        <label>Firm Code</label>
+        <input [(ngModel)]="ecomForm.firmCode" placeholder="firm code" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Username *</label>
+        <input [(ngModel)]="ecomForm.username" placeholder="username" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Password *</label>
+        <input type="password" [(ngModel)]="ecomForm.password" placeholder="min 6 characters" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input [(ngModel)]="ecomForm.fullName" placeholder="full name" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input [(ngModel)]="ecomForm.email" placeholder="email" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input [(ngModel)]="ecomForm.phone" placeholder="phone" class="form-control">
+      </div>
+      <p class="form-hint">This user can only access Ecom Coverage and cannot delete images.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="closeEcomModal()">Cancel</button>
+      <button class="btn-primary" (click)="saveEcomUser()" [disabled]="ecomFormLoading">
+        {{ ecomFormLoading ? 'Creating...' : 'Create Ecom User' }}
+      </button>
     </div>
   </div>
 </div>

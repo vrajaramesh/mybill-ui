@@ -57,6 +57,11 @@ export class AppComponent implements OnInit {
     if (this.authService.isLoggedIn()) {
       if (this.authService.isSuperadmin()) {
         this.currentView = 'superadmin';
+      } else if (this.authService.isEcom()) {
+        this.currentView = 'app';
+        this.activeMenu = 'products';
+        this.activeSubMenu = 'ecom-coverage';
+        this.expandedMenus = new Set(['products']);
       } else {
         this.currentView = 'app';
         this.loadNewOrderCount();
@@ -104,6 +109,10 @@ export class AppComponent implements OnInit {
     return this.authService.isSales();
   }
 
+  get isEcom(): boolean {
+    return this.authService.isEcom();
+  }
+
   get currentUserInitials(): string {
     const name = this.currentUser?.fullName || this.currentUser?.username || '';
     if (!name) return '?';
@@ -130,6 +139,11 @@ export class AppComponent implements OnInit {
   onLoginSuccess(): void {
     if (this.authService.isSuperadmin()) {
       this.currentView = 'superadmin';
+    } else if (this.authService.isEcom()) {
+      this.currentView = 'app';
+      this.activeMenu = 'products';
+      this.activeSubMenu = 'ecom-coverage';
+      this.expandedMenus = new Set(['products']);
     } else {
       this.currentView = 'app';
       this.activeMenu = 'billing';

@@ -6,7 +6,7 @@ export interface CurrentUser {
   userId: number;
   username: string;
   fullName: string;
-  role: 'ADMIN' | 'SALES' | 'SUPERADMIN';
+  role: 'ADMIN' | 'SALES' | 'SUPERADMIN' | 'ECOM';
   email?: string;
   phone?: string;
   firmId?: number;
@@ -262,6 +262,10 @@ export class AuthService {
 
   isSales(): boolean {
     return this.getCurrentUser()?.role === 'SALES';
+  }
+
+  isEcom(): boolean {
+    return this.getCurrentUser()?.role === 'ECOM';
   }
 
   canEditProducts(): boolean { return this.isAdmin() || this.isSuperadminIdentity(); }

@@ -24,7 +24,7 @@ interface AdminForm {
 export class UserManagementComponent implements OnInit {
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
-  activeTab: 'sales' | 'admins' = 'sales';
+  activeTab: 'sales' | 'admins' | 'ecom' = 'sales';
 
   // ── Firms ─────────────────────────────────────────────────────────────────
   allFirms: any[] = [];
@@ -39,6 +39,15 @@ export class UserManagementComponent implements OnInit {
   adminUsers: AdminUser[] = [];
   adminsLoading = false;
   adminsError = '';
+
+  // ── Ecom users ────────────────────────────────────────────────────────────
+  ecomUsers: any[] = [];
+  ecomLoading = false;
+  ecomError = '';
+  showEcomModal = false;
+  ecomForm: SalesForm = this.emptySalesForm();
+  ecomFormError = '';
+  ecomFormLoading = false;
 
   // ── Common ────────────────────────────────────────────────────────────────
   successMsg = '';
@@ -92,6 +101,7 @@ export class UserManagementComponent implements OnInit {
           this.selectedFirmCode = currentFirm?.firmCode ?? (firms[0]?.firm_code ?? firms[0]?.firmCode ?? '');
         }
         this.loadSalesUsers();
+        this.loadEcomUsers();
         if (this.isSuperadmin) this.loadAdmins();
       },
       error: () => { this.salesError = 'Failed to load firms'; }
@@ -100,6 +110,7 @@ export class UserManagementComponent implements OnInit {
 
   onFirmChange(): void {
     this.loadSalesUsers();
+    this.loadEcomUsers();
   }
 
   firmCodeOf(f: any): string { return f.firm_code ?? f.firmCode ?? ''; }
@@ -359,5 +370,50 @@ export class UserManagementComponent implements OnInit {
 
   private emptyAdminForm(): AdminForm {
     return { username: '', password: '', fullName: '', email: '', phone: '', firmCodes: [] };
+  }
+
+  // ── Ecom users ────────────────────────────────────────────────────────────
+
+  loadEcomUsers(): void {
+    const firmCode = this.selectedFirmCode;
+    if (!firmCode) return;
+    this.ecomLoading = true;
+    this.ecomError = '';
+    this.userService.getEcomUsers(firmCode).subscribe({
+      next: users => { this.ecomUsers = users; this.ecomLoading = false; },
+      error: () => { this.ecomError = 'Failed to load Ecom users'; this.ecomLoading = false; }
+    });
+  }
+
+  openCreateEcomModal(): void {
+    this.ecomForm = this.emptySalesForm();
+    this.ecomForm.firmCode = this.selectedFirmCode;
+    this.ecomFormError = '';
+    this.showEcomModal = true;
+  }
+
+  closeEcomModal(): void { this.showEcomModal = false; }
+
+  saveEcomUser(): void {
+    this.ecomFormLoading = true;
+    this.ecomFormError = '';
+    this.userService.createEcomUser({
+      firmCode: this.ecomForm.firmCode || this.selectedFirmCode,
+      username: this.ecomForm.username,
+      password: this.ecomForm.password,
+      fullName: this.ecomForm.fullName,
+      email: this.ecomForm.email,
+      phone: this.ecomForm.phone
+    }).subscribe({
+      next: () => { this.ecomFormLoading = false; this.closeEcomModal(); this.showSuccess('Ecom user created'); this.loadEcomUsers(); },
+      error: err => { this.ecomFormError = err.error?.error || 'Failed to create user'; this.ecomFormLoading = false; }
+    });
+  }
+
+  toggleEcomStatus(u: any): void {
+    this.userService.toggleEcomUserStatus(u.user_id, !u.is_active, this.selectedFirmCode).subscribe({
+      next: () => this.loadEcomUsers(),
+      error: () => alert('Failed to update status')
+    });
   }
 }

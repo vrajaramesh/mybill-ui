@@ -8,6 +8,7 @@ import { ProductService } from '../product.service';
 import { Product, ProductImage } from '../product.model';
 import { AiGenerationPrompt } from '../ai-config/ai-config.component';
 import { ThermalPrinterService } from '../thermal-printer.service';
+import { AuthService } from '../auth.service';
 import JsBarcode from 'jsbarcode';
 
 export type CoverageStatus = 'none' | 'partial' | 'good';
@@ -89,8 +90,11 @@ export class EcomCoverageComponent implements OnInit {
   constructor(
     private productService: ProductService,
     private http: HttpClient,
-    private printer: ThermalPrinterService
+    private printer: ThermalPrinterService,
+    private authService: AuthService
   ) {}
+
+  get isEcom(): boolean { return this.authService.isEcom(); }
 
   ngOnInit(): void {
     this.loadData();

@@ -89,6 +89,23 @@ export class UserService {
     return this.http.patch<any>(`${this.adminApiUrl}/users/sales/${userId}/status`, { isActive }, { params });
   }
 
+  // ── Ecom user management ─────────────────────────────────────────────────
+
+  getEcomUsers(firmCode: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.adminApiUrl}/users/ecom`, { params: { firmCode } });
+  }
+
+  createEcomUser(payload: {
+    firmCode: string; username: string; password: string;
+    fullName: string; email?: string; phone?: string;
+  }): Observable<any> {
+    return this.http.post<any>(`${this.adminApiUrl}/users/ecom`, payload);
+  }
+
+  toggleEcomUserStatus(userId: number, isActive: boolean, firmCode: string): Observable<any> {
+    return this.http.patch<any>(`${this.adminApiUrl}/users/ecom/${userId}/status`, { isActive }, { params: { firmCode } });
+  }
+
   // ── Admin user management (SUPERADMIN only) ───────────────────────────────
 
   getAdmins(): Observable<AdminUser[]> {
