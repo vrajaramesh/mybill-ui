@@ -67,6 +67,9 @@ export class EcomCoverageComponent implements OnInit {
   // Print state
   printingId: number | null = null;
 
+  // Facebook publish state per product: 'publishing' | 'success' | 'error'
+  fbPublishState: Record<number, string> = {};
+
   // Upload state
   uploadPanel: {
     row: ProductCoverageRow;
@@ -471,6 +474,31 @@ export class EcomCoverageComponent implements OnInit {
     if (!row.loaded) return 0;
     const needed = row.garmentCount > 0 ? row.garmentCount + 1 : 1;
     return Math.max(0, needed - row.imageCount);
+  }
+
+  // ── Facebook / Instagram Shop publish ───────────────────────────────────────
+
+  publishToFacebook(row: ProductCoverageRow): void {
+    const id = row.product.productId!;
+    if (this.fbPublishState[id] === 'publishing') return;
+    this.fbPublishState[id] = 'publishing';
+
+    this.http.post<any>(`/api/facebook/catalog/publish/${id}`, {}).subscribe({
+      next: () => {
+        this.fbPublishState[id] = 'success';
+        setTimeout(() => {
+          if (this.fbPublishState[id] === 'success') delete this.fbPublishState[id];
+        }, 5000);
+      },
+      error: (err) => {
+        this.fbPublishState[id] = 'error';
+        const msg = err?.error?.error || 'Failed to publish to Facebook catalog';
+        alert(msg);
+        setTimeout(() => {
+          if (this.fbPublishState[id] === 'error') delete this.fbPublishState[id];
+        }, 5000);
+      }
+    });
   }
 
   // ── Delete image ────────────────────────────────────────────────────────────

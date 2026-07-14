@@ -68,6 +68,7 @@
           <th class="col-pics">Images</th>
           <th class="col-status">Status</th>
           <th class="col-action col-print"></th>
+          <th class="col-action col-fb"></th>
           <th class="col-action"></th>
         </tr>
       </thead>
@@ -116,6 +117,23 @@
                 {{ printingId === row.product.productId ? '…' : '🖨' }}
               </button>
             </td>
+            <td class="col-action col-fb" (click)="$event.stopPropagation()">
+              <button class="fb-publish-btn"
+                      [class.publishing]="fbPublishState[row.product.productId!] === 'publishing'"
+                      [class.success]="fbPublishState[row.product.productId!] === 'success'"
+                      [class.error]="fbPublishState[row.product.productId!] === 'error'"
+                      [disabled]="fbPublishState[row.product.productId!] === 'publishing' || !row.loaded || row.imageCount === 0"
+                      [title]="row.imageCount === 0 ? 'Add images first' : 'Publish to Instagram Shop'"
+                      (click)="publishToFacebook(row)">
+                <span *ngIf="fbPublishState[row.product.productId!] === 'publishing'">⏳</span>
+                <span *ngIf="fbPublishState[row.product.productId!] === 'success'">✅</span>
+                <span *ngIf="fbPublishState[row.product.productId!] === 'error'">❌</span>
+                <span *ngIf="!fbPublishState[row.product.productId!]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.413c0-3.025 1.791-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+                  Shop
+                </span>
+              </button>
+            </td>
             <td class="col-action" (click)="$event.stopPropagation()">
               <button class="action-btn" (click)="toggleExpand(row)">
                 {{ expandedProductId === row.product.productId ? '▲' : '▼' }}
@@ -125,7 +143,7 @@
 
           <!-- Expanded detail row -->
           <tr *ngIf="expandedProductId === row.product.productId" class="detail-row">
-            <td colspan="8">
+            <td colspan="9">
               <div class="detail-panel">
 
                 <!-- Thumbnail strip with drag-reorder, download, delete, upload -->

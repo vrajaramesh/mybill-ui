@@ -117,6 +117,7 @@
 .col-pics   { width: 120px; text-align: center; }
 .col-status { width: 110px; text-align: center; }
 .col-print  { width: 40px; text-align: center; }
+.col-fb     { width: 60px; text-align: center; }
 .col-action { width: 40px; text-align: center; }
 
 .print-btn {
@@ -131,6 +132,26 @@
 }
 .print-btn:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
 .print-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.fb-publish-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: #1877F2;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.fb-publish-btn:hover:not(:disabled) { background: #eff6ff; border-color: #93c5fd; }
+.fb-publish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.fb-publish-btn.publishing { color: #64748b; border-color: #cbd5e1; }
+.fb-publish-btn.success    { color: #16a34a; border-color: #86efac; }
+.fb-publish-btn.error      { color: #dc2626; border-color: #fca5a5; }
 
 .product-name  { font-weight: 600; color: #1e293b; }
 .product-price { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
