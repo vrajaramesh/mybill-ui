@@ -95,8 +95,8 @@ export class HermesComponent implements OnInit {
 
   private get token() { return localStorage.getItem('mybill_token') || ''; }
   private get firmCode() {
-    const payload = JSON.parse(atob(this.token.split('.')[1] || 'e30='));
-    return (payload.firmCode || '').toLowerCase();
+    const firm = JSON.parse(localStorage.getItem('mybill_current_firm') || '{}');
+    return (firm.firmCode || '').toLowerCase();
   }
   private get headers() {
     return new HttpHeaders({ Authorization: `Bearer ${this.token}` });
