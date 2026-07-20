@@ -38,6 +38,16 @@ interface Contact {
   createdAt: string;
 }
 
+interface ReelsJob {
+  jobId: string;
+  status: string;
+  message: string;
+  instagramPostId: string;
+  videoUrl: string;
+  productNames: string;
+  startedAt: Date;
+}
+
 interface HermesStats {
   contentGenerated: number;
   campaignsSent: number;
@@ -54,12 +64,17 @@ interface HermesStats {
 })
 export class HermesComponent implements OnInit {
 
-  activeTab: 'content' | 'campaigns' | 'contacts' = 'content';
+  activeTab: 'content' | 'campaigns' | 'contacts' | 'reels' = 'content';
 
   stats: HermesStats = { contentGenerated: 0, campaignsSent: 0, totalMessagesSent: 0, activeContacts: 0 };
   contents: ProductContent[] = [];
   campaigns: Campaign[] = [];
   contacts: Contact[] = [];
+
+  // ── Instagram Reels ──────────────────────────────────────────────────────────
+  reelsSelectedIds = new Set<number>();
+  reelsJobs: ReelsJob[] = [];
+  reelsPoller: any = null;
 
   // New contact form
   newPhone = '';
@@ -96,7 +111,7 @@ export class HermesComponent implements OnInit {
 
   // ── Tab navigation ─────────────────────────────────────────────────────────
 
-  selectTab(tab: 'content' | 'campaigns' | 'contacts') {
+  selectTab(tab: 'content' | 'campaigns' | 'contacts' | 'reels') {
     this.activeTab = tab;
     if (tab === 'campaigns' && this.campaigns.length === 0) this.loadCampaigns();
     if (tab === 'contacts' && this.contacts.length === 0) this.loadContacts();
@@ -212,6 +227,85 @@ export class HermesComponent implements OnInit {
   removeContact(id: number) {
     this.http.delete(`/api/hermes/${this.firmCode}/contacts/${id}`, { headers: this.headers })
       .subscribe({ next: () => this.loadContacts(), error: () => {} });
+  }
+
+  // ── Instagram Reels ────────────────────────────────────────────────────────
+
+  toggleReelsProduct(id: number) {
+    if (this.reelsSelectedIds.has(id)) this.reelsSelectedIds.delete(id);
+    else this.reelsSelectedIds.add(id);
+  }
+
+  get reelsSelectedList(): ProductContent[] {
+    return this.contents.filter(c => this.reelsSelectedIds.has(c.productId));
+  }
+
+  postReel() {
+    const ids = [...this.reelsSelectedIds];
+    if (ids.length === 0) return;
+
+    this.http.post<any>('/api/instagram/reels/publish', { productIds: ids }, { headers: this.headers })
+      .subscribe({
+        next: res => {
+          const job: ReelsJob = {
+            jobId: res.jobId,
+            status: 'queued',
+            message: res.message,
+            instagramPostId: '',
+            videoUrl: '',
+            productNames: this.reelsSelectedList.map(p => p.productName).join(', '),
+            startedAt: new Date()
+          };
+          this.reelsJobs.unshift(job);
+          this.reelsSelectedIds.clear();
+          this.startPolling();
+        },
+        error: err => this.error = err.error?.error || 'Failed to start Reel'
+      });
+  }
+
+  private startPolling() {
+    if (this.reelsPoller) return;
+    this.reelsPoller = setInterval(() => this.pollActiveJobs(), 5000);
+  }
+
+  private pollActiveJobs() {
+    const active = this.reelsJobs.filter(j => !['done', 'failed'].includes(j.status));
+    if (active.length === 0) {
+      clearInterval(this.reelsPoller);
+      this.reelsPoller = null;
+      return;
+    }
+    active.forEach(job => {
+      this.http.get<any>(`/api/instagram/reels/status/${job.jobId}`, { headers: this.headers })
+        .subscribe({
+          next: res => {
+            job.status          = res.status;
+            job.message         = res.message;
+            job.instagramPostId = res.instagramPostId;
+            job.videoUrl        = res.videoUrl;
+          },
+          error: () => {}
+        });
+    });
+  }
+
+  reelsStatusClass(status: string) {
+    return {
+      queued:     'badge-pending',
+      rendering:  'badge-pending',
+      uploading:  'badge-pending',
+      publishing: 'badge-pending',
+      done:       'badge-sent',
+      failed:     'badge-failed'
+    }[status] || '';
+  }
+
+  reelsStatusIcon(status: string) {
+    return {
+      queued: '&#9679;', rendering: '&#9654;', uploading: '&#8593;',
+      publishing: '&#9732;', done: '&#10003;', failed: '&#10007;'
+    }[status] || '';
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

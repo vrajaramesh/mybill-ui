@@ -42,6 +42,9 @@
     <button class="tab-btn" [class.active]="activeTab==='contacts'" (click)="selectTab('contacts')">
       Contacts ({{ stats.activeContacts }})
     </button>
+    <button class="tab-btn reels-tab" [class.active]="activeTab==='reels'" (click)="selectTab('reels')">
+      &#127909; Instagram Reels
+    </button>
   </div>
 
   <div class="error-banner" *ngIf="error">{{ error }}</div>
@@ -243,6 +246,67 @@
         No contacts yet. Add phone numbers to start broadcasting.
       </div>
     </div>
+  </div>
+
+  <!-- ── Tab: Instagram Reels ─────────────────────────────────────────────── -->
+  <div *ngIf="activeTab==='reels'" class="tab-content">
+
+    <div class="section-hint">
+      Select one or more products below and click <strong>Post as Reel</strong>.
+      Srisa Fabrics images will be compiled into a 9:16 slideshow video and posted to Instagram automatically.
+    </div>
+
+    <!-- Product picker -->
+    <div class="reels-picker">
+      <h3 class="section-title">Select Products</h3>
+      <div class="reels-product-grid">
+        <div class="reels-product-card"
+             *ngFor="let c of contents"
+             [class.selected]="reelsSelectedIds.has(c.productId)"
+             (click)="toggleReelsProduct(c.productId)">
+          <div class="reels-check" *ngIf="reelsSelectedIds.has(c.productId)">&#10003;</div>
+          <img *ngIf="c.imageUrl" [src]="c.imageUrl" class="reels-thumb" alt="">
+          <div class="reels-thumb placeholder" *ngIf="!c.imageUrl">?</div>
+          <div class="reels-product-name">{{ c.productName }}</div>
+          <div class="reels-product-price" *ngIf="c.sellingPrice">&#8377;{{ c.sellingPrice }}</div>
+        </div>
+      </div>
+      <div class="empty-state" *ngIf="contents.length === 0 && !loading">
+        No products found. Add products and generate Hermes content first.
+      </div>
+    </div>
+
+    <!-- Post button -->
+    <div class="reels-actions" *ngIf="reelsSelectedIds.size > 0">
+      <div class="reels-selection-summary">
+        {{ reelsSelectedIds.size }} product(s) selected
+      </div>
+      <button class="post-reel-btn" (click)="postReel()">
+        &#127909; Post as Instagram Reel
+      </button>
+    </div>
+
+    <!-- Jobs list -->
+    <div *ngIf="reelsJobs.length > 0" class="reels-jobs">
+      <h3 class="section-title">Reel Jobs</h3>
+      <div class="reels-job-card" *ngFor="let job of reelsJobs">
+        <div class="job-left">
+          <div class="job-products">{{ job.productNames }}</div>
+          <div class="job-message">{{ job.message }}</div>
+          <div class="job-meta">Started {{ job.startedAt | date:'dd MMM, h:mm a' }}</div>
+          <div class="job-links">
+            <a *ngIf="job.videoUrl" [href]="job.videoUrl" target="_blank" class="job-link">Preview Video</a>
+            <a *ngIf="job.instagramPostId" href="https://www.instagram.com/" target="_blank" class="job-link ig-link">View on Instagram</a>
+          </div>
+        </div>
+        <div class="job-right">
+          <span class="status-badge" [ngClass]="reelsStatusClass(job.status)">
+            {{ job.status }}
+          </span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
