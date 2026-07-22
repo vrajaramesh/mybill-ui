@@ -78,10 +78,12 @@ export class HermesComponent implements OnInit {
   contacts: Contact[] = [];
 
   // ── Instagram Reels ──────────────────────────────────────────────────────────
-  reelsProduct: ProductContent | null = null;
-  reelsProductImages: ReelsImage[] = [];
-  reelsSelectedUrls = new Set<string>();
-  reelsLoadingImages = false;
+  // The 5-slot selection tray (photos from any product)
+  reelsSelection: Array<{url: string; productId: number; productName: string}> = [];
+  // Which product's images are currently shown in the picker
+  reelsPickerProduct: ProductContent | null = null;
+  reelsPickerImages: ReelsImage[] = [];
+  reelsPickerLoading = false;
   reelsJobs: ReelsJob[] = [];
   reelsPoller: any = null;
 
@@ -240,52 +242,55 @@ export class HermesComponent implements OnInit {
 
   // ── Instagram Reels ────────────────────────────────────────────────────────
 
-  selectReelsProduct(product: ProductContent) {
-    this.reelsProduct = product;
-    this.reelsSelectedUrls.clear();
-    this.reelsProductImages = [];
-    this.reelsLoadingImages = true;
+  get reelsReady(): boolean { return this.reelsSelection.length === 5; }
 
+  selectPickerProduct(product: ProductContent) {
+    if (this.reelsPickerProduct?.productId === product.productId) return;
+    this.reelsPickerProduct = product;
+    this.reelsPickerImages = [];
+    this.reelsPickerLoading = true;
     this.http.get<ReelsImage[]>(`/api/products/${product.productId}/images`, { headers: this.headers })
       .subscribe({
-        next: images => {
-          this.reelsProductImages = images.filter(i => i.mediaType !== 'video' && i.imageUrl?.startsWith('https://'));
-          this.reelsLoadingImages = false;
+        next: imgs => {
+          this.reelsPickerImages = imgs.filter(i => i.mediaType !== 'video' && i.imageUrl?.startsWith('https://'));
+          this.reelsPickerLoading = false;
         },
-        error: () => { this.reelsLoadingImages = false; }
+        error: () => { this.reelsPickerLoading = false; }
       });
   }
 
-  toggleReelsImage(url: string) {
-    if (this.reelsSelectedUrls.has(url)) {
-      this.reelsSelectedUrls.delete(url);
-    } else if (this.reelsSelectedUrls.size < 5) {
-      this.reelsSelectedUrls.add(url);
-    }
+  addPhoto(url: string) {
+    if (this.reelsSelection.length >= 5 || this.isPhotoSelected(url)) return;
+    this.reelsSelection.push({
+      url,
+      productId: this.reelsPickerProduct!.productId,
+      productName: this.reelsPickerProduct!.productName
+    });
+  }
+
+  removePhoto(index: number) {
+    this.reelsSelection.splice(index, 1);
+  }
+
+  isPhotoSelected(url: string): boolean {
+    return this.reelsSelection.some(s => s.url === url);
   }
 
   postReel() {
-    if (!this.reelsProduct || this.reelsSelectedUrls.size === 0) return;
-
+    if (!this.reelsReady) return;
     const payload = {
-      productId: this.reelsProduct.productId,
-      imageUrls: [...this.reelsSelectedUrls]
+      productId: this.reelsSelection[0].productId,
+      imageUrls: this.reelsSelection.map(s => s.url)
     };
-
     this.http.post<any>('/api/instagram/reels/publish', payload, { headers: this.headers })
       .subscribe({
         next: res => {
-          const job: ReelsJob = {
-            jobId: res.jobId,
-            status: 'queued',
-            message: res.message,
-            instagramPostId: '',
-            videoUrl: '',
-            productNames: this.reelsProduct!.productName,
-            startedAt: new Date()
-          };
-          this.reelsJobs.unshift(job);
-          this.reelsSelectedUrls.clear();
+          const names = [...new Set(this.reelsSelection.map(s => s.productName))].join(', ');
+          this.reelsJobs.unshift({
+            jobId: res.jobId, status: 'queued', message: res.message,
+            instagramPostId: '', videoUrl: '', productNames: names, startedAt: new Date()
+          });
+          this.reelsSelection = [];
           this.startPolling();
         },
         error: err => this.error = err.error?.error || 'Failed to start Reel'
