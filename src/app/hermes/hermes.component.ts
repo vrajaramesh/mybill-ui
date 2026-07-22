@@ -38,6 +38,12 @@ interface Contact {
   createdAt: string;
 }
 
+interface ReelsImage {
+  id: number;
+  imageUrl: string;
+  mediaType: string;
+}
+
 interface ReelsJob {
   jobId: string;
   status: string;
@@ -72,7 +78,10 @@ export class HermesComponent implements OnInit {
   contacts: Contact[] = [];
 
   // ── Instagram Reels ──────────────────────────────────────────────────────────
-  reelsSelectedIds = new Set<number>();
+  reelsProduct: ProductContent | null = null;
+  reelsProductImages: ReelsImage[] = [];
+  reelsSelectedUrls = new Set<string>();
+  reelsLoadingImages = false;
   reelsJobs: ReelsJob[] = [];
   reelsPoller: any = null;
 
@@ -231,20 +240,39 @@ export class HermesComponent implements OnInit {
 
   // ── Instagram Reels ────────────────────────────────────────────────────────
 
-  toggleReelsProduct(id: number) {
-    if (this.reelsSelectedIds.has(id)) this.reelsSelectedIds.delete(id);
-    else this.reelsSelectedIds.add(id);
+  selectReelsProduct(product: ProductContent) {
+    this.reelsProduct = product;
+    this.reelsSelectedUrls.clear();
+    this.reelsProductImages = [];
+    this.reelsLoadingImages = true;
+
+    this.http.get<ReelsImage[]>(`/api/products/${product.productId}/images`, { headers: this.headers })
+      .subscribe({
+        next: images => {
+          this.reelsProductImages = images.filter(i => i.mediaType !== 'video' && i.imageUrl?.startsWith('https://'));
+          this.reelsLoadingImages = false;
+        },
+        error: () => { this.reelsLoadingImages = false; }
+      });
   }
 
-  get reelsSelectedList(): ProductContent[] {
-    return this.contents.filter(c => this.reelsSelectedIds.has(c.productId));
+  toggleReelsImage(url: string) {
+    if (this.reelsSelectedUrls.has(url)) {
+      this.reelsSelectedUrls.delete(url);
+    } else if (this.reelsSelectedUrls.size < 5) {
+      this.reelsSelectedUrls.add(url);
+    }
   }
 
   postReel() {
-    const ids = [...this.reelsSelectedIds];
-    if (ids.length === 0) return;
+    if (!this.reelsProduct || this.reelsSelectedUrls.size === 0) return;
 
-    this.http.post<any>('/api/instagram/reels/publish', { productIds: ids }, { headers: this.headers })
+    const payload = {
+      productId: this.reelsProduct.productId,
+      imageUrls: [...this.reelsSelectedUrls]
+    };
+
+    this.http.post<any>('/api/instagram/reels/publish', payload, { headers: this.headers })
       .subscribe({
         next: res => {
           const job: ReelsJob = {
@@ -253,11 +281,11 @@ export class HermesComponent implements OnInit {
             message: res.message,
             instagramPostId: '',
             videoUrl: '',
-            productNames: this.reelsSelectedList.map(p => p.productName).join(', '),
+            productNames: this.reelsProduct!.productName,
             startedAt: new Date()
           };
           this.reelsJobs.unshift(job);
-          this.reelsSelectedIds.clear();
+          this.reelsSelectedUrls.clear();
           this.startPolling();
         },
         error: err => this.error = err.error?.error || 'Failed to start Reel'

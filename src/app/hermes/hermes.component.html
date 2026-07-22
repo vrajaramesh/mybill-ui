@@ -252,38 +252,76 @@
   <div *ngIf="activeTab==='reels'" class="tab-content">
 
     <div class="section-hint">
-      Select one or more products below and click <strong>Post as Reel</strong>.
-      Srisa Fabrics images will be compiled into a 9:16 slideshow video and posted to Instagram automatically.
+      Pick a product → select up to <strong>5 photos</strong> → click <strong>Post as Reel</strong>.
+      Creatomate renders the slideshow and posts it to Instagram automatically.
     </div>
 
-    <!-- Product picker -->
-    <div class="reels-picker">
-      <h3 class="section-title">Select Products</h3>
-      <div class="reels-product-grid">
-        <div class="reels-product-card"
-             *ngFor="let c of contents"
-             [class.selected]="reelsSelectedIds.has(c.productId)"
-             (click)="toggleReelsProduct(c.productId)">
-          <div class="reels-check" *ngIf="reelsSelectedIds.has(c.productId)">&#10003;</div>
-          <img *ngIf="c.imageUrl" [src]="c.imageUrl" class="reels-thumb" alt="">
-          <div class="reels-thumb placeholder" *ngIf="!c.imageUrl">?</div>
-          <div class="reels-product-name">{{ c.productName }}</div>
-          <div class="reels-product-price" *ngIf="c.sellingPrice">&#8377;{{ c.sellingPrice }}</div>
+    <div class="reels-layout">
+
+      <!-- Step 1: Product list -->
+      <div class="reels-step reels-step-products">
+        <div class="reels-step-header">
+          <span class="reels-step-num">1</span> Choose a product
+        </div>
+        <div class="reels-product-list">
+          <div class="reels-product-row"
+               *ngFor="let c of contents"
+               [class.active]="reelsProduct?.productId === c.productId"
+               (click)="selectReelsProduct(c)">
+            <img *ngIf="c.imageUrl" [src]="c.imageUrl" class="reels-row-thumb" alt="">
+            <div class="reels-row-thumb placeholder" *ngIf="!c.imageUrl">?</div>
+            <div class="reels-row-meta">
+              <div class="reels-row-name">{{ c.productName }}</div>
+              <div class="reels-row-price" *ngIf="c.sellingPrice">&#8377;{{ c.sellingPrice }}</div>
+            </div>
+            <span *ngIf="reelsProduct?.productId === c.productId" class="reels-row-arrow">&#9654;</span>
+          </div>
+          <div class="empty-state" *ngIf="contents.length === 0 && !loading">
+            No products yet.
+          </div>
         </div>
       </div>
-      <div class="empty-state" *ngIf="contents.length === 0 && !loading">
-        No products found. Add products and generate Hermes content first.
-      </div>
-    </div>
 
-    <!-- Post button -->
-    <div class="reels-actions" *ngIf="reelsSelectedIds.size > 0">
-      <div class="reels-selection-summary">
-        {{ reelsSelectedIds.size }} product(s) selected
+      <!-- Step 2: Image picker -->
+      <div class="reels-step reels-step-images">
+        <div class="reels-step-header">
+          <span class="reels-step-num">2</span>
+          Select photos
+          <span class="reels-img-count" *ngIf="reelsProduct">
+            {{ reelsSelectedUrls.size }} / 5 selected
+          </span>
+        </div>
+
+        <div class="reels-loading" *ngIf="reelsLoadingImages">Loading images...</div>
+
+        <div class="reels-no-product" *ngIf="!reelsProduct && !reelsLoadingImages">
+          &#8592; Pick a product first
+        </div>
+
+        <div class="reels-image-grid" *ngIf="reelsProduct && !reelsLoadingImages">
+          <div class="reels-image-card"
+               *ngFor="let img of reelsProductImages"
+               [class.selected]="reelsSelectedUrls.has(img.imageUrl)"
+               [class.disabled]="reelsSelectedUrls.size >= 5 && !reelsSelectedUrls.has(img.imageUrl)"
+               (click)="toggleReelsImage(img.imageUrl)">
+            <img [src]="img.imageUrl" class="reels-img" alt="">
+            <div class="reels-img-check" *ngIf="reelsSelectedUrls.has(img.imageUrl)">
+              &#10003;
+            </div>
+          </div>
+          <div class="empty-state" *ngIf="reelsProductImages.length === 0">
+            No images found for this product.
+          </div>
+        </div>
+
+        <!-- Post button -->
+        <div class="reels-actions" *ngIf="reelsSelectedUrls.size > 0">
+          <button class="post-reel-btn" (click)="postReel()">
+            &#127909; Post as Instagram Reel
+          </button>
+        </div>
       </div>
-      <button class="post-reel-btn" (click)="postReel()">
-        &#127909; Post as Instagram Reel
-      </button>
+
     </div>
 
     <!-- Jobs list -->
@@ -300,9 +338,7 @@
           </div>
         </div>
         <div class="job-right">
-          <span class="status-badge" [ngClass]="reelsStatusClass(job.status)">
-            {{ job.status }}
-          </span>
+          <span class="status-badge" [ngClass]="reelsStatusClass(job.status)">{{ job.status }}</span>
         </div>
       </div>
     </div>
