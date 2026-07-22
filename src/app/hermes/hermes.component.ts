@@ -7,6 +7,7 @@ interface ProductContent {
   productId: number;
   productName: string;
   sellingPrice: number;
+  category: string;
   imageUrl: string;
   instagramCaption: string;
   whatsappText: string;
@@ -76,6 +77,32 @@ export class HermesComponent implements OnInit {
   contents: ProductContent[] = [];
   campaigns: Campaign[] = [];
   contacts: Contact[] = [];
+
+  // ── Reels product filter ─────────────────────────────────────────────────────
+  reelsFilterText = '';
+  reelsFilterCategory = '';
+
+  get reelsCategories(): string[] {
+    const cats = this.contents.map(c => c.category).filter(Boolean);
+    return [...new Set(cats)].sort();
+  }
+
+  get reelsFilteredContents(): ProductContent[] {
+    const text = this.reelsFilterText.trim().toLowerCase();
+    const cat  = this.reelsFilterCategory;
+    return this.contents.filter(c => {
+      const matchesText = !text
+        || String(c.productId).includes(text)
+        || c.productName?.toLowerCase().includes(text);
+      const matchesCat = !cat || c.category === cat;
+      return matchesText && matchesCat;
+    });
+  }
+
+  clearReelsFilter() {
+    this.reelsFilterText = '';
+    this.reelsFilterCategory = '';
+  }
 
   // ── Instagram Reels ──────────────────────────────────────────────────────────
   // The 5-slot selection tray (photos from any product)

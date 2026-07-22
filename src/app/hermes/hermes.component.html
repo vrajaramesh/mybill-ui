@@ -279,25 +279,48 @@
     <!-- Product picker + image grid -->
     <div class="reels-layout">
 
-      <!-- Left: product list -->
+      <!-- Left: product list with filter -->
       <div class="reels-step reels-step-products">
         <div class="reels-step-header">
           <span class="reels-step-num">1</span> Pick a product
         </div>
+
+        <!-- Filter bar -->
+        <div class="reels-filter-bar">
+          <input
+            type="text"
+            class="reels-filter-input"
+            [(ngModel)]="reelsFilterText"
+            placeholder="Search by ID or name...">
+          <select class="reels-filter-select" [(ngModel)]="reelsFilterCategory">
+            <option value="">All categories</option>
+            <option *ngFor="let cat of reelsCategories" [value]="cat">{{ cat }}</option>
+          </select>
+          <button class="reels-filter-clear" *ngIf="reelsFilterText || reelsFilterCategory"
+                  (click)="clearReelsFilter()" title="Clear filters">&#10005;</button>
+        </div>
+        <div class="reels-filter-count" *ngIf="reelsFilterText || reelsFilterCategory">
+          {{ reelsFilteredContents.length }} of {{ contents.length }} products
+        </div>
+
         <div class="reels-product-list">
           <div class="reels-product-row"
-               *ngFor="let c of contents"
+               *ngFor="let c of reelsFilteredContents"
                [class.active]="reelsPickerProduct?.productId === c.productId"
                (click)="selectPickerProduct(c)">
             <img *ngIf="c.imageUrl" [src]="c.imageUrl" class="reels-row-thumb" alt="">
             <div class="reels-row-thumb placeholder" *ngIf="!c.imageUrl">?</div>
             <div class="reels-row-meta">
               <div class="reels-row-name">{{ c.productName }}</div>
-              <div class="reels-row-price" *ngIf="c.sellingPrice">&#8377;{{ c.sellingPrice }}</div>
+              <div class="reels-row-price" *ngIf="c.sellingPrice">&#8377;{{ c.sellingPrice }}
+                <span class="reels-row-cat" *ngIf="c.category"> · {{ c.category }}</span>
+              </div>
             </div>
             <span *ngIf="reelsPickerProduct?.productId === c.productId" class="reels-row-arrow">&#9654;</span>
           </div>
-          <div class="empty-state" *ngIf="contents.length === 0 && !loading">No products yet.</div>
+          <div class="empty-state" *ngIf="reelsFilteredContents.length === 0 && !loading">
+            {{ contents.length === 0 ? 'No products yet.' : 'No products match the filter.' }}
+          </div>
         </div>
       </div>
 
