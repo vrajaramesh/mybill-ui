@@ -113,6 +113,8 @@ export class HermesComponent implements OnInit {
   reelsPickerLoading = false;
   reelsJobs: ReelsJob[] = [];
   reelsPoller: any = null;
+  reelsTitle = '';
+  reelsPosting = false;
 
   // New contact form
   newPhone = '';
@@ -304,11 +306,14 @@ export class HermesComponent implements OnInit {
   }
 
   postReel() {
-    if (!this.reelsReady) return;
-    const payload = {
+    if (!this.reelsReady || this.reelsPosting) return;
+    this.reelsPosting = true;
+    const payload: any = {
       productId: this.reelsSelection[0].productId,
       imageUrls: this.reelsSelection.map(s => s.url)
     };
+    if (this.reelsTitle.trim()) payload.title = this.reelsTitle.trim();
+
     this.http.post<any>('/api/instagram/reels/publish', payload, { headers: this.headers })
       .subscribe({
         next: res => {
@@ -318,9 +323,14 @@ export class HermesComponent implements OnInit {
             instagramPostId: '', videoUrl: '', productNames: names, startedAt: new Date()
           });
           this.reelsSelection = [];
+          this.reelsTitle = '';
+          this.reelsPosting = false;
           this.startPolling();
         },
-        error: err => this.error = err.error?.error || 'Failed to start Reel'
+        error: err => {
+          this.error = err.error?.error || 'Failed to start Reel';
+          this.reelsPosting = false;
+        }
       });
   }
 

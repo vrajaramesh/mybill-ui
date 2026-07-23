@@ -271,9 +271,19 @@
           </ng-template>
         </div>
       </div>
-      <button class="post-reel-btn" [disabled]="!reelsReady" (click)="postReel()">
-        &#127909; Post as Instagram Reel
-      </button>
+      <div class="reels-post-row">
+        <input
+          class="reels-title-input"
+          type="text"
+          placeholder="Caption / title (optional)"
+          [(ngModel)]="reelsTitle"
+          [disabled]="reelsPosting"
+        />
+        <button class="post-reel-btn" [disabled]="!reelsReady || reelsPosting" (click)="postReel()">
+          <span *ngIf="!reelsPosting">&#127909; Post as Reel</span>
+          <span *ngIf="reelsPosting">&#9203; Posting...</span>
+        </button>
+      </div>
     </div>
 
     <!-- Product picker + image grid -->

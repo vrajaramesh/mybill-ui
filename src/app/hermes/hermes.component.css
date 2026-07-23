@@ -660,6 +660,23 @@
 .reels-image-card:hover .reels-img-add { opacity: 1; }
 
 /* Post button (in tray) */
+.reels-post-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.reels-title-input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  min-width: 0;
+}
+.reels-title-input:focus { border-color: #833ab4; }
+.reels-title-input:disabled { background: #f3f4f6; color: #9ca3af; }
 .post-reel-btn {
   padding: 10px 22px;
   background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
