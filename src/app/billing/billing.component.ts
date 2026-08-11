@@ -187,7 +187,8 @@ export class BillingComponent implements OnInit, OnChanges {
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     const toDate = (s: string | undefined): Date => {
-      const d = new Date(s || ''); d.setHours(0, 0, 0, 0); return d;
+      const [y, m, day] = (s || '').split('-').map(Number);
+      return new Date(y, m - 1, day);
     };
 
     switch (this.dateFilter) {
@@ -259,7 +260,7 @@ export class BillingComponent implements OnInit, OnChanges {
 
   addNewBill(): void {
     this.currentBill = {
-      billDate: new Date().toISOString().split('T')[0],
+      billDate: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
       paymentMethod: 'CASH',
       billItems: []
     };
