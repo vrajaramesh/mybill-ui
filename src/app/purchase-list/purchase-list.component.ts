@@ -97,7 +97,9 @@ export class PurchaseListComponent implements OnInit {
         };
       }) : []
     };
-    this.selectedSupplierForPurchase = purchase.supplier || null;
+    this.selectedSupplierForPurchase = this.suppliers.find(
+      s => s.supplierId === purchase.supplier?.supplierId
+    ) || null;
     this.productSearchTerms = (this.selectedPurchase.purchaseItems || []).map(item =>
       item.product ? `${item.product.productName} (ID: ${item.product.productId})` : ''
     );

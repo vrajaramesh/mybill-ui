@@ -107,6 +107,10 @@
         <input id="paymentDueDate" type="date" [(ngModel)]="selectedPurchase.paymentDueDate" name="paymentDueDate" class="form-input">
       </div>
       <div class="form-group">
+        <label for="paidAmount">Paid Amount (₹):</label>
+        <input id="paidAmount" type="number" step="0.01" min="0" [(ngModel)]="selectedPurchase.paidAmount" name="paidAmount" class="form-input">
+      </div>
+      <div class="form-group">
         <label for="notes">Notes:</label>
         <textarea id="notes" [(ngModel)]="selectedPurchase.notes" name="notes" class="form-textarea"></textarea>
       </div>
