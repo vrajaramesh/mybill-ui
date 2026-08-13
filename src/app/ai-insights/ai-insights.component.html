@@ -46,8 +46,8 @@
   <!-- Loading State -->
   <div class="loading-card" *ngIf="loading">
     <div class="loading-spinner"></div>
-    <p class="loading-text">AI is analysing your business data...</p>
-    <p class="loading-sub">This may take 30-60 seconds. Fetching sales, inventory, expenses, customer enquiries and market trends.</p>
+    <p class="loading-text">{{ statusMsg || 'Starting...' }}</p>
+    <p class="loading-sub">Fetching 30-day sales, inventory, expenses, customer enquiries and market trends — then Claude AI writes the full analysis. Usually done in 60–90 seconds.</p>
   </div>
 
   <!-- Error -->

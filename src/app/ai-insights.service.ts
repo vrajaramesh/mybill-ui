@@ -8,8 +8,16 @@ export class AiInsightsService {
 
   constructor(private http: HttpClient) {}
 
-  generateReport(extraInput: any): Observable<any> {
+  startReport(extraInput: any): Observable<any> {
     return this.http.post(`${this.base}/report`, extraInput);
+  }
+
+  getReport(reportId: number): Observable<any> {
+    return this.http.get(`${this.base}/report/${reportId}`);
+  }
+
+  getLatestReport(): Observable<any> {
+    return this.http.get(`${this.base}/report/latest`);
   }
 
   getTrends(): Observable<any[]> {
