@@ -1,0 +1,116 @@
+<div class="expense-container">
+
+  <!-- Summary Card -->
+  <div class="purchase-card">
+    <div class="card-header-row">
+      <h2 class="card-title">💰 Expenses</h2>
+      <button class="add-btn" (click)="openAdd()">+ Add Expense</button>
+    </div>
+
+    <div class="summary-section">
+      <h3 class="summary-title">Current Month Summary</h3>
+      <div class="summary-grid">
+        <div class="summary-chip" *ngFor="let cat of summaryCategories"
+             [style.border-left-color]="categoryColor(cat)">
+          <span class="summary-cat">{{ cat }}</span>
+          <span class="summary-amt">₹{{ formatAmount(summary[cat]) }}</span>
+        </div>
+        <div class="summary-chip total-chip">
+          <span class="summary-cat">TOTAL</span>
+          <span class="summary-amt">₹{{ formatAmount(summaryTotal) }}</span>
+        </div>
+      </div>
+      <p class="summary-note" *ngIf="summaryCategories.length === 0">No expenses recorded this month.</p>
+    </div>
+  </div>
+
+  <!-- Add / Edit Form -->
+  <div class="form-card" *ngIf="showForm">
+    <h3 class="form-title">{{ editingId ? 'Edit Expense' : 'Add New Expense' }}</h3>
+    <div class="expense-form">
+      <div class="form-group">
+        <label>Date *</label>
+        <input class="form-input" type="date" [(ngModel)]="form.expenseDate" />
+      </div>
+      <div class="form-group">
+        <label>Category *</label>
+        <select class="form-input" [(ngModel)]="form.category">
+          <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Amount (₹) *</label>
+        <input class="form-input" type="number" min="0" step="0.01" [(ngModel)]="form.amount" placeholder="0.00" />
+      </div>
+      <div class="form-group full-width">
+        <label>Description</label>
+        <input class="form-input" type="text" [(ngModel)]="form.description" placeholder="e.g. Monthly rent payment" />
+      </div>
+    </div>
+    <div class="error-msg" *ngIf="errorMsg">{{ errorMsg }}</div>
+    <div class="form-actions">
+      <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+      <button class="save-btn" (click)="saveExpense()" [disabled]="saving">
+        {{ saving ? 'Saving...' : (editingId ? 'Update' : 'Save') }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters + Table -->
+  <div class="purchase-card">
+    <div class="filters">
+      <div class="filter-group">
+        <label>From</label>
+        <input class="filter-input" type="date" [(ngModel)]="fromDate" />
+      </div>
+      <div class="filter-group">
+        <label>To</label>
+        <input class="filter-input" type="date" [(ngModel)]="toDate" />
+      </div>
+      <div class="filter-group filter-actions">
+        <label>&nbsp;</label>
+        <button class="add-btn" (click)="loadFiltered()">Filter</button>
+      </div>
+      <div class="filter-group filter-actions">
+        <label>&nbsp;</label>
+        <button class="cancel-btn" (click)="loadAll()">Clear</button>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="loading-msg">Loading expenses...</div>
+
+    <div class="table-container" *ngIf="!loading">
+      <table class="purchase-table" *ngIf="expenses.length > 0; else noData">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th class="text-right">Amount (₹)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="table-row" *ngFor="let expense of expenses">
+            <td>{{ expense.expenseDate }}</td>
+            <td>
+              <span class="category-badge" [style.background-color]="categoryColor(expense.category)">
+                {{ expense.category }}
+              </span>
+            </td>
+            <td>{{ expense.description || '—' }}</td>
+            <td class="text-right amount-cell">₹{{ formatAmount(expense.amount) }}</td>
+            <td>
+              <button class="edit-btn" (click)="editExpense(expense)">Edit</button>
+              <button class="delete-btn" (click)="deleteExpense(expense.expenseId!)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #noData>
+        <div class="no-data">No expenses found. Add your first expense using the button above.</div>
+      </ng-template>
+    </div>
+  </div>
+
+</div>

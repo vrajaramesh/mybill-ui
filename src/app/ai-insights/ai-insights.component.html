@@ -1,0 +1,174 @@
+<div class="bi-container">
+
+  <!-- Header -->
+  <div class="bi-header-card">
+    <div class="bi-header-row">
+      <div>
+        <h1 class="bi-title">🧠 AI Business Intelligence</h1>
+        <p class="bi-subtitle">Comprehensive 30-day business analysis powered by Claude AI</p>
+      </div>
+      <button class="generate-btn" (click)="generateReport()" [disabled]="loading">
+        <span *ngIf="!loading">⚡ Generate AI Report</span>
+        <span *ngIf="loading" class="spinner-text">
+          <span class="spinner"></span> Analysing...
+        </span>
+      </button>
+    </div>
+
+    <!-- Extra Context Form -->
+    <div class="context-form">
+      <h3 class="context-title">Optional: Additional Business Context</h3>
+      <div class="context-grid">
+        <div class="form-group">
+          <label>Business Goals / Challenges</label>
+          <textarea class="form-textarea" rows="2" [(ngModel)]="businessGoals"
+            placeholder="e.g. Want to increase saree sales, reduce dead stock before festival season..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Products to Focus On</label>
+          <textarea class="form-textarea" rows="2" [(ngModel)]="targetProducts"
+            placeholder="e.g. Kanjivaram silk, Cotton kurta sets..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Competitor / Market Notes</label>
+          <textarea class="form-textarea" rows="2" [(ngModel)]="competitorNotes"
+            placeholder="e.g. Competitor opened new store nearby, prices are dropping..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Additional Notes for AI</label>
+          <textarea class="form-textarea" rows="2" [(ngModel)]="additionalNotes"
+            placeholder="Any other context you want the AI to consider..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-card" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">AI is analysing your business data...</p>
+    <p class="loading-sub">This may take 30-60 seconds. Fetching sales, inventory, expenses, customer enquiries and market trends.</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-card" *ngIf="errorMsg && !loading">
+    <p>⚠️ {{ errorMsg }}</p>
+  </div>
+
+  <!-- Report Content -->
+  <div *ngIf="report && !loading">
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card revenue">
+        <div class="kpi-label">Total Revenue (30d)</div>
+        <div class="kpi-value">₹{{ formatAmount(salesSummary['total_revenue']) }}</div>
+        <div class="kpi-sub">{{ totalBills }} bills</div>
+      </div>
+      <div class="kpi-card expenses">
+        <div class="kpi-label">Total Expenses (30d)</div>
+        <div class="kpi-value">₹{{ formatAmount(totalExpenses) }}</div>
+        <div class="kpi-sub">All categories</div>
+      </div>
+      <div class="kpi-card" [class.profit]="netProfit >= 0" [class.loss]="netProfit < 0">
+        <div class="kpi-label">Est. Net Profit</div>
+        <div class="kpi-value">₹{{ formatAmount(netProfit) }}</div>
+        <div class="kpi-sub">Revenue - Expenses - Purchases</div>
+      </div>
+      <div class="kpi-card customers">
+        <div class="kpi-label">Unique Customers</div>
+        <div class="kpi-value">{{ uniqueCustomers }}</div>
+        <div class="kpi-sub">Avg ₹{{ formatAmount(salesSummary['avg_bill_value']) }}/bill</div>
+      </div>
+    </div>
+
+    <!-- Top Products + Dead Stock Row -->
+    <div class="two-col-row">
+
+      <!-- Top Products -->
+      <div class="purchase-card">
+        <h3 class="card-title">🏆 Top Products by Revenue</h3>
+        <div class="table-container" *ngIf="topProducts.length > 0; else noTopProducts">
+          <table class="purchase-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th>Category</th>
+                <th class="text-right">Revenue (₹)</th>
+                <th class="text-right">Qty Sold</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of topProducts; let i = index" class="table-row">
+                <td class="rank-cell">{{ i + 1 }}</td>
+                <td>{{ p['product_name'] }}</td>
+                <td><span class="cat-tag">{{ p['category'] }}</span></td>
+                <td class="text-right">₹{{ formatAmount(p['revenue']) }}</td>
+                <td class="text-right">{{ p['qty_sold'] }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #noTopProducts>
+          <div class="no-data">No sales data available for this period.</div>
+        </ng-template>
+      </div>
+
+      <!-- Dead Stock -->
+      <div class="purchase-card">
+        <h3 class="card-title">📦 Dead Stock (Zero Sales in 30d)</h3>
+        <div class="table-container" *ngIf="deadStock.length > 0; else noDeadStock">
+          <table class="purchase-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Stock</th>
+                <th class="text-right">Value (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let d of deadStock" class="table-row dead-row">
+                <td>{{ d['product_name'] }}</td>
+                <td>{{ d['stock_quantity'] }}</td>
+                <td class="text-right dead-value">₹{{ formatAmount(d['stock_value']) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #noDeadStock>
+          <div class="no-data success-note">All active products had at least one sale. Great job!</div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Trending Fabrics -->
+    <div class="purchase-card" *ngIf="!hasTrendNote() && trendingFabrics.length > 0">
+      <h3 class="card-title">📈 Market & Trend Data</h3>
+      <div class="trends-grid">
+        <div class="trend-card" *ngFor="let t of trendingFabrics">
+          <div class="trend-title" *ngIf="!t['error']">{{ t['title'] }}</div>
+          <div class="trend-snippet" *ngIf="!t['error']">{{ t['snippet'] }}</div>
+          <a class="trend-link" [href]="t['link']" target="_blank" *ngIf="t['link']">View source ↗</a>
+          <div class="trend-error" *ngIf="t['error']">{{ t['error'] }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="purchase-card" *ngIf="hasTrendNote()">
+      <h3 class="card-title">📈 Market Trends</h3>
+      <div class="no-data">{{ trendingFabrics[0]['note'] }}</div>
+    </div>
+
+    <!-- AI Report -->
+    <div class="purchase-card ai-report-card">
+      <div class="report-header">
+        <h3 class="card-title">🤖 AI Business Analysis Report</h3>
+        <span class="report-date" *ngIf="generatedAt">Generated: {{ generatedAt }}</span>
+      </div>
+      <div class="ai-report-content" [innerHTML]="renderMarkdown(aiReport)"></div>
+    </div>
+
+  </div><!-- end report -->
+
+</div>

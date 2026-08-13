@@ -17,6 +17,8 @@ import { ChatInsightsComponent } from './chat-insights/chat-insights.component';
 import { AiConfigComponent } from './ai-config/ai-config.component';
 import { EcomCoverageComponent } from './ecom-coverage/ecom-coverage.component';
 import { HermesComponent } from './hermes/hermes.component';
+import { ExpensesComponent } from './expenses/expenses.component';
+import { AiInsightsComponent } from './ai-insights/ai-insights.component';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService, CurrentUser } from './auth.service';
@@ -32,7 +34,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
     SettingsComponent, ProductCategoryComponent, ProductMediaComponent,
     LoginComponent, RegisterFirmComponent, SuperadminDashboardComponent,
     EcomOrdersComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
-    EcomCoverageComponent, FormsModule, CommonModule
+    EcomCoverageComponent, ExpensesComponent, AiInsightsComponent,
+    FormsModule, CommonModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

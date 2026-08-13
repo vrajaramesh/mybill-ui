@@ -173,6 +173,24 @@
         </div>
       </div>
 
+      <!-- Expenses -->
+      <div class="nav-group" *ngIf="!isSales && !isEcom">
+        <div class="nav-item parent" [class.active]="activeMenu==='expenses'"
+             (click)="navigate('expenses')">
+          <span class="nav-icon">💰</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Expenses</span>
+        </div>
+      </div>
+
+      <!-- AI Insights -->
+      <div class="nav-group" *ngIf="!isSales && !isEcom">
+        <div class="nav-item parent" [class.active]="activeMenu==='ai-insights'"
+             (click)="navigate('ai-insights')">
+          <span class="nav-icon">🧠</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">AI Insights</span>
+        </div>
+      </div>
+
       <!-- Settings -->
       <div class="nav-group" *ngIf="!isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='settings'"
@@ -227,6 +245,8 @@
     <app-ecom-orders     *ngIf="activeSection==='ecom-orders'" (click)="loadNewOrderCount()"></app-ecom-orders>
     <app-settings        *ngIf="activeSection==='settings'"></app-settings>
     <app-hermes          *ngIf="activeSection==='hermes'"></app-hermes>
+    <app-expenses        *ngIf="activeSection==='expenses'"></app-expenses>
+    <app-ai-insights     *ngIf="activeSection==='ai-insights'"></app-ai-insights>
   </main>
 
   </div><!-- /.app-layout -->
