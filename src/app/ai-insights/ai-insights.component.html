@@ -160,6 +160,24 @@
       <div class="no-data">{{ trendingFabrics[0]['note'] }}</div>
     </div>
 
+    <!-- Trending Fabric Images -->
+    <div class="purchase-card" *ngIf="trendImages.length > 0">
+      <h3 class="card-title">🖼️ Trending Fabric Photos</h3>
+      <div class="fabric-image-grid">
+        <a class="fabric-image-card" *ngFor="let img of trendImages"
+           [href]="img['link']" target="_blank" rel="noopener">
+          <div class="fabric-img-wrap">
+            <img [src]="img['thumbnail']" [alt]="img['title']"
+                 class="fabric-img" loading="lazy"
+                 (error)="img['_err']=true" *ngIf="!img['_err']">
+            <div class="fabric-img-placeholder" *ngIf="img['_err']">📷</div>
+          </div>
+          <div class="fabric-img-title">{{ img['title'] }}</div>
+          <div class="fabric-img-source">{{ img['source'] }}</div>
+        </a>
+      </div>
+    </div>
+
     <!-- AI Report -->
     <div class="purchase-card ai-report-card">
       <div class="report-header">

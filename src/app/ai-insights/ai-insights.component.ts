@@ -112,6 +112,7 @@ export class AiInsightsComponent implements OnInit, OnDestroy {
   get topProducts(): any[]   { return this.report?.topProducts || []; }
   get deadStock(): any[]     { return this.report?.deadStock || []; }
   get trendingFabrics(): any[] { return this.report?.trendingFabrics || []; }
+  get trendImages(): any[]     { return this.report?.trendImages || []; }
   get aiReport(): string     { return this.report?.aiReport || ''; }
   get generatedAt(): string  { return this.report?.generatedAt || ''; }
 
