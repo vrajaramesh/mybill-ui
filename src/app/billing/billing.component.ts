@@ -680,6 +680,7 @@ export class BillingComponent implements OnInit, OnChanges {
       `*TOTAL: ₹${total}*\n` +
       `──────────────────────\n` +
       `Thank you for shopping with us! 🙏\n` +
+      `VISIT : www.srisafabrics.com \n` +
       `For queries: ${this.businessPhone}`;
   }
 
