@@ -37,3 +37,27 @@ export interface PurchasePayment {
   paymentMethod?: string;
   notes?: string;
 }
+
+export interface DebitNoteItem {
+  debitNoteItemId?: number;
+  purchaseItem?: PurchaseItem;
+  product?: Product;
+  quantity: number;
+  unitPrice?: number;
+  gst?: number;
+  totalAmount?: number;
+  finalAmount?: number;
+}
+
+export interface DebitNote {
+  debitNoteId?: number;
+  noteNumber?: string;
+  purchase?: Purchase;
+  noteDate: string;
+  status?: string;
+  reason?: string;
+  totalAmount?: number;
+  gst?: number;
+  finalAmount?: number;
+  items: DebitNoteItem[];
+}

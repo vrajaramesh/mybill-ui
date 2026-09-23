@@ -5,5 +5,6 @@ export interface Supplier {
   phone?: string;
   email?: string;
   address?: string;
+  gstNumber?: string;
   createdAt?: string;
 }

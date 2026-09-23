@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Purchase, PurchaseItem, PurchasePayment } from './purchase.model';
+import { DebitNote, Purchase, PurchaseItem, PurchasePayment } from './purchase.model';
 import { Supplier } from './supplier.model';
 import { Product } from './product.model';
 
@@ -96,5 +96,13 @@ export class PurchaseService {
 
   addPurchasePayment(purchaseId: number, payment: PurchasePayment): Observable<PurchasePayment> {
     return this.http.post<PurchasePayment>(`${this.apiUrl}/purchases/${purchaseId}/payments`, payment);
+  }
+
+  getDebitNotes(purchaseId: number): Observable<DebitNote[]> {
+    return this.http.get<DebitNote[]>(`${this.apiUrl}/debit-notes/purchase/${purchaseId}`);
+  }
+
+  createDebitNote(purchaseId: number, note: DebitNote): Observable<DebitNote> {
+    return this.http.post<DebitNote>(`${this.apiUrl}/debit-notes/purchase/${purchaseId}`, note);
   }
 }

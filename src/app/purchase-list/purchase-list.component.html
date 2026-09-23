@@ -59,6 +59,8 @@
             </td>
             <td>
               <button class="edit-btn" (click)="selectPurchase(purchase)">Edit</button>
+              <button class="return-btn" (click)="openDebitNote(purchase)">Debit Note</button>
+              <button class="notes-btn" (click)="viewDebitNotes(purchase)">View Notes</button>
               <button class="delete-btn" (click)="deletePurchase(purchase.purchaseId!)">Delete</button>
             </td>
           </tr>
@@ -216,6 +218,59 @@
     </form>
   </div>
 
+  <div *ngIf="debitNoteDraft && debitNotePurchase" class="modal-overlay" (click)="closeDebitNote()">
+    <div class="modal-content debit-note-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Return Goods / Debit Note</h3>
+        <button type="button" class="modal-close" (click)="closeDebitNote()">&times;</button>
+      </div>
+      <div class="debit-note-form">
+        <p class="return-context">Purchase <strong>{{ debitNotePurchase.invoiceNumber }}</strong> · {{ debitNotePurchase.supplier?.supplierName }}</p>
+        <div class="return-fields">
+          <label>Date <input type="date" [(ngModel)]="debitNoteDraft.noteDate" name="debitNoteDate" class="form-input"></label>
+          <label>Reason <input type="text" [(ngModel)]="debitNoteDraft.reason" name="debitNoteReason" placeholder="Damaged, wrong item..." class="form-input"></label>
+        </div>
+        <div class="return-items">
+          <div class="return-item-header"><span>Product</span><span>Purchased</span><span>Returnable</span><span>Return Qty</span><span>Debit Total</span></div>
+          <div *ngFor="let item of debitNoteDraft.items" class="return-item-row">
+            <span>{{ item.product?.productName }}</span>
+            <span>{{ item.purchaseItem?.quantity }}</span>
+            <span>{{ returnableQuantity(item.purchaseItem!) }}</span>
+            <input type="number" min="0" step="0.01" [max]="returnableQuantity(item.purchaseItem!)"
+                   [(ngModel)]="item.quantity" [name]="'returnQty_' + item.purchaseItem?.purchaseItemId"
+                   (ngModelChange)="onDebitNoteItemChange(item)" class="input-small">
+            <span>₹{{ (item.finalAmount || 0) | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <p class="return-summary">Debit total: <strong>₹{{ (debitNoteDraft.finalAmount || 0) | number:'1.2-2' }}</strong></p>
+        <div class="form-actions">
+          <button type="button" class="save-btn" (click)="saveDebitNote()">Create &amp; Print Debit Note</button>
+          <button type="button" class="cancel-btn" (click)="closeDebitNote()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="debitNoteHistoryPurchase" class="modal-overlay" (click)="closeDebitNoteHistory()">
+    <div class="modal-content debit-note-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Debit Notes · Purchase {{ debitNoteHistoryPurchase.invoiceNumber }}</h3>
+        <button type="button" class="modal-close" (click)="closeDebitNoteHistory()">&times;</button>
+      </div>
+      <div class="debit-note-form">
+        <div *ngIf="debitNotes.length === 0" class="no-items">No debit notes found for this purchase.</div>
+        <div *ngFor="let note of debitNotes" class="debit-note-history-row">
+          <div>
+            <strong>{{ note.noteNumber }}</strong>
+            <span>{{ note.noteDate | date:'dd/MM/yyyy' }} · {{ note.reason || 'No reason given' }}</span>
+          </div>
+          <strong>{{ note.finalAmount | currency:'INR':'symbol':'1.2-2' }}</strong>
+          <button type="button" class="print-note-btn" (click)="printDebitNote(note)">Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Supplier Modal -->
   <div *ngIf="showSupplierModal" class="modal-overlay" (click)="closeSupplierModal()">
     <div class="modal-content" (click)="$event.stopPropagation()">
@@ -239,6 +294,10 @@
         <div class="form-group">
           <label for="email">Email:</label>
           <input id="email" type="email" [(ngModel)]="newSupplier.email" name="email" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="supplierGstNumber">GSTIN:</label>
+          <input id="supplierGstNumber" type="text" [(ngModel)]="newSupplier.gstNumber" name="supplierGstNumber" class="form-input">
         </div>
         <div class="form-group">
           <label for="address">Address:</label>

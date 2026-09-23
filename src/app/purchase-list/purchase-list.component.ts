@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { PurchaseService } from '../purchase.service';
-import { Purchase, PurchaseItem, PurchasePayment } from '../purchase.model';
+import { DebitNote, DebitNoteItem, Purchase, PurchaseItem, PurchasePayment } from '../purchase.model';
 import { Supplier } from '../supplier.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Product } from '../product.model';
+import { SettingsService } from '../settings.service';
 
 @Component({
   selector: 'app-purchase-list',
@@ -32,8 +33,13 @@ export class PurchaseListComponent implements OnInit {
   productSearchTerms: string[] = [];
   openDropdownIndex: number = -1;
   highlightedProductIndex: number = -1;
+  debitNotePurchase: Purchase | null = null;
+  debitNoteDraft: DebitNote | null = null;
+  debitNoteHistoryPurchase: Purchase | null = null;
+  debitNotes: DebitNote[] = [];
+  returnedByItemId: Record<number, number> = {};
 
-  constructor(private purchaseService: PurchaseService) { }
+  constructor(private purchaseService: PurchaseService, private settings: SettingsService) { }
 
   ngOnInit(): void {
     this.loadPurchases();
@@ -112,6 +118,103 @@ export class PurchaseListComponent implements OnInit {
         this.loadPurchases();
       });
     }
+  }
+
+  openDebitNote(purchase: Purchase): void {
+    if (!purchase.purchaseId) return;
+    this.debitNotePurchase = purchase;
+    this.debitNoteDraft = {
+      noteDate: new Date().toISOString().split('T')[0],
+      reason: '',
+      items: (purchase.purchaseItems || []).map(item => ({
+        purchaseItem: item,
+        product: item.product,
+        quantity: 0,
+        unitPrice: Number(item.unitPrice) || 0,
+        gst: Number(item.gst) || 5
+      }))
+    };
+    this.returnedByItemId = {};
+    this.purchaseService.getDebitNotes(purchase.purchaseId).subscribe({
+      next: notes => {
+        notes.flatMap(note => note.items || []).forEach(item => {
+          const id = item.purchaseItem?.purchaseItemId;
+          if (id) this.returnedByItemId[id] = (this.returnedByItemId[id] || 0) + Number(item.quantity || 0);
+        });
+      },
+      error: err => alert('Could not load previous returns: ' + (err.error?.message || err.message))
+    });
+  }
+
+  closeDebitNote(): void {
+    this.debitNotePurchase = null;
+    this.debitNoteDraft = null;
+    this.returnedByItemId = {};
+  }
+
+  viewDebitNotes(purchase: Purchase): void {
+    if (!purchase.purchaseId) return;
+    this.debitNoteHistoryPurchase = purchase;
+    this.debitNotes = [];
+    this.purchaseService.getDebitNotes(purchase.purchaseId).subscribe({
+      next: notes => this.debitNotes = notes,
+      error: err => alert('Could not load debit notes: ' + (err.error?.message || err.message))
+    });
+  }
+
+  closeDebitNoteHistory(): void {
+    this.debitNoteHistoryPurchase = null;
+    this.debitNotes = [];
+  }
+
+  returnableQuantity(item: PurchaseItem): number {
+    const purchased = Number(item.quantity) || 0;
+    return Math.max(purchased - (this.returnedByItemId[item.purchaseItemId || -1] || 0), 0);
+  }
+
+  onDebitNoteItemChange(item: DebitNoteItem): void {
+    const quantity = Number(item.quantity) || 0;
+    const base = quantity * (Number(item.unitPrice) || 0);
+    const gst = Number(item.gst) || 5;
+    item.totalAmount = parseFloat(base.toFixed(2));
+    item.finalAmount = parseFloat((base * (1 + gst / 100)).toFixed(2));
+    if (this.debitNoteDraft) {
+      this.debitNoteDraft.totalAmount = parseFloat(this.debitNoteDraft.items.reduce((sum, i) => sum + (i.totalAmount || 0), 0).toFixed(2));
+      this.debitNoteDraft.finalAmount = parseFloat(this.debitNoteDraft.items.reduce((sum, i) => sum + (i.finalAmount || 0), 0).toFixed(2));
+      this.debitNoteDraft.gst = parseFloat(((this.debitNoteDraft.finalAmount || 0) - (this.debitNoteDraft.totalAmount || 0)).toFixed(2));
+    }
+  }
+
+  saveDebitNote(): void {
+    if (!this.debitNotePurchase?.purchaseId || !this.debitNoteDraft) return;
+    const items = this.debitNoteDraft.items.filter(item => Number(item.quantity) > 0);
+    if (!items.length) { alert('Enter a return quantity for at least one item.'); return; }
+    const invalid = items.find(item => Number(item.quantity) > this.returnableQuantity(item.purchaseItem!));
+    if (invalid) { alert('Return quantity exceeds the remaining quantity for ' + (invalid.product?.productName || 'an item') + '.'); return; }
+    this.purchaseService.createDebitNote(this.debitNotePurchase.purchaseId, { ...this.debitNoteDraft, items }).subscribe({
+      next: note => {
+        alert(`Debit note ${note.noteNumber} created. Stock has been reduced.`);
+        this.printDebitNote(note, this.debitNotePurchase);
+        this.closeDebitNote();
+        this.loadPurchases();
+        this.loadProducts();
+      },
+      error: err => alert('Error creating debit note: ' + (err.error?.message || err.message))
+    });
+  }
+
+  printDebitNote(note: DebitNote, purchase: Purchase | null = this.debitNoteHistoryPurchase): void {
+    const rows = (note.items || []).map((item, i) => `<tr><td>${i + 1}</td><td>${item.product?.productName || ''}</td><td>${item.quantity}</td><td>₹${Number(item.unitPrice || 0).toFixed(2)}</td><td>₹${Number(item.finalAmount || 0).toFixed(2)}</td></tr>`).join('');
+    const supplier = purchase?.supplier || note.purchase?.supplier;
+    const firmName = this.settings.firmName || 'SRISA FABRICS';
+    const firmAddress = this.settings.address;
+    const firmGst = this.settings.gstNumber;
+    const firmPhone = this.settings.whatsappPhone;
+    const firmLogo = this.settings.logo;
+    const win = window.open('', '_blank', 'width=800,height=650');
+    if (!win) return;
+    win.document.write(`<html><head><title>${note.noteNumber}</title><style>body{font-family:Arial;padding:30px;color:#111}.header{text-align:center;border-bottom:2px solid #222;padding-bottom:16px}.logo{max-height:70px;max-width:180px;display:block;margin:0 auto 8px}.firm{font-size:24px;font-weight:bold}.muted{color:#555;margin:4px 0}.parties{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}.box{border:1px solid #ccc;padding:12px;min-height:95px}.box h3{margin:0 0 8px;font-size:14px}.box p{margin:4px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th:nth-child(n+3),td:nth-child(n+3){text-align:right}.total{text-align:right;font-weight:bold;margin-top:20px;line-height:1.8}.footer{margin-top:35px;border-top:1px solid #ccc;padding-top:10px;font-size:12px;color:#555}@media print{body{padding:0}}</style></head><body><div class="header">${firmLogo ? `<img class="logo" src="${firmLogo}" alt="${firmName}">` : ''}<div class="firm">${firmName}</div>${firmAddress ? `<div class="muted">${firmAddress}</div>` : ''}${firmGst ? `<div class="muted"><b>GSTIN:</b> ${firmGst}</div>` : ''}${firmPhone ? `<div class="muted"><b>Phone:</b> ${firmPhone}</div>` : ''}</div><div class="parties"><div class="box"><h3>Debit Note To</h3><p><b>${supplier?.supplierName || 'Supplier'}</b></p>${supplier?.contactPerson ? `<p>Contact: ${supplier.contactPerson}</p>` : ''}${supplier?.address ? `<p>Address: ${supplier.address}</p>` : ''}${supplier?.phone ? `<p>Phone: ${supplier.phone}</p>` : ''}${supplier?.email ? `<p>Email: ${supplier.email}</p>` : ''}${supplier?.gstNumber ? `<p><b>GSTIN:</b> ${supplier.gstNumber}</p>` : '<p><b>GSTIN:</b> Not provided</p>'}</div><div class="box"><h3>Document Details</h3><p><b>Debit Note:</b> ${note.noteNumber}</p><p><b>Date:</b> ${note.noteDate}</p><p><b>Purchase Invoice:</b> ${purchase?.invoiceNumber || note.purchase?.invoiceNumber || ''}</p><p><b>Reason:</b> ${note.reason || 'Goods returned to supplier'}</p></div></div><table><tr><th>#</th><th>Product</th><th>Qty</th><th>Rate</th><th>Amount incl. GST</th></tr>${rows}</table><p class="total">Base: ₹${Number(note.totalAmount || 0).toFixed(2)}<br>GST: ₹${Number(note.gst || 0).toFixed(2)}<br>Debit Total: ₹${Number(note.finalAmount || 0).toFixed(2)}</p><div class="footer">Goods received back by supplier against the above debit note.</div></body></html>`);
+    win.document.close(); win.focus(); win.print();
   }
 
   addNewPurchase(): void {
