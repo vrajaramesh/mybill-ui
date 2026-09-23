@@ -187,7 +187,9 @@
         <div class="items-header">
           <h4>Items</h4>
           <div style="display:flex;gap:6px;">
-            <button type="button" class="add-item-btn" (click)="addBillItem()">+ Add Item</button>
+            <button type="button" class="add-item-btn" (click)="addBillItem()">
+              + Add Item <span class="shortcut-hint">Ctrl/Cmd + Enter</span>
+            </button>
             <button type="button" class="add-misc-btn" (click)="addMiscItem()">+ Misc Item</button>
           </div>
         </div>
@@ -200,9 +202,17 @@
           <!-- Header row -->
           <div class="item-row-header">
             <div class="col-product">Product</div>
-            <div class="col-qty">Qty</div>
+            <div class="col-qty">Qty <span class="primary-column-hint">Enter → next</span></div>
             <div class="col-price">Unit Price (₹)</div>
-            <div class="col-disc">Disc %</div>
+            <div class="col-disc">
+              <label class="discount-header">
+                Discount
+                <input type="checkbox" [(ngModel)]="discountAsPercentage"
+                       name="discountAsPercentage"
+                       (ngModelChange)="setDiscountMode($event)">
+                <span>%</span>
+              </label>
+            </div>
             <div class="col-gst">GST (₹)</div>
             <div class="col-total">Amount (₹)</div>
             <div class="col-actions"></div>
@@ -255,6 +265,7 @@
               <input type="number" step="0.01" min="0.01"
                      [(ngModel)]="item.quantity" [name]="'qty_' + i" [id]="'qty_' + i"
                      (ngModelChange)="onBillItemChange(i)"
+                     (keydown.enter)="onQuantityEnter(i, $event)"
                      class="item-input center">
             </div>
 
@@ -266,12 +277,16 @@
                      class="item-input center">
             </div>
 
-            <!-- Discount % -->
+            <!-- Discount -->
             <div class="col-disc">
-              <input type="number" step="0.01" min="0" max="100"
-                     [(ngModel)]="item.discountPct" [name]="'disc_' + i"
-                     (ngModelChange)="onBillItemChange(i)"
-                     class="item-input center">
+              <div class="discount-input">
+                <input type="number" step="0.01" min="0"
+                       [attr.max]="item.discountType === 'percentage' ? 100 : null"
+                       [(ngModel)]="item.discountValue" [name]="'disc_' + i"
+                       (ngModelChange)="onBillItemChange(i)"
+                       class="item-input center discount-value">
+                <span class="discount-suffix">{{ item.discountType === 'percentage' ? '%' : '₹' }}</span>
+              </div>
             </div>
 
             <!-- GST Amount (readonly) -->
@@ -291,8 +306,9 @@
             <!-- Actions -->
             <div class="col-actions">
               <button type="button" class="btn-remove" tabindex="-1" (click)="removeBillItem(i)">✕</button>
-              <button *ngIf="i === (currentBill!.billItems?.length || 0) - 1"
-                      type="button" class="btn-add-row" (click)="addBillItem()">+ Add Item</button>
+              <button type="button" class="btn-add-row" (click)="addNextBillItem(i)">
+                <span class="add-row-icon">+</span> Next item
+              </button>
             </div>
           </div>
 

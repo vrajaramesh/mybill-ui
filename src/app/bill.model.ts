@@ -8,6 +8,8 @@ export interface BillItem {
   isMisc?: boolean;         // UI-only flag, not sent to backend
   quantity: number;
   unitPrice: number;
+  discountType?: 'percentage' | 'amount';
+  discountValue?: number;
   discountPct: number;
   taxableAmount?: number;
   gstPct: number;

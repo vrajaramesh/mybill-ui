@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BillService } from '../bill.service';
@@ -78,6 +78,7 @@ export class BillingComponent implements OnInit, OnChanges {
   productSearchTerms: string[] = [];
   openDropdownIndex: number = -1;
   highlightedProductIndex: number = -1;
+  discountAsPercentage = false;
 
   // Add Customer modal
   showCustomerModal: boolean = false;
@@ -108,6 +109,18 @@ export class BillingComponent implements OnInit, OnChanges {
     this.loadProducts();
     this.loadCategories();
     this.loadSalesPersons();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onBillingShortcut(event: KeyboardEvent): void {
+    if (this.view !== 'form' || !this.currentBill || !(event.ctrlKey || event.metaKey)
+        || event.key !== 'Enter') return;
+
+    const target = event.target as HTMLElement | null;
+    if (target?.id.startsWith('qty_')) return;
+
+    event.preventDefault();
+    this.addBillItem();
   }
 
   loadSalesPersons(): void {
@@ -259,6 +272,7 @@ export class BillingComponent implements OnInit, OnChanges {
   // ── Bill CRUD ──────────────────────────────────────────────
 
   addNewBill(): void {
+    this.discountAsPercentage = false;
     this.currentBill = {
       billDate: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
       paymentMethod: 'CASH',
@@ -270,6 +284,7 @@ export class BillingComponent implements OnInit, OnChanges {
   }
 
   selectBill(bill: Bill): void {
+    this.discountAsPercentage = true;
     this.currentBill = {
       ...bill,
       billItems: (bill.billItems || []).map(item => ({ ...item }))
@@ -283,6 +298,8 @@ export class BillingComponent implements OnInit, OnChanges {
     // Restore isMisc flag for items that have no product
     (this.currentBill.billItems || []).forEach(item => {
       if (!item.product) item.isMisc = true;
+      item.discountType = 'percentage';
+      item.discountValue = item.discountValue ?? item.discountPct ?? 0;
     });
     this.calculateBillTotals();
     this.viewChange.emit('form');
@@ -308,8 +325,14 @@ export class BillingComponent implements OnInit, OnChanges {
       return;
     }
 
+    (this.currentBill.billItems || []).forEach((item, index) => this.onBillItemChange(index));
+    const billToSave: Bill = {
+      ...this.currentBill,
+      billItems: this.currentBill.billItems.map(({ discountType, discountValue, ...item }) => item)
+    };
+
     if (this.currentBill.billId) {
-      this.billService.updateBill(this.currentBill.billId, this.currentBill).subscribe({
+      this.billService.updateBill(this.currentBill.billId, billToSave).subscribe({
         next: (saved) => {
           this.loadBills(); this.loadProducts(); this.cancelEdit();
           this.viewChange.emit('list');
@@ -318,7 +341,7 @@ export class BillingComponent implements OnInit, OnChanges {
         error: (err) => alert('Error updating bill: ' + (err.error?.message || err.message))
       });
     } else {
-      this.billService.createBill(this.currentBill).subscribe({
+      this.billService.createBill(billToSave).subscribe({
         next: (saved) => {
           this.loadBills(); this.loadProducts(); this.cancelEdit();
           this.viewChange.emit('list');
@@ -353,6 +376,8 @@ export class BillingComponent implements OnInit, OnChanges {
       product: undefined,
       quantity: 1,
       unitPrice: 0,
+      discountType: this.discountAsPercentage ? 'percentage' : 'amount',
+      discountValue: 0,
       discountPct: 0,
       gstPct: 5,
       taxableAmount: 0,
@@ -376,6 +401,8 @@ export class BillingComponent implements OnInit, OnChanges {
       isMisc: true,
       quantity: 1,
       unitPrice: 0,
+      discountType: this.discountAsPercentage ? 'percentage' : 'amount',
+      discountValue: 0,
       discountPct: 0,
       gstPct: 5,
       taxableAmount: 0,
@@ -402,10 +429,16 @@ export class BillingComponent implements OnInit, OnChanges {
     const item = this.currentBill.billItems[index];
     const qty = Number(item.quantity) || 0;
     const price = Number(item.unitPrice) || 0;
-    const disc = Number(item.discountPct) || 0;
+    const baseAmount = qty * price;
+    const discountValue = Math.max(Number(item.discountValue) || 0, 0);
+    const discountAmount = item.discountType === 'amount'
+      ? Math.min(discountValue, baseAmount)
+      : baseAmount * Math.min(discountValue, 100) / 100;
+    const disc = baseAmount > 0 ? discountAmount / baseAmount * 100 : 0;
     const gstPct = Number(item.gstPct) || 5;
 
-    const lineTotal = parseFloat((qty * price * (1 - disc / 100)).toFixed(2));
+    item.discountPct = parseFloat(disc.toFixed(2));
+    const lineTotal = parseFloat(Math.max(baseAmount - discountAmount, 0).toFixed(2));
     const taxable = parseFloat((lineTotal / (1 + gstPct / 100)).toFixed(2));
     const gstAmt = parseFloat((lineTotal - taxable).toFixed(2));
 
@@ -414,6 +447,24 @@ export class BillingComponent implements OnInit, OnChanges {
     item.gstAmount = gstAmt;
 
     this.calculateBillTotals();
+  }
+
+  setDiscountMode(asPercentage: boolean): void {
+    if (!this.currentBill?.billItems) return;
+
+    this.currentBill.billItems.forEach((item, index) => {
+      const baseAmount = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+      const currentValue = Math.max(Number(item.discountValue) || 0, 0);
+      const discountAmount = item.discountType === 'percentage'
+        ? baseAmount * Math.min(currentValue, 100) / 100
+        : Math.min(currentValue, baseAmount);
+
+      item.discountType = asPercentage ? 'percentage' : 'amount';
+      item.discountValue = parseFloat((asPercentage && baseAmount > 0
+        ? discountAmount / baseAmount * 100
+        : discountAmount).toFixed(2));
+      this.onBillItemChange(index);
+    });
   }
 
   calculateBillTotals(): void {
@@ -450,6 +501,26 @@ export class BillingComponent implements OnInit, OnChanges {
     }, 50);
   }
 
+  onQuantityEnter(index: number, event: Event): void {
+    event.preventDefault();
+    this.addNextBillItem(index);
+  }
+
+  addNextBillItem(index: number): void {
+    if (!this.currentBill) return;
+    const items = this.currentBill.billItems || [];
+    const nextIndex = index + 1;
+    if (nextIndex >= items.length) {
+      this.addBillItem();
+      return;
+    }
+
+    setTimeout(() => {
+      const el = document.getElementById(`productSearch_${nextIndex}`) as HTMLInputElement;
+      if (el) el.focus();
+    }, 50);
+  }
+
   onProductSearchKeydown(event: KeyboardEvent, rowIndex: number): void {
     const products = this.getFilteredProducts(rowIndex);
 
@@ -467,6 +538,8 @@ export class BillingComponent implements OnInit, OnChanges {
       if (this.highlightedProductIndex >= 0 && this.highlightedProductIndex < products.length) {
         this.selectProduct(rowIndex, products[this.highlightedProductIndex]);
         this.highlightedProductIndex = -1;
+      } else if (products.length === 1) {
+        this.selectProduct(rowIndex, products[0]);
       }
     } else if (event.key === 'Escape') {
       this.openDropdownIndex = -1;

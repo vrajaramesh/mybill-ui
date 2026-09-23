@@ -450,6 +450,14 @@
   font-size: 13px;
 }
 .add-item-btn:hover { background: #138496; }
+.shortcut-hint {
+  margin-left: 5px;
+  padding: 2px 4px;
+  border: 1px solid rgba(255,255,255,0.45);
+  border-radius: 3px;
+  font-size: 10px;
+  opacity: 0.9;
+}
 
 .add-misc-btn {
   background: #fd7e14;
@@ -492,6 +500,13 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
+.primary-column-hint {
+  color: #17a2b8;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
 
 .item-row {
   display: flex;
@@ -509,7 +524,12 @@
 .col-product  { flex: 0 0 28vw; min-width: 200px; }
 .col-qty      { flex: 0 0 55px; }
 .col-price    { flex: 0 0 80px; }
-.col-disc     { flex: 0 0 55px; }
+.col-disc     { flex: 0 0 86px; }
+.discount-header { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; text-transform: none; }
+.discount-header input { margin: 0; accent-color: #17a2b8; }
+.discount-input { display: flex; align-items: center; gap: 2px; }
+.discount-value { min-width: 0; width: 48px; }
+.discount-suffix { color: #6c757d; font-size: 11px; min-width: 10px; }
 .col-gst      { flex: 0 0 75px; }
 .col-total    { flex: 0 0 80px; }
 .col-actions  { flex: 0 0 auto; display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
@@ -620,13 +640,14 @@
   background: #17a2b8;
   color: white;
   border: none;
-  padding: 5px 10px;
+  padding: 6px 9px;
   border-radius: 3px;
   cursor: pointer;
   font-size: 12px;
   white-space: nowrap;
   flex-shrink: 0;
 }
+.add-row-icon { font-size: 15px; font-weight: 700; vertical-align: -1px; }
 .btn-add-row:hover, .btn-add-row:focus {
   background: #138496;
   outline: none;
