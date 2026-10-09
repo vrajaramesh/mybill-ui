@@ -1,0 +1,51 @@
+.sd-header { margin-bottom: 12px; }
+.sd-title { margin: 0 0 4px; color: #333; font-size: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sd-status { border-radius: 10px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.st-DRAFT { background: #f1f3f5; color: #495057; }
+.st-ISSUED { background: #fff3cd; color: #8a6100; }
+.st-PARTIALLY_PAID { background: #ffe5d0; color: #9a4a00; }
+.st-PAID { background: #e8f5ee; color: #146c43; }
+.st-CANCELLED { background: #f1f3f5; color: #6c757d; text-decoration: line-through; }
+.success-banner { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; border-radius: 4px; padding: 10px 12px; margin-bottom: 12px; }
+.pay-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.pay-summary div { display: flex; flex-direction: column; min-width: 130px; padding: 8px 12px; border: 1px solid #e3e6ea; border-radius: 6px; background: #fcfcfd; }
+.pay-summary span { font-size: 12px; color: #6c757d; }
+.pay-summary strong { font-size: 17px; color: #212529; }
+.pay-summary .due strong { color: #b02a37; }
+.sd-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.sd-actions .small { padding: 8px 14px; font-size: 13px; margin: 0; }
+.divider { width: 1px; height: 24px; background: #dee2e6; margin: 0 4px; }
+.push-right { flex: 1; }
+.link-btn.danger { color: #dc3545; }
+.pay-form { border: 1px solid #cfe2ff; background: #f5f9ff; border-radius: 6px; padding: 14px; margin-bottom: 14px; }
+.pay-form h4, .pay-history h4 { margin: 0 0 8px; color: #333; }
+.pay-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 8px; }
+.pay-grid .wide { grid-column: 1 / -1; }
+.checkbox { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.pay-history { margin-bottom: 14px; }
+.pay-history tr.voided td { color: #9aa0a6; text-decoration: line-through; }
+.pay-history tr.voided td .muted { text-decoration: none; }
+.doc-frame { width: 100%; height: 1100px; border: 1px solid #dee2e6; border-radius: 6px; background: white; }
+@media (max-width: 600px) { .doc-frame { height: 800px; } }
+
+.reason { margin-top: 6px; padding: 6px 10px; border-left: 3px solid #6c757d; background: #f8f9fa; font-size: 14px; }
+.audit { margin-bottom: 12px; }
+.audit ol { margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
+.audit li { margin-bottom: 6px; }
+
+@media (max-width: 768px) {
+  .sd-title { font-size: 19px; }
+  .pay-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pay-summary div { min-width: 0; }
+  .sd-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sd-actions .divider, .sd-actions .push-right { display: none; }
+  .sd-actions button, .sd-actions .small { width: 100%; padding: 11px 8px; font-size: 14px; margin: 0; }
+  .sd-actions .link-btn.danger { grid-column: 1 / -1; text-align: center; padding: 10px; }
+  .pay-form { padding: 12px; }
+  .pay-grid { grid-template-columns: 1fr 1fr; }
+  .pay-form .form-actions { flex-direction: column; }
+  .pay-form .form-actions button { width: 100%; }
+  .checkbox { min-height: 32px; font-size: 15px; }
+  .checkbox input { width: 20px; height: 20px; }
+  .doc-frame { height: 70vh; }
+}

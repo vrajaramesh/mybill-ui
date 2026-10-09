@@ -1,0 +1,210 @@
+<div class="ws-customers">
+  <div class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Customers</h2>
+        <p class="muted">Business buyers for quotations, credit invoices, sales receipts and debit notes. Separate from retail billing customers.</p>
+      </div>
+      <button type="button" class="add-btn" (click)="startCreate()">+ Add Customer</button>
+    </div>
+
+    <div class="filters-row">
+      <input type="search" class="form-input search" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+             placeholder="Search name, business, GSTIN, phone or city" aria-label="Search wholesale customers">
+      <select class="form-input" [(ngModel)]="typeFilter" (ngModelChange)="load()" aria-label="Customer type filter">
+        <option value="">All types</option>
+        <option *ngFor="let t of customerTypes" [value]="t.value">{{ t.label }}</option>
+      </select>
+      <select class="form-input" [(ngModel)]="statusFilter" (ngModelChange)="load()" aria-label="Status filter">
+        <option value="ACTIVE">Active</option>
+        <option value="ALL">Active and inactive</option>
+      </select>
+    </div>
+
+    <div *ngIf="listError" class="error-banner">{{ listError }}</div>
+
+    <div class="table-container">
+      <table class="ws-table">
+        <thead>
+          <tr><th>Customer</th><th>Type</th><th>GSTIN</th><th>Phone</th><th>Location</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of customers" class="clickable" (click)="view(c)">
+            <td>
+              <strong>{{ c.customerName }}</strong>
+              <div class="muted" *ngIf="c.businessName">{{ c.businessName }}</div>
+            </td>
+            <td><span class="type-chip" [ngClass]="'type-' + c.customerType">{{ c.customerTypeLabel }}</span></td>
+            <td class="mono">{{ c.gstNumber || '—' }}</td>
+            <td>{{ c.phone || '—' }}</td>
+            <td>{{ c.city || '' }}<span *ngIf="c.city && c.stateName">, </span>{{ c.stateName || '' }}<span *ngIf="!c.city && !c.stateName">—</span></td>
+            <td><span class="ws-badge" [class.inactive]="!c.isActive">{{ c.isActive ? 'Active' : 'Inactive' }}</span></td>
+            <td class="row-actions">
+              <button type="button" class="edit-btn" (click)="startEdit(c); $event.stopPropagation()">Edit</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!loading && customers.length === 0" class="empty">
+        {{ searchTerm || typeFilter ? 'No customers match the search.' : 'No wholesale customers yet. Click "Add Customer" to create one.' }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Details / Add / Edit -->
+  <div *ngIf="mode" class="modal-overlay" (click)="close()">
+    <div class="modal-content ws-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+
+      <!-- View -->
+      <ng-container *ngIf="mode === 'view' && selected">
+        <div class="detail-header">
+          <div>
+            <h3 class="ws-title">{{ selected.customerName }}</h3>
+            <div class="facts">
+              <span *ngIf="selected.businessName">{{ selected.businessName }}</span>
+              <span class="type-chip" [ngClass]="'type-' + selected.customerType">{{ selected.customerTypeLabel }}</span>
+              <span class="ws-badge" [class.inactive]="!selected.isActive">{{ selected.isActive ? 'Active' : 'Inactive' }}</span>
+            </div>
+          </div>
+          <button type="button" class="modal-close" (click)="close()" aria-label="Close">&times;</button>
+        </div>
+
+        <div *ngIf="formError" class="error-banner" role="alert">{{ formError }}</div>
+
+        <div class="detail-grid">
+          <section class="detail-section">
+            <h4>Contact & Tax</h4>
+            <dl>
+              <dt>Phone</dt><dd>{{ selected.phone || '—' }}</dd>
+              <dt>Email</dt><dd>{{ selected.email || '—' }}</dd>
+              <dt>GSTIN</dt><dd class="mono">{{ selected.gstNumber || 'Unregistered' }}</dd>
+              <dt>State</dt><dd>{{ selected.stateName ? selected.stateName + ' (' + selected.stateCode + ')' : '—' }}</dd>
+            </dl>
+          </section>
+          <section class="detail-section">
+            <h4>Billing Address</h4>
+            <ng-container *ngIf="addressLines(selected.billingAddress, selected.city, selected.stateName, selected.pinCode) as lines">
+              <p *ngFor="let l of lines" class="addr-line">{{ l }}</p>
+              <p *ngIf="lines.length === 0" class="muted">Not provided</p>
+            </ng-container>
+          </section>
+          <section class="detail-section">
+            <h4>Shipping Address</h4>
+            <p *ngIf="selected.shippingSameAsBilling" class="muted">Same as billing address</p>
+            <ng-container *ngIf="!selected.shippingSameAsBilling">
+              <ng-container *ngIf="addressLines(selected.shippingAddress, selected.shippingCity, selected.shippingStateName, selected.shippingPinCode) as lines">
+                <p *ngFor="let l of lines" class="addr-line">{{ l }}</p>
+                <p *ngIf="lines.length === 0" class="muted">Not provided</p>
+              </ng-container>
+            </ng-container>
+          </section>
+          <section class="detail-section" *ngIf="selected.notes">
+            <h4>Notes</h4>
+            <p class="notes">{{ selected.notes }}</p>
+          </section>
+        </div>
+        <p class="muted">Created {{ selected.createdAt | date:'dd/MM/yyyy HH:mm' }} · Updated {{ selected.updatedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+
+        <div class="form-actions">
+          <button type="button" class="save-btn" (click)="startEdit(selected)">Edit</button>
+          <button type="button" class="cancel-btn" (click)="toggleStatus(selected)">{{ selected.isActive ? 'Mark Inactive' : 'Reactivate' }}</button>
+          <button type="button" class="delete-btn push-right" (click)="deleteCustomer(selected)">Delete</button>
+        </div>
+      </ng-container>
+
+      <!-- Add / Edit -->
+      <ng-container *ngIf="mode === 'create' || mode === 'edit'">
+        <div class="detail-header">
+          <h3 class="ws-title">{{ mode === 'create' ? 'Add Wholesale Customer' : 'Edit ' + selected?.customerName }}</h3>
+          <button type="button" class="modal-close" (click)="close()" aria-label="Close">&times;</button>
+        </div>
+
+        <div *ngIf="formError" class="error-banner" role="alert">{{ formError }}</div>
+
+        <div *ngIf="duplicates.length && !formError" class="dup-warning" role="alert">
+          <strong>Possible duplicate customer{{ duplicates.length > 1 ? 's' : '' }}:</strong>
+          <ul>
+            <li *ngFor="let m of duplicates">
+              {{ m.customerName }}<span *ngIf="m.businessName"> ({{ m.businessName }})</span>
+              <span *ngIf="m.city"> · {{ m.city }}</span><span *ngIf="!m.isActive"> · inactive</span>
+              — {{ m.reasons.join(', ') }}
+            </li>
+          </ul>
+          <button type="button" class="save-btn small" (click)="confirmDuplicateAndSave()" [disabled]="saving">Save anyway</button>
+        </div>
+
+        <h4 class="section-title">Customer</h4>
+        <div class="ws-grid">
+          <div class="form-group"><label for="wcName">Customer Name <span class="req">*</span></label>
+            <input id="wcName" class="form-input" [(ngModel)]="draft.customerName" (ngModelChange)="duplicatesConfirmed = false" maxlength="150"></div>
+          <div class="form-group"><label for="wcBusiness">Business / Firm Name</label>
+            <input id="wcBusiness" class="form-input" [(ngModel)]="draft.businessName" maxlength="200"></div>
+          <div class="form-group"><label id="wcTypeLabel">Customer Type</label>
+            <div class="type-options" role="radiogroup" aria-labelledby="wcTypeLabel">
+              <label *ngFor="let t of customerTypes" class="type-option" [class.active]="draft.customerType === t.value">
+                <input type="radio" name="wcType" [value]="t.value" [(ngModel)]="draft.customerType"> {{ t.label }}
+              </label>
+            </div>
+            <span class="hint">Defaults to Retailer.</span></div>
+          <div class="form-group"><label for="wcPhone">Phone Number</label>
+            <input id="wcPhone" type="tel" class="form-input" [(ngModel)]="draft.phone" (ngModelChange)="duplicatesConfirmed = false" maxlength="20" placeholder="e.g. +91 98765 43210"></div>
+          <div class="form-group"><label for="wcEmail">Email</label>
+            <input id="wcEmail" type="email" class="form-input" [(ngModel)]="draft.email" maxlength="150"></div>
+          <div class="form-group"><label for="wcGst">GST Number</label>
+            <input id="wcGst" class="form-input mono upper" [(ngModel)]="draft.gstNumber" (ngModelChange)="onGstinChange()" maxlength="15" placeholder="15-character GSTIN">
+            <span class="field-error" *ngIf="draft.gstNumber && gstin.error">{{ gstin.error }}</span>
+            <span class="field-warn" *ngIf="!gstin.error && gstin.checksumWarning">{{ gstin.checksumWarning }}</span>
+            <span class="hint" *ngIf="!gstin.error && gstin.stateCode && !gstin.checksumWarning">Registered in {{ stateLabel(gstin.stateCode) }}</span>
+            <span class="hint" *ngIf="!draft.gstNumber">Leave empty for unregistered buyers.</span>
+          </div>
+        </div>
+
+        <h4 class="section-title">Billing Address</h4>
+        <div class="ws-grid">
+          <div class="form-group full"><label for="wcBill">Address</label>
+            <textarea id="wcBill" class="form-textarea" [(ngModel)]="draft.billingAddress" placeholder="Door no, street, area"></textarea></div>
+          <div class="form-group"><label for="wcCity">City</label>
+            <input id="wcCity" class="form-input" [(ngModel)]="draft.city" maxlength="100"></div>
+          <div class="form-group"><label for="wcState">State</label>
+            <select id="wcState" class="form-input" [(ngModel)]="draft.stateCode">
+              <option value="">Select state</option>
+              <option *ngFor="let s of states" [value]="s.value">{{ s.label }} ({{ s.value }})</option>
+            </select>
+            <span class="field-error" *ngIf="gstStateMismatch">{{ gstStateMismatch }}</span></div>
+          <div class="form-group"><label for="wcPin">PIN Code</label>
+            <input id="wcPin" class="form-input" [(ngModel)]="draft.pinCode" maxlength="6" inputmode="numeric"></div>
+        </div>
+
+        <h4 class="section-title">Shipping Address</h4>
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="draft.shippingSameAsBilling"> Same as billing address</label>
+        <div class="ws-grid ship-grid" *ngIf="!draft.shippingSameAsBilling">
+          <div class="form-group full"><label for="wcShip">Address</label>
+            <textarea id="wcShip" class="form-textarea" [(ngModel)]="draft.shippingAddress"></textarea></div>
+          <div class="form-group"><label for="wcShipCity">City</label>
+            <input id="wcShipCity" class="form-input" [(ngModel)]="draft.shippingCity" maxlength="100"></div>
+          <div class="form-group"><label for="wcShipState">State</label>
+            <select id="wcShipState" class="form-input" [(ngModel)]="draft.shippingStateCode">
+              <option value="">Select state</option>
+              <option *ngFor="let s of states" [value]="s.value">{{ s.label }} ({{ s.value }})</option>
+            </select>
+            <span class="hint">Delivery state decides CGST+SGST vs IGST on invoices.</span></div>
+          <div class="form-group"><label for="wcShipPin">PIN Code</label>
+            <input id="wcShipPin" class="form-input" [(ngModel)]="draft.shippingPinCode" maxlength="6" inputmode="numeric"></div>
+        </div>
+
+        <h4 class="section-title">Other</h4>
+        <div class="ws-grid">
+          <div class="form-group full"><label for="wcNotes">Notes</label>
+            <textarea id="wcNotes" class="form-textarea" [(ngModel)]="draft.notes" placeholder="Credit terms, preferred transport, contact person..."></textarea></div>
+          <div class="form-group"><label class="checkbox"><input type="checkbox" [(ngModel)]="draft.isActive"> Active</label>
+            <span class="hint">Inactive customers are hidden from document customer pickers.</span></div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="save-btn" (click)="save()" [disabled]="saving">{{ saving ? 'Saving…' : (mode === 'create' ? 'Create Customer' : 'Save Changes') }}</button>
+          <button type="button" class="cancel-btn" (click)="cancelEdit()" [disabled]="saving">Cancel</button>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>

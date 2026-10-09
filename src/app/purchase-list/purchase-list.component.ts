@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { PurchaseService } from '../purchase.service';
 import { DebitNote, DebitNoteItem, Purchase, PurchaseItem, PurchasePayment } from '../purchase.model';
 import { Supplier } from '../supplier.model';
@@ -38,6 +38,7 @@ export class PurchaseListComponent implements OnInit {
   debitNoteHistoryPurchase: Purchase | null = null;
   debitNotes: DebitNote[] = [];
   returnedByItemId: Record<number, number> = {};
+  /** Asked on every new purchase bill; defaults to RETAIL so the existing workflow is unchanged. */
 
   constructor(private purchaseService: PurchaseService, private settings: SettingsService) { }
 
@@ -206,7 +207,7 @@ export class PurchaseListComponent implements OnInit {
   printDebitNote(note: DebitNote, purchase: Purchase | null = this.debitNoteHistoryPurchase): void {
     const rows = (note.items || []).map((item, i) => `<tr><td>${i + 1}</td><td>${item.product?.productName || ''}</td><td>${item.quantity}</td><td>₹${Number(item.unitPrice || 0).toFixed(2)}</td><td>₹${Number(item.finalAmount || 0).toFixed(2)}</td></tr>`).join('');
     const supplier = purchase?.supplier || note.purchase?.supplier;
-    const firmName = this.settings.firmName || 'SRISA FABRICS';
+    const firmName = this.settings.firmName || 'STORE';
     const firmAddress = this.settings.address;
     const firmGst = this.settings.gstNumber;
     const firmPhone = this.settings.whatsappPhone;

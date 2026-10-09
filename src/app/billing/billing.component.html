@@ -5,8 +5,16 @@
     <div class="card-header">
       <h2 class="card-title">Billing</h2>
       <div class="header-actions">
+        <span class="loaded-at" *ngIf="billsLoadedAt && !billsLoading">Updated {{ billsLoadedAt | date:'h:mm a' }}</span>
+        <button class="refresh-btn" (click)="refreshAll()" [disabled]="billsLoading" title="Refresh transactions">
+          <span class="refresh-icon" [class.spinning]="billsLoading">&#8635;</span> {{ billsLoading ? 'Loading…' : 'Refresh' }}
+        </button>
         <button class="settings-btn" (click)="openSettings()" title="Settings">&#9881;</button>
       </div>
+    </div>
+
+    <div class="bills-error" *ngIf="billsError" role="alert">
+      {{ billsError }} <button type="button" (click)="loadBills()">Retry</button>
     </div>
 
     <!-- Date Filter Bar — single row -->
@@ -102,7 +110,7 @@
             </td>
           </tr>
           <tr *ngIf="filteredBills.length === 0">
-            <td colspan="9" class="no-data">No bills found.</td>
+            <td colspan="9" class="no-data">{{ billsLoading && !billsLoadedAt ? 'Loading transactions…' : 'No bills found.' }}</td>
           </tr>
         </tbody>
       </table>
@@ -350,7 +358,7 @@
       <div class="modal-form">
         <div class="form-group">
           <label>Business WhatsApp Phone Number</label>
-          <input type="tel" [(ngModel)]="businessPhone" name="businessPhone" class="form-input" placeholder="e.g. 8008152007">
+          <input type="tel" [(ngModel)]="businessPhone" name="businessPhone" class="form-input" placeholder="e.g. 9876543210">
           <span style="font-size:11px;color:#999;margin-top:3px;">This number appears in WhatsApp bill messages as contact.</span>
         </div>
         <div class="modal-actions">

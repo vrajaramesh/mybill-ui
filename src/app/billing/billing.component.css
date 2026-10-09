@@ -750,3 +750,21 @@
   .item-row-header, .item-row { flex-wrap: wrap; }
   .col-product { flex: 0 0 100%; }
 }
+/* ── Refresh / load state (transaction list) ───────────── */
+.refresh-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #f8f9fa; color: #333; border: 1px solid #ddd;
+  height: 36px; padding: 0 12px; border-radius: 4px; cursor: pointer; font-size: 14px;
+}
+.refresh-btn:hover:not(:disabled) { background: #e9ecef; }
+.refresh-btn:disabled { opacity: 0.7; cursor: default; }
+.refresh-icon { display: inline-block; font-size: 16px; line-height: 1; }
+.refresh-icon.spinning { animation: bill-refresh-spin 0.9s linear infinite; }
+@keyframes bill-refresh-spin { to { transform: rotate(360deg); } }
+.loaded-at { font-size: 12px; color: #6c757d; }
+.bills-error {
+  background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; border-radius: 4px;
+  padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.bills-error button { background: #842029; color: white; border: none; border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+@media (max-width: 600px) { .loaded-at { display: none; } }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { ProductListComponent } from './product-list/product-list.component';
 import { PurchaseListComponent } from './purchase-list/purchase-list.component';
 import { BillingComponent } from './billing/billing.component';
@@ -19,6 +19,15 @@ import { EcomCoverageComponent } from './ecom-coverage/ecom-coverage.component';
 import { HermesComponent } from './hermes/hermes.component';
 import { ExpensesComponent } from './expenses/expenses.component';
 import { AiInsightsComponent } from './ai-insights/ai-insights.component';
+import { WholesaleProductsComponent } from './wholesale/wholesale-products/wholesale-products.component';
+import { WholesaleCustomersComponent } from './wholesale/wholesale-customers/wholesale-customers.component';
+import { WholesaleSettingsComponent } from './wholesale/wholesale-settings/wholesale-settings.component';
+import { WholesaleQuotationsComponent } from './wholesale/wholesale-quotations/wholesale-quotations.component';
+import { WholesaleSalesDocumentsComponent } from './wholesale/wholesale-sales-documents/wholesale-sales-documents.component';
+import { WholesaleStockComponent } from './wholesale/wholesale-stock/wholesale-stock.component';
+import { WholesaleInstagramComponent } from './wholesale/wholesale-instagram/wholesale-instagram.component';
+import { WholesaleAssistantComponent } from './wholesale/wholesale-assistant/wholesale-assistant.component';
+import { WholesalePurchasesComponent } from './wholesale/wholesale-purchases/wholesale-purchases.component';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService, CurrentUser } from './auth.service';
@@ -34,13 +43,13 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
     SettingsComponent, ProductCategoryComponent, ProductMediaComponent,
     LoginComponent, RegisterFirmComponent, SuperadminDashboardComponent,
     EcomOrdersComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
-    EcomCoverageComponent, ExpensesComponent, AiInsightsComponent,
+    EcomCoverageComponent, ExpensesComponent, AiInsightsComponent, WholesaleProductsComponent, WholesaleCustomersComponent, WholesaleSettingsComponent, WholesaleQuotationsComponent, WholesaleSalesDocumentsComponent, WholesaleStockComponent, WholesaleInstagramComponent, WholesaleAssistantComponent, WholesalePurchasesComponent,
     FormsModule, CommonModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   sidebarCollapsed = false;
   expandedMenus: Set<string> = new Set(['billing']);
   currentView: 'login' | 'register' | 'app' | 'superadmin' = 'login';
@@ -56,7 +65,11 @@ export class AppComponent implements OnInit {
     private http: HttpClient
   ) {}
 
+  private sessionTimer: ReturnType<typeof setInterval> | null = null;
+
   ngOnInit(): void {
+    this.keepSessionFresh();
+    this.sessionTimer = setInterval(() => this.keepSessionFresh(), 60 * 60 * 1000);
     if (this.authService.isLoggedIn()) {
       if (this.authService.isSuperadmin()) {
         this.currentView = 'superadmin';
@@ -69,7 +82,27 @@ export class AppComponent implements OnInit {
         this.currentView = 'app';
         this.loadNewOrderCount();
       }
+      if (this.currentView === 'app') this.settingsService.loadFromBackend();
     }
+  }
+
+  ngOnDestroy(): void {
+    if (this.sessionTimer) clearInterval(this.sessionTimer);
+  }
+
+  /** Coming back to the tab (e.g. next morning): renew the session before the user starts working. */
+  @HostListener('document:visibilitychange')
+  onVisibilityChange(): void {
+    if (document.visibilityState === 'visible') this.keepSessionFresh();
+  }
+
+  /** Sliding session — renews the login token while the app is in use; shows login only if the server refuses. */
+  private keepSessionFresh(): void {
+    if (!this.authService.getToken()) return;
+    if (!this.authService.isLoggedIn()) { this.currentView = 'login'; return; }
+    this.authService.refreshSessionIfNeeded().subscribe(sessionEnded => {
+      if (sessionEnded) this.logout();
+    });
   }
 
   loadNewOrderCount(): void {
@@ -108,6 +141,11 @@ export class AppComponent implements OnInit {
     return this.authService.isAdmin() || this.authService.isInFirmContext();
   }
 
+  /** Wholesale → Business Profile / Bank Details / UPI Details / Document Types & Numbering. */
+  get isWholesaleSettingsSub(): boolean {
+    return this.activeMenu === 'wholesale' && ['ws-profile', 'ws-bank', 'ws-upi', 'ws-numbering'].includes(this.activeSubMenu);
+  }
+
   get isSales(): boolean {
     return this.authService.isSales();
   }
@@ -136,10 +174,15 @@ export class AppComponent implements OnInit {
       return 'reports';
     }
     if (this.activeMenu === 'hermes') return 'hermes';
+    if (this.activeMenu === 'wholesale') {
+      if (this.isWholesaleSettingsSub) return 'wholesale-settings';
+      return 'wholesale-' + (this.activeSubMenu || 'products');
+    }
     return this.activeMenu;
   }
 
   onLoginSuccess(): void {
+    this.settingsService.loadFromBackend();   // this firm's store name / phone, not the previous firm's
     if (this.authService.isSuperadmin()) {
       this.currentView = 'superadmin';
     } else if (this.authService.isEcom()) {
@@ -164,6 +207,7 @@ export class AppComponent implements OnInit {
   onEnterFirm(firmCode: string): void {
     this.authService.enterFirmAsSuperadmin(firmCode).subscribe({
       next: () => {
+        this.settingsService.loadFromBackend();
         this.currentView = 'app';
         this.activeMenu = 'billing';
         this.activeSubMenu = 'transactions';
@@ -225,6 +269,18 @@ export class AppComponent implements OnInit {
     // Refresh new-order badge when opening any section
     if (menu === 'ecom-orders') this.newOrderCount = 0; // clear badge on open
     else this.loadNewOrderCount();
+  }
+
+  /** Opens the Wholesale menu (Products first) or collapses it. */
+  onWholesaleClick(): void {
+    this.toggleMenu('wholesale');
+    if (this.activeMenu !== 'wholesale') this.navigate('wholesale', 'products');
+  }
+
+  /** Wholesale sub-menu click. On phones the sidebar collapses afterwards so the billing screen gets the full width. */
+  navigateWholesale(sub: string): void {
+    this.navigate('wholesale', sub);
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) this.sidebarCollapsed = true;
   }
 
   onBillingViewChange(view: 'list' | 'form'): void {

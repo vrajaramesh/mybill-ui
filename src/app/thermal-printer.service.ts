@@ -478,7 +478,7 @@ export class ThermalPrinterService {
     push(ESC, 0x40);
 
     // Header
-    const firmName  = (this.settings.firmName  || 'SRISA FABRICS').toUpperCase();
+    const firmName  = (this.settings.firmName  || 'STORE').toUpperCase();
     const gstNumber =  this.settings.gstNumber;
     const address   =  this.settings.address;
     big(true); bold(true); center(firmName); bold(false); big(false);
@@ -572,7 +572,7 @@ export class ThermalPrinterService {
     push(ESC, 0x40); // init
 
     // Header
-    const firmName  = (this.settings.firmName  || 'SRISA FABRICS').toUpperCase();
+    const firmName  = (this.settings.firmName  || 'STORE').toUpperCase();
     const gstNumber =  this.settings.gstNumber;
     const address   =  this.settings.address;
     big(true); bold(true); center(firmName); bold(false); big(false);

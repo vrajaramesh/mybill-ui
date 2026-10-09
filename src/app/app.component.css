@@ -225,4 +225,9 @@
   transition: background 0.15s, color 0.15s;
   text-align: left;
 }
-.logout-btn:hover { background: rgba(220,38,38,0.15); color: #fca5a5; }
+.logout-btn:hover { background: rgba(220,38,38,0.15); color: #fca5a5; }.submenu-heading { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6c7a89; padding: 10px 16px 4px 36px; }
+
+/* Wholesale screens only: less padding on phones so billing forms get the width. */
+@media (max-width: 768px) {
+  .main-content.ws-compact { padding: 6px; }
+}

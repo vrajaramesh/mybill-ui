@@ -1,0 +1,165 @@
+<div class="ws-purchase-form">
+  <div class="ws-notice">
+    Items on this bill go into <strong>wholesale stock</strong> only. They will not appear in retail products or retail billing.
+  </div>
+
+  <div *ngIf="errorMessage" class="error-banner" role="alert">{{ errorMessage }}</div>
+
+  <div class="ws-grid">
+    <div class="form-group">
+      <label for="wsSupplier">Supplier <span class="req">*</span></label>
+      <div class="supplier-selection">
+        <select id="wsSupplier" class="form-input" name="wsSupplier"
+                [ngModel]="supplier" (ngModelChange)="onSupplierChange($event)" [compareWith]="sameSupplier">
+          <option [ngValue]="null">Select Supplier</option>
+          <option *ngFor="let s of suppliers" [ngValue]="s">{{ s.supplierName }}</option>
+        </select>
+        <button type="button" class="add-supplier-btn" (click)="addSupplier.emit()" title="Add New Supplier">+</button>
+      </div>
+      <span class="hint" *ngIf="supplier?.gstNumber">GSTIN: {{ supplier?.gstNumber }}</span>
+    </div>
+    <div class="form-group">
+      <label for="wsInvoiceNumber">Supplier Invoice Number <span class="req">*</span></label>
+      <input id="wsInvoiceNumber" class="form-input" name="wsInvoiceNumber" [(ngModel)]="invoiceNumber" maxlength="100">
+    </div>
+    <div class="form-group">
+      <label for="wsInvoiceDate">Invoice Date <span class="req">*</span></label>
+      <input id="wsInvoiceDate" type="date" class="form-input" name="wsInvoiceDate" [(ngModel)]="invoiceDate">
+    </div>
+    <div class="form-group">
+      <label>GST Type</label>
+      <div class="segmented" role="radiogroup" aria-label="GST type">
+        <button type="button" [class.active]="!interstate" (click)="interstate = false">Same state (CGST + SGST)</button>
+        <button type="button" [class.active]="interstate" (click)="interstate = true">Other state (IGST)</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="wsDueDate">Payment Due Date</label>
+      <input id="wsDueDate" type="date" class="form-input" name="wsDueDate" [(ngModel)]="paymentDueDate">
+    </div>
+    <div class="form-group">
+      <label for="wsPaid">Paid Amount (₹)</label>
+      <input id="wsPaid" type="number" min="0" step="0.01" class="form-input" name="wsPaid" [(ngModel)]="paidAmount">
+    </div>
+    <div class="form-group notes-group">
+      <label for="wsNotes">Notes</label>
+      <textarea id="wsNotes" class="form-textarea" name="wsNotes" [(ngModel)]="notes"></textarea>
+    </div>
+  </div>
+
+  <div class="ws-items">
+    <div class="ws-items-header">
+      <h4>Wholesale Items</h4>
+      <div>
+        <button type="button" class="add-btn" (click)="addLine('EXISTING')">+ Existing product</button>
+        <button type="button" class="add-btn secondary" (click)="addLine('NEW')">+ New product</button>
+      </div>
+    </div>
+
+    <div *ngIf="lines.length === 0" class="empty">No items yet. Add an existing wholesale product or a new one.</div>
+
+    <div *ngFor="let line of lines; let i = index" class="ws-line">
+      <div class="ws-line-top">
+        <span class="line-no">{{ i + 1 }}</span>
+        <div class="segmented small" role="radiogroup" [attr.aria-label]="'Item ' + (i + 1) + ' product source'">
+          <button type="button" [class.active]="line.mode === 'EXISTING'" (click)="setMode(line, 'EXISTING')">Existing product</button>
+          <button type="button" [class.active]="line.mode === 'NEW'" (click)="setMode(line, 'NEW')">New product</button>
+        </div>
+        <button type="button" class="link-btn remove" (click)="removeLine(i)">Remove</button>
+      </div>
+
+      <div *ngIf="line.mode === 'EXISTING'" class="searchable-dropdown">
+        <input type="text" class="form-input" autocomplete="off"
+               [id]="'wsSearch_' + i" [name]="'wsSearch_' + i"
+               placeholder="Search wholesale products by name, code or HSN..."
+               [(ngModel)]="line.search"
+               (focus)="openDropdownIndex = i"
+               (input)="onSearchInput(line)"
+               (blur)="onSearchBlur()">
+        <div class="dropdown-list" *ngIf="openDropdownIndex === i">
+          <div *ngIf="filteredProducts(line).length === 0" class="dropdown-empty">
+            No wholesale products found. <button type="button" class="link-btn" (mousedown)="setMode(line, 'NEW')">Create a new one</button>
+          </div>
+          <div *ngFor="let p of filteredProducts(line)" class="dropdown-item" (mousedown)="selectProduct(line, p)">
+            <span>{{ productLabel(p) }}</span>
+            <span class="muted">{{ p.availableQuantity }} {{ p.unit }} in stock<span *ngIf="p.hsnCode"> · HSN {{ p.hsnCode }}</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="line.mode === 'NEW'" class="ws-grid new-product">
+        <div class="form-group">
+          <label [for]="'wsNpName_' + i">Product Name <span class="req">*</span></label>
+          <input class="form-input" [id]="'wsNpName_' + i" [name]="'wsNpName_' + i" [(ngModel)]="line.newProduct.productName" maxlength="200">
+        </div>
+        <div class="form-group">
+          <label [for]="'wsNpCode_' + i">Product Code / SKU</label>
+          <input class="form-input" [id]="'wsNpCode_' + i" [name]="'wsNpCode_' + i" [(ngModel)]="line.newProduct.productCode" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label [for]="'wsNpType_' + i">Product Type</label>
+          <input class="form-input" [id]="'wsNpType_' + i" [name]="'wsNpType_' + i" [(ngModel)]="line.newProduct.productType"
+                 [attr.list]="'wsTypes_' + i" maxlength="100" placeholder="e.g. Fabric, Saree">
+          <datalist [id]="'wsTypes_' + i"><option *ngFor="let t of productTypes" [value]="t"></option></datalist>
+        </div>
+        <div class="form-group">
+          <label [for]="'wsNpHsn_' + i">HSN Code</label>
+          <input class="form-input" [id]="'wsNpHsn_' + i" [name]="'wsNpHsn_' + i" [(ngModel)]="line.newProduct.hsnCode"
+                 inputmode="numeric" maxlength="8" placeholder="4, 6 or 8 digits">
+        </div>
+        <div class="form-group">
+          <label [for]="'wsNpUnit_' + i">Unit <span class="req">*</span></label>
+          <select class="form-input" [id]="'wsNpUnit_' + i" [name]="'wsNpUnit_' + i" [(ngModel)]="line.newProduct.unit">
+            <option *ngFor="let u of units" [value]="u">{{ u }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label [for]="'wsNpMat_' + i">Fabric / Material</label>
+          <input class="form-input" [id]="'wsNpMat_' + i" [name]="'wsNpMat_' + i" [(ngModel)]="line.newProduct.material"
+                 maxlength="200" placeholder="e.g. 100% cotton, 58 inch">
+        </div>
+        <div class="form-group">
+          <label [for]="'wsNpDesc_' + i">Description</label>
+          <input class="form-input" [id]="'wsNpDesc_' + i" [name]="'wsNpDesc_' + i" [(ngModel)]="line.newProduct.description">
+        </div>
+      </div>
+
+      <div class="ws-line-amounts">
+        <div class="form-group">
+          <label [for]="'wsQty_' + i">Quantity <span class="req">*</span></label>
+          <input type="number" min="0" step="0.001" class="form-input" [id]="'wsQty_' + i" [name]="'wsQty_' + i" [(ngModel)]="line.quantity">
+        </div>
+        <div class="form-group">
+          <label [for]="'wsRate_' + i">Purchase Rate (₹) <span class="req">*</span></label>
+          <input type="number" min="0" step="0.01" class="form-input" [id]="'wsRate_' + i" [name]="'wsRate_' + i" [(ngModel)]="line.purchaseRate">
+        </div>
+        <div class="form-group">
+          <label [for]="'wsGst_' + i">GST %</label>
+          <input type="number" min="0" max="100" step="0.01" class="form-input" [id]="'wsGst_' + i" [name]="'wsGst_' + i" [(ngModel)]="line.gstPct">
+        </div>
+        <div class="line-calc">
+          <span>Taxable <strong>{{ lineTax(line).taxable | currency:'INR':'symbol':'1.2-2' }}</strong></span>
+          <span>GST <strong>{{ lineTax(line).gst | currency:'INR':'symbol':'1.2-2' }}</strong></span>
+          <span>Total <strong>{{ lineTax(line).total | currency:'INR':'symbol':'1.2-2' }}</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ws-totals" *ngIf="lines.length > 0">
+    <div><span>Taxable value</span><strong>{{ totals.taxable | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+    <ng-container *ngIf="!interstate">
+      <div><span>CGST</span><strong>{{ totals.cgst | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+      <div><span>SGST</span><strong>{{ totals.sgst | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+    </ng-container>
+    <div *ngIf="interstate"><span>IGST</span><strong>{{ totals.igst | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+    <div class="grand"><span>Invoice Total</span><strong>{{ totals.total | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+  </div>
+
+  <div class="form-actions">
+    <button type="button" class="save-btn" (click)="save()" [disabled]="saving">
+      {{ saving ? 'Saving…' : 'Save Wholesale Purchase' }}
+    </button>
+    <button type="button" class="cancel-btn" (click)="cancelled.emit()" [disabled]="saving">Cancel</button>
+  </div>
+</div>

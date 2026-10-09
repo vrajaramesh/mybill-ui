@@ -1,0 +1,222 @@
+<div class="ws-settings">
+  <div class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Settings</h2>
+        <p class="muted">Printed on wholesale quotations, credit invoices, sales receipts and debit notes. Retail bill settings are separate and unchanged.</p>
+      </div>
+    </div>
+
+    <div class="section-tabs" role="tablist">
+      <button type="button" role="tab" [class.active]="active === 'ws-profile'" (click)="select('ws-profile')">Business Profile</button>
+      <button type="button" role="tab" [class.active]="active === 'ws-bank'" (click)="select('ws-bank')">Bank Details</button>
+      <button type="button" role="tab" [class.active]="active === 'ws-upi'" (click)="select('ws-upi')">UPI Details</button>
+      <button type="button" role="tab" [class.active]="active === 'ws-numbering'" (click)="select('ws-numbering')">Document Types &amp; Numbering</button>
+    </div>
+
+    <div *ngIf="loadError" class="error-banner">{{ loadError }}</div>
+
+    <div *ngIf="profile" class="readiness" [class.ready]="profile.readiness.documentReady">
+      <strong *ngIf="profile.readiness.documentReady">✓ Ready for wholesale documents</strong>
+      <strong *ngIf="!profile.readiness.documentReady">Documents can't be generated yet — missing: {{ profile.readiness.missing.join(', ') }}</strong>
+      <ul *ngIf="profile.readiness.warnings.length">
+        <li *ngFor="let w of profile.readiness.warnings">{{ w }}</li>
+      </ul>
+      <div class="muted" *ngIf="profile.updatedAt">Last updated {{ profile.updatedAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="profile.updatedBy"> by {{ profile.updatedBy }}</span></div>
+    </div>
+
+    <div class="settings-layout" [class.single]="active === 'ws-numbering'">
+      <div class="settings-form">
+        <div *ngIf="error" class="error-banner" role="alert">{{ error }}</div>
+        <div *ngIf="success" class="success-banner" role="status">{{ success }}</div>
+
+        <!-- Business Profile -->
+        <ng-container *ngIf="active === 'ws-profile'">
+          <div class="section-head">
+            <h3 class="ws-title">Wholesale Business Profile</h3>
+            <button *ngIf="retailDetailsAvailable" type="button" class="link-btn" (click)="copyFromRetail()">Copy from retail store details</button>
+          </div>
+          <div class="ws-grid">
+            <div class="form-group full"><label for="bpName">Firm Name <span class="req">*</span></label>
+              <input id="bpName" class="form-input" [(ngModel)]="details.firmName" (ngModelChange)="refreshPreview()" maxlength="200"></div>
+            <div class="form-group full"><label for="bpAddress">Firm Address <span class="req">*</span></label>
+              <textarea id="bpAddress" class="form-textarea" [(ngModel)]="details.address" (ngModelChange)="refreshPreview()" placeholder="Door no, street, area"></textarea></div>
+            <div class="form-group"><label for="bpCity">City</label>
+              <input id="bpCity" class="form-input" [(ngModel)]="details.city" (ngModelChange)="refreshPreview()" maxlength="100"></div>
+            <div class="form-group"><label for="bpState">State <span class="req">*</span></label>
+              <select id="bpState" class="form-input" [(ngModel)]="details.stateCode" (ngModelChange)="refreshPreview()">
+                <option value="">Select state</option>
+                <option *ngFor="let s of states" [value]="s.value">{{ s.label }} ({{ s.value }})</option>
+              </select>
+              <span class="hint">Decides CGST+SGST vs IGST on wholesale invoices.</span></div>
+            <div class="form-group"><label for="bpPin">PIN Code</label>
+              <input id="bpPin" class="form-input" [(ngModel)]="details.pinCode" (ngModelChange)="refreshPreview()" maxlength="6" inputmode="numeric"></div>
+            <div class="form-group"><label for="bpGst">GST Number</label>
+              <input id="bpGst" class="form-input mono upper" [(ngModel)]="details.gstNumber" (ngModelChange)="onGstinChange()" maxlength="15">
+              <span class="field-error" *ngIf="details.gstNumber && gstin.error">{{ gstin.error }}</span>
+              <span class="field-warn" *ngIf="!gstin.error && gstin.checksumWarning">{{ gstin.checksumWarning }}</span>
+              <span class="hint" *ngIf="!details.gstNumber">Required to issue tax invoices.</span></div>
+            <div class="form-group"><label for="bpPhone">Phone Number <span class="req">*</span></label>
+              <input id="bpPhone" type="tel" class="form-input" [(ngModel)]="details.phone" (ngModelChange)="refreshPreview()" maxlength="20"></div>
+            <div class="form-group"><label for="bpEmail">Email</label>
+              <input id="bpEmail" type="email" class="form-input" [(ngModel)]="details.email" (ngModelChange)="refreshPreview()" maxlength="150"></div>
+            <div class="form-group"><label for="bpWeb">Website</label>
+              <input id="bpWeb" class="form-input" [(ngModel)]="details.website" (ngModelChange)="refreshPreview()" maxlength="255" placeholder="www.example.com"></div>
+            <div class="form-group full">
+              <label>Logo</label>
+              <div class="image-field">
+                <img *ngIf="details.logoUrl" [src]="details.logoUrl" alt="Firm logo" class="logo-preview">
+                <label class="upload-btn" [class.busy]="uploading === 'logo'">
+                  <input type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="onImageSelected($event, 'logo')" [disabled]="!!uploading">
+                  {{ uploading === 'logo' ? 'Uploading…' : (details.logoUrl ? 'Replace logo' : 'Upload logo') }}
+                </label>
+                <button *ngIf="details.logoUrl" type="button" class="link-btn danger" (click)="removeImage('logo')">Remove</button>
+              </div>
+              <span class="hint">PNG, JPG or WEBP, up to 2 MB. A wide logo on a white or transparent background prints best.</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="save-btn" (click)="saveDetails()" [disabled]="saving || !!uploading">{{ saving ? 'Saving…' : 'Save Business Profile' }}</button>
+          </div>
+        </ng-container>
+
+        <!-- Bank -->
+        <ng-container *ngIf="active === 'ws-bank'">
+          <div class="section-head"><h3 class="ws-title">Bank Details</h3></div>
+          <div class="ws-grid">
+            <div class="form-group"><label for="bkBank">Bank Name <span class="req">*</span></label>
+              <input id="bkBank" class="form-input" [(ngModel)]="bank.bankName" (ngModelChange)="refreshPreview()" maxlength="100" placeholder="e.g. State Bank of India"></div>
+            <div class="form-group"><label for="bkName">Account Name <span class="req">*</span></label>
+              <input id="bkName" class="form-input" [(ngModel)]="bank.accountName" (ngModelChange)="refreshPreview()" maxlength="150" placeholder="As per bank records"></div>
+            <div class="form-group"><label for="bkAcct">Account Number <span class="req">*</span></label>
+              <input id="bkAcct" class="form-input mono" [(ngModel)]="bank.accountNumber" (ngModelChange)="refreshPreview()" maxlength="22" inputmode="numeric" autocomplete="off"></div>
+            <div class="form-group"><label for="bkAcct2">Confirm Account Number <span class="req">*</span></label>
+              <input id="bkAcct2" class="form-input mono" [(ngModel)]="confirmAccountNumber" maxlength="22" inputmode="numeric" autocomplete="off">
+              <span class="field-error" *ngIf="accountNumbersMismatch">Account numbers do not match.</span></div>
+            <div class="form-group"><label for="bkIfsc">IFSC <span class="req">*</span></label>
+              <input id="bkIfsc" class="form-input mono" [(ngModel)]="bank.ifsc" (ngModelChange)="onIfscInput(); refreshPreview()" maxlength="11" placeholder="SBIN0001234"></div>
+            <div class="form-group"><label for="bkBranch">Branch</label>
+              <input id="bkBranch" class="form-input" [(ngModel)]="bank.branch" (ngModelChange)="refreshPreview()" maxlength="150"></div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="save-btn" (click)="saveBank()" [disabled]="saving">{{ saving ? 'Saving…' : 'Save Bank Details' }}</button>
+            <button *ngIf="profile?.readiness?.bankConfigured" type="button" class="delete-btn push-right" (click)="removeBank()">Remove bank details</button>
+          </div>
+        </ng-container>
+
+        <!-- UPI -->
+        <ng-container *ngIf="active === 'ws-upi'">
+          <div class="section-head"><h3 class="ws-title">UPI Details</h3></div>
+          <div class="ws-grid">
+            <div class="form-group"><label for="upiId">UPI ID <span class="req">*</span></label>
+              <input id="upiId" class="form-input mono" [(ngModel)]="upi.upiId" (ngModelChange)="refreshPreview()" maxlength="100" placeholder="srisa@okhdfcbank" autocomplete="off"></div>
+            <div class="form-group full">
+              <label>UPI QR Code Image</label>
+              <div class="image-field">
+                <img *ngIf="upi.qrImageUrl" [src]="upi.qrImageUrl" alt="UPI QR code" class="qr-preview">
+                <label class="upload-btn" [class.busy]="uploading === 'qr'">
+                  <input type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="onImageSelected($event, 'qr')" [disabled]="!!uploading">
+                  {{ uploading === 'qr' ? 'Uploading…' : (upi.qrImageUrl ? 'Replace QR image' : 'Upload QR image') }}
+                </label>
+                <button *ngIf="upi.qrImageUrl" type="button" class="link-btn danger" (click)="removeImage('qr')">Remove</button>
+              </div>
+              <span class="hint">Use the QR downloaded from your UPI/bank app for this UPI ID. PNG, JPG or WEBP, up to 2 MB.</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="save-btn" (click)="saveUpi()" [disabled]="saving || !!uploading">{{ saving ? 'Saving…' : 'Save UPI Details' }}</button>
+            <button *ngIf="profile?.readiness?.upiConfigured" type="button" class="delete-btn push-right" (click)="removeUpi()">Remove UPI details</button>
+          </div>
+        </ng-container>
+
+        <!-- Document numbering -->
+        <ng-container *ngIf="active === 'ws-numbering' && numbering">
+          <div class="section-head">
+            <h3 class="ws-title">{{ numberingLabel }} Numbering &amp; Defaults</h3>
+            <select class="form-input doc-type" [(ngModel)]="numberingDocType" (ngModelChange)="loadNumbering()" aria-label="Document type">
+              <option *ngFor="let t of numberingTypes" [value]="t.value">{{ t.label }}</option>
+            </select>
+          </div>
+          <div class="number-preview">Next {{ numberingLabel | lowercase }} number: <strong class="mono">{{ numberingPreview }}</strong>
+            <span class="muted" *ngIf="numberingSaved?.lastNumber"> · last used {{ numberingSaved?.lastNumber }} ({{ numberingSaved?.currentPeriod }})</span></div>
+          <div class="ws-grid">
+            <div class="form-group"><label for="nbPrefix">Prefix <span class="req">*</span></label>
+              <input id="nbPrefix" class="form-input mono" [(ngModel)]="numbering.prefix" maxlength="20" placeholder="QT"></div>
+            <div class="form-group"><label for="nbSep">Separator</label>
+              <select id="nbSep" class="form-input" [(ngModel)]="numbering.separator">
+                <option value="/">/  (QT/2026-27/0001)</option>
+                <option value="-">-  (QT-2026-27-0001)</option>
+                <option value="">none  (QT2026-270001)</option>
+              </select></div>
+            <div class="form-group"><label for="nbPad">Number of digits</label>
+              <input id="nbPad" type="number" min="1" max="8" class="form-input" [(ngModel)]="numbering.numberPadding"></div>
+            <div class="form-group"><label class="checkbox"><input type="checkbox" [(ngModel)]="numbering.includeFinancialYear"> Include financial year</label>
+              <label class="checkbox"><input type="checkbox" [(ngModel)]="numbering.resetEachFinancialYear"> Restart numbering every 1 April</label></div>
+            <div class="form-group"><label for="nbNext">Continue from number</label>
+              <input id="nbNext" type="number" min="1" class="form-input" [(ngModel)]="numbering.nextNumber" placeholder="Automatic">
+              <span class="hint">Optional, e.g. to continue from a paper book. Must be higher than the last number used.</span></div>
+            <div class="form-group" *ngIf="numberingDocType === 'QUOTATION'"><label for="nbValid">Default validity (days)</label>
+              <input id="nbValid" type="number" min="1" max="365" class="form-input" [(ngModel)]="numbering.defaultValidityDays"></div>
+
+            <div class="form-group full"><label for="nbTerms">Default terms &amp; conditions</label>
+              <textarea id="nbTerms" class="form-textarea terms" [(ngModel)]="numbering.defaultTerms"></textarea>
+              <span class="hint">{{ numberingDocType === 'QUOTATION' ? 'Pre-filled on new quotations; can be changed per quotation.' : 'Printed on every ' + (numberingLabel | lowercase) + '.' }}</span></div>
+          </div>
+          <ng-container *ngIf="isSalesDocType">
+            <h4 class="section-subtitle">What this document means</h4>
+            <p class="hint">Business names can differ from GST terminology, so the meaning is set here instead of being fixed in code.
+              <strong>Changes apply to new documents only</strong> — issued documents keep the meaning, title and stock behaviour they were issued with.</p>
+            <div class="ws-grid">
+              <div class="form-group"><label for="smLabel">Name in the app <span class="req">*</span></label>
+                <input id="smLabel" class="form-input" [(ngModel)]="numbering.displayLabel" maxlength="60"></div>
+              <div class="form-group"><label for="smTitle">Printed title <span class="req">*</span></label>
+                <input id="smTitle" class="form-input" [(ngModel)]="numbering.printTitle" maxlength="80"></div>
+              <div class="form-group"><label for="smGst">GST classification</label>
+                <select id="smGst" class="form-input" [(ngModel)]="numbering.gstClassification">
+                  <option *ngFor="let g of gstClasses" [value]="g.value">{{ g.label }}</option>
+                </select>
+                <span class="hint">Statutory document class, kept on each document for GST reporting.</span></div>
+              <div class="form-group"><label for="smValue">Effect on what the customer owes</label>
+                <select id="smValue" class="form-input" [(ngModel)]="numbering.valueEffect">
+                  <option value="CHARGE">Charge — customer owes more (sale, debit note)</option>
+                  <option value="CREDIT">Credit — customer owes less (return, allowance)</option>
+                </select></div>
+              <div class="form-group"><label for="smStock">Effect on wholesale stock</label>
+                <select id="smStock" class="form-input" [(ngModel)]="numbering.stockEffect">
+                  <option value="OUT">Goods go out of stock</option>
+                  <option value="IN">Goods come back into stock</option>
+                  <option value="NONE">No change</option>
+                </select></div>
+              <div class="form-group"><label for="smRef">Reference to an earlier document</label>
+                <select id="smRef" class="form-input" [(ngModel)]="numbering.referenceMode">
+                  <option value="NONE">Not allowed</option>
+                  <option value="OPTIONAL">Optional</option>
+                  <option value="REQUIRED">Required</option>
+                </select></div>
+              <div class="form-group full" *ngIf="numbering.referenceMode !== 'NONE'">
+                <label>Documents that can be referenced</label>
+                <div class="ref-types">
+                  <label *ngFor="let t of referenceTypes" class="checkbox inline">
+                    <input type="checkbox" [checked]="hasReferenceType(t.value)" (change)="toggleReferenceType(t.value, $any($event.target).checked)"> {{ t.label }}
+                  </label>
+                </div>
+                <span class="hint">An external invoice number and date can always be entered instead.</span></div>
+              <div class="form-group"><label class="checkbox"><input type="checkbox" [(ngModel)]="numbering.reasonRequired"> A reason must be entered</label></div>
+              <div class="form-group" *ngIf="numbering.valueEffect === 'CHARGE' && numberingDocType !== 'SALES_RECEIPT'"><label for="smDue">Payment due after (days)</label>
+                <input id="smDue" type="number" min="0" max="365" class="form-input" [(ngModel)]="numbering.defaultDueDays"></div>
+            </div>
+          </ng-container>
+          <p class="hint">{{ numberingDocType === 'QUOTATION' ? 'Numbers are assigned when a quotation is issued (drafts show "Draft #id").' : 'Numbers are assigned when a document is issued (drafts show "Draft #id").' }} Existing numbers never change.</p>
+          <div class="form-actions">
+            <button type="button" class="save-btn" (click)="saveNumbering()" [disabled]="saving">{{ saving ? 'Saving…' : 'Save Numbering' }}</button>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="settings-preview" *ngIf="active !== 'ws-numbering'">
+        <div class="preview-label">Document preview <span class="muted">(updates as you type; save to apply)</span></div>
+        <iframe *ngIf="previewHtml" class="preview-frame" [srcdoc]="previewHtml" title="Wholesale document preview"></iframe>
+      </div>
+    </div>
+  </div>
+</div>

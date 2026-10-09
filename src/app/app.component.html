@@ -109,6 +109,79 @@
         </div>
       </div>
 
+      <!-- Wholesale (all wholesale screens; separate from retail) -->
+      <div class="nav-group" *ngIf="!isSales && !isEcom">
+        <div class="nav-item parent" [class.active]="activeMenu==='wholesale'"
+             (click)="onWholesaleClick()">
+          <span class="nav-icon">🏭</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Wholesale</span>
+          <span class="arrow" *ngIf="!sidebarCollapsed">{{ isMenuExpanded('wholesale') ? '▾' : '▸' }}</span>
+        </div>
+        <div class="submenu" *ngIf="!sidebarCollapsed && isMenuExpanded('wholesale')">
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='products'"
+               (click)="navigateWholesale('products')">
+            <span class="nav-icon">📦</span>
+            <span class="nav-label">Products</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='purchases'"
+               (click)="navigateWholesale('purchases')">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-label">Purchases</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='stock'"
+               (click)="navigateWholesale('stock')">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Stock</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='customers'"
+               (click)="navigateWholesale('customers')">
+            <span class="nav-icon">🤝</span>
+            <span class="nav-label">Customers</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='quotations'"
+               (click)="navigateWholesale('quotations')">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">Quotations</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='sales'"
+               (click)="navigateWholesale('sales')">
+            <span class="nav-icon">🧾</span>
+            <span class="nav-label">Sales Receipts &amp; Notes</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='instagram'"
+               (click)="navigateWholesale('instagram')">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">Instagram Inbox</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='assistant'"
+               (click)="navigateWholesale('assistant')">
+            <span class="nav-icon">🤖</span>
+            <span class="nav-label">AI Assistant</span>
+          </div>
+          <div class="submenu-heading">Wholesale Settings</div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='ws-profile'"
+               (click)="navigateWholesale('ws-profile')">
+            <span class="nav-icon">🏢</span>
+            <span class="nav-label">Business Profile</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='ws-bank'"
+               (click)="navigateWholesale('ws-bank')">
+            <span class="nav-icon">🏦</span>
+            <span class="nav-label">Bank Details</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='ws-upi'"
+               (click)="navigateWholesale('ws-upi')">
+            <span class="nav-icon">📲</span>
+            <span class="nav-label">UPI Details</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='wholesale' && activeSubMenu==='ws-numbering'"
+               (click)="navigateWholesale('ws-numbering')">
+            <span class="nav-icon">#️⃣</span>
+            <span class="nav-label">Document Types &amp; Numbering</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Reports -->
       <div class="nav-group" *ngIf="!isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='reports'"
@@ -225,7 +298,7 @@
   </aside>
 
   <!-- Main content -->
-  <main class="main-content">
+  <main class="main-content" [class.ws-compact]="activeMenu === 'wholesale'">
     <app-billing
       *ngIf="activeSection==='billing'"
       [view]="billingView"
@@ -237,6 +310,15 @@
     <app-ai-config           *ngIf="activeSection==='ai-config'"></app-ai-config>
     <app-ecom-coverage       *ngIf="activeSection==='ecom-coverage'"></app-ecom-coverage>
     <app-purchase-list   *ngIf="activeSection==='purchases'"></app-purchase-list>
+    <app-wholesale-products *ngIf="activeSection==='wholesale-products'"></app-wholesale-products>
+    <app-wholesale-purchases *ngIf="activeSection==='wholesale-purchases'"></app-wholesale-purchases>
+    <app-wholesale-customers *ngIf="activeSection==='wholesale-customers'"></app-wholesale-customers>
+    <app-wholesale-quotations *ngIf="activeSection==='wholesale-quotations'"></app-wholesale-quotations>
+    <app-wholesale-sales-documents *ngIf="activeSection==='wholesale-sales'"></app-wholesale-sales-documents>
+    <app-wholesale-stock *ngIf="activeSection==='wholesale-stock'"></app-wholesale-stock>
+    <app-wholesale-instagram *ngIf="activeSection==='wholesale-instagram'"></app-wholesale-instagram>
+    <app-wholesale-assistant *ngIf="activeSection==='wholesale-assistant'"></app-wholesale-assistant>
+    <app-wholesale-settings *ngIf="activeSection==='wholesale-settings'" [section]="$any(activeSubMenu)"></app-wholesale-settings>
     <app-gst-report      *ngIf="activeSection==='gst-report'"></app-gst-report>
     <app-reports         *ngIf="activeSection==='reports'"></app-reports>
     <app-chat-insights   *ngIf="activeSection==='chat-insights'"></app-chat-insights>

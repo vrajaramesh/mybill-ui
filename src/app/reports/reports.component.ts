@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { Chart, registerables } from 'chart.js';
-import { ReportService } from '../report.service';
+import { ReportService, TopProductPeriod } from '../report.service';
 import { AuthService } from '../auth.service';
 
 Chart.register(...registerables);
@@ -42,6 +42,24 @@ export class ReportsComponent implements OnInit, OnDestroy {
   csLoading = false;
   csData: any = { summary: {}, customers: [], from: '', to: '' };
 
+  // ── Top Selling Products by Period ────────────────────
+  /** 'year' = the year picked at the top of the page (uses the yearly list). */
+  tpPeriod: TopProductPeriod | 'year' = 'this_month';
+  tpSort: 'revenue' | 'quantity' = 'revenue';
+  tpLoading = false;
+  tpError = '';
+  tpData: any = { summary: {}, products: [], from: '', to: '' };
+
+  readonly tpPeriods: { key: TopProductPeriod | 'year'; label: string }[] = [
+    { key: 'today',      label: 'Today'      },
+    { key: 'yesterday',  label: 'Yesterday'  },
+    { key: 'this_week',  label: 'This Week'  },
+    { key: 'last_week',  label: 'Last Week'  },
+    { key: 'this_month', label: 'This Month' },
+    { key: 'last_month', label: 'Last Month' },
+    { key: 'year',       label: 'Year'       },
+  ];
+
   // ── User Sales by Period ──────────────────────────────
   usPeriod: Period = 'month';
   usLoading = false;
@@ -78,6 +96,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = '';
     this.destroyCharts();
+    this.loadTopProducts();
     const y = this.selectedYear;
 
     forkJoin({
@@ -105,6 +124,51 @@ export class ReportsComponent implements OnInit, OnDestroy {
       },
       error: () => { this.loading = false; this.error = 'Failed to load report data'; }
     });
+  }
+
+  // ── Top Selling Products ───────────────────────────────
+  selectTpPeriod(p: TopProductPeriod | 'year'): void {
+    this.tpPeriod = p;
+    this.loadTopProducts();
+  }
+
+  setTpSort(sort: 'revenue' | 'quantity'): void {
+    if (this.tpSort === sort) return;
+    this.tpSort = sort;
+    this.loadTopProducts();
+  }
+
+  loadTopProducts(): void {
+    if (this.tpPeriod === 'year') return;   // yearly list comes from loadAll()
+    this.tpLoading = true;
+    this.tpError = '';
+    this.svc.getTopProductsByPeriod(this.tpPeriod, this.tpSort).subscribe({
+      next: d => { this.tpData = d; this.tpLoading = false; this.cdr.detectChanges(); },
+      error: () => { this.tpLoading = false; this.tpError = 'Could not load top products'; }
+    });
+  }
+
+  /** Rows for the card: the period result, or the yearly list (re-sorted when "by quantity" is chosen). */
+  get tpProducts(): any[] {
+    if (this.tpPeriod !== 'year') return this.tpData.products ?? [];
+    const list = [...this.topProducts];
+    if (this.tpSort === 'quantity') list.sort((a, b) => Number(b.quantitySold) - Number(a.quantitySold));
+    return list;
+  }
+
+  get tpSummary(): any { return this.tpPeriod === 'year' ? null : (this.tpData.summary ?? {}); }
+
+  tpMetric(p: any): number { return Number(this.tpSort === 'quantity' ? p.quantitySold : p.revenue) || 0; }
+
+  tpMax(): number {
+    return this.tpProducts.reduce((m, p) => Math.max(m, this.tpMetric(p)), 0) || 1;
+  }
+
+  tpDateRange(): string {
+    if (this.tpPeriod === 'year') return String(this.selectedYear);
+    if (!this.tpData.from) return '';
+    if (this.tpData.from === this.tpData.to) return this.formatDate(this.tpData.from);
+    return `${this.formatDate(this.tpData.from)} – ${this.formatDate(this.tpData.to)}`;
   }
 
   // ── Customer Sales ─────────────────────────────────────
@@ -179,10 +243,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
     const t = Number(total) || 0;
     if (!t) return '0%';
     return ((Number(val) / t) * 100).toFixed(1) + '%';
-  }
-
-  topProductMax(): number {
-    return this.topProducts.length ? Math.max(...this.topProducts.map(p => Number(p.revenue))) : 1;
   }
 
   topCustomerMax(): number {

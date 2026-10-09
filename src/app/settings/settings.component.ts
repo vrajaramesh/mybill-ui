@@ -16,6 +16,7 @@ export class SettingsComponent implements OnInit {
   firmName    = '';
   gstNumber   = '';
   address     = '';
+  website     = '';
   waPhone     = '';
   logoPreview = '';
 
@@ -30,6 +31,7 @@ export class SettingsComponent implements OnInit {
   firmSaved    = false;
   gstSaved     = false;
   addressSaved = false;
+  websiteSaved = false;
   logoSaved    = false;
   waSaved      = false;
   receiptPrinterPairing = false;
@@ -44,7 +46,14 @@ export class SettingsComponent implements OnInit {
   get isSales(): boolean { return this.auth.isSales(); }
 
   ngOnInit(): void {
+    this.fillFromSettings();
+    // Values belong to the logged-in firm; refresh from the server in case another device changed them.
+    this.settings.loadFromBackend().then(() => this.fillFromSettings());
+  }
+
+  private fillFromSettings(): void {
     this.firmName    = this.settings.firmName;
+    this.website     = this.settings.website;
     this.gstNumber   = this.settings.gstNumber;
     this.address     = this.settings.address;
     this.waPhone     = this.settings.whatsappPhone;
@@ -73,6 +82,12 @@ export class SettingsComponent implements OnInit {
     this.settings.saveAddress(this.address);
     this.addressSaved = true;
     setTimeout(() => this.addressSaved = false, 2000);
+  }
+
+  saveWebsite(): void {
+    this.settings.saveWebsite(this.website);
+    this.websiteSaved = true;
+    setTimeout(() => this.websiteSaved = false, 2000);
   }
 
   saveWa(): void {

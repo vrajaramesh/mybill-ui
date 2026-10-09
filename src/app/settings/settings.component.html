@@ -18,7 +18,7 @@
         <label class="field-label">Firm / Shop Name</label>
         <div class="field-row">
           <input class="field-input" type="text" [(ngModel)]="firmName"
-            placeholder="e.g. Srisa Fabrics" (keyup.enter)="saveFirm()" />
+            placeholder="e.g. Your Store Name" (keyup.enter)="saveFirm()" />
           <button class="save-btn" (click)="saveFirm()" [class.saved]="firmSaved">
             {{ firmSaved ? '✓ Saved' : 'Save' }}
           </button>
@@ -50,6 +50,18 @@
           </button>
         </div>
         <p class="field-hint">Shown on thermal prints and browser-print receipts. Not displayed on screen.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Website <span class="optional">(shown in WhatsApp bill messages)</span></label>
+        <div class="field-row">
+          <input class="field-input" type="url" [(ngModel)]="website"
+            placeholder="e.g. https://yourstore.com" (keyup.enter)="saveWebsite()" />
+          <button class="save-btn" (click)="saveWebsite()" [class.saved]="websiteSaved">
+            {{ websiteSaved ? '✓ Saved' : 'Save' }}
+          </button>
+        </div>
+        <p class="field-hint">Leave empty to leave the "VISIT" line out of WhatsApp messages.</p>
       </div>
     </div>
 

@@ -1,0 +1,177 @@
+<div class="ws-quotations">
+  <!-- List -->
+  <div *ngIf="mode === 'list'" class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Quotations</h2>
+        <p class="muted">Quantity-based wholesale prices. Issued quotations keep the rates and details they were issued with.</p>
+      </div>
+      <button type="button" class="add-btn" (click)="newQuotation()">+ New Quotation</button>
+    </div>
+
+    <div class="filters-row">
+      <input type="search" class="form-input search" [(ngModel)]="searchTerm" (ngModelChange)="onFilterChange()"
+             placeholder="Search number or customer" aria-label="Search quotations">
+      <select class="form-input" [(ngModel)]="statusFilter" (ngModelChange)="load()" aria-label="Status filter">
+        <option value="">All statuses</option>
+        <option *ngFor="let s of statuses" [value]="s">{{ statusLabel(s) }}</option>
+      </select>
+      <label class="date-filter">From <input type="date" class="form-input" [(ngModel)]="fromDate" (ngModelChange)="load()"></label>
+      <label class="date-filter">To <input type="date" class="form-input" [(ngModel)]="toDate" (ngModelChange)="load()"></label>
+    </div>
+
+    <div *ngIf="listError" class="error-banner">{{ listError }}</div>
+
+    <div class="table-container">
+      <table class="ws-table ws-cards">
+        <thead><tr><th>Number</th><th>Date</th><th>Customer</th><th>Valid Until</th><th class="num">Grand Total</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let q of quotations" class="clickable" (click)="open(q.quotationId)">
+            <td class="card-title"><strong>{{ q.displayNumber }}</strong></td>
+            <td data-label="Date">{{ q.quotationDate | date:'dd/MM/yyyy' }}</td>
+            <td data-label="Customer"><span>{{ q.customerName }}<span class="muted block" *ngIf="q.customerBusinessName">{{ q.customerBusinessName }}</span></span></td>
+            <td data-label="Valid until">{{ q.validUntil | date:'dd/MM/yyyy' }}</td>
+            <td class="num" data-label="Grand total"><strong class="amt">{{ q.grandTotal | currency:'INR':'symbol':'1.2-2' }}</strong></td>
+            <td data-label="Status"><span class="q-status" [ngClass]="'q-' + q.status">{{ statusLabel(q.status) }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!loading && quotations.length === 0" class="empty">
+        {{ searchTerm || statusFilter || fromDate || toDate ? 'No quotations match the filters.' : 'No quotations yet. Click "New Quotation" to create one.' }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Editor -->
+  <div *ngIf="mode === 'edit'" class="ws-card">
+    <button type="button" class="link-btn back" (click)="onEditorCancelled()">← Back</button>
+    <app-wholesale-quotation-editor kind="QUOTATION" [documentId]="editId" (saved)="onSaved($event)" (cancelled)="onEditorCancelled()"></app-wholesale-quotation-editor>
+  </div>
+
+  <!-- Sales document created from a quotation -->
+  <div *ngIf="mode === 'sales-doc' && salesDocId" class="ws-card">
+    <button type="button" class="link-btn back" (click)="backToQuotation()">← Back to quotation</button>
+    <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+    <app-wholesale-sales-document-view [documentId]="salesDocId" (openQuotation)="open($event)"></app-wholesale-sales-document-view>
+  </div>
+
+  <!-- View -->
+  <div *ngIf="mode === 'view'" class="ws-card">
+    <button type="button" class="link-btn back" (click)="backToList()">← All quotations</button>
+    <div *ngIf="actionError" class="error-banner" role="alert">{{ actionError }}</div>
+
+    <ng-container *ngIf="current">
+      <div class="view-header">
+        <div>
+          <h2 class="page-title">{{ current.displayNumber }} <span class="q-status" [ngClass]="'q-' + current.status">{{ statusLabel(current.status) }}</span></h2>
+          <div class="muted">
+            {{ current.customer.customerName }} · {{ current.totals.grandTotal | currency:'INR':'symbol':'1.2-2' }}
+            · valid until {{ current.validUntil | date:'dd/MM/yyyy' }}
+            <span *ngIf="current.issuedAt"> · issued {{ current.issuedAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="current.issuedBy"> by {{ current.issuedBy }}</span></span>
+            <span *ngIf="current.duplicatedFromId"> · copied from <button type="button" class="link-btn" (click)="open(current.duplicatedFromId!)">#{{ current.duplicatedFromId }}</button></span>
+          </div>
+          <div class="muted" *ngIf="current.cancelReason">Cancel reason: {{ current.cancelReason }}</div>
+        </div>
+      </div>
+
+      <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+
+      <div class="actions">
+        <button *ngIf="can('EDIT')" type="button" class="edit-btn" (click)="edit()" [disabled]="!!busy">Edit</button>
+        <button *ngIf="can('ISSUE')" type="button" class="save-btn small" (click)="issue()" [disabled]="!!busy">Issue</button>
+        <button *ngIf="can('ACCEPT')" type="button" class="save-btn small" (click)="setStatus('ACCEPTED')" [disabled]="!!busy">Mark Accepted</button>
+        <button *ngIf="can('REJECT')" type="button" class="cancel-btn small" (click)="setStatus('REJECTED')" [disabled]="!!busy">Mark Rejected</button>
+        <button *ngIf="can('CONVERT')" type="button" class="save-btn small" (click)="toggleConvert()" [disabled]="!!busy">Convert…</button>
+        <button *ngIf="can('DUPLICATE')" type="button" class="cancel-btn small" (click)="showDuplicateChoice = !showDuplicateChoice" [disabled]="!!busy">Duplicate</button>
+        <span class="divider"></span>
+        <button type="button" class="cancel-btn small" (click)="print()" [disabled]="!!busy" title="A4">Print</button>
+        <button type="button" class="cancel-btn small" (click)="print(true)" [disabled]="!!busy" title="Compact 80 mm thermal print">Print 80 mm</button>
+        <button type="button" class="cancel-btn small" (click)="downloadPdf()" [disabled]="!!busy">{{ busy === 'pdf' ? 'Creating PDF…' : 'Download PDF' }}</button>
+        <button type="button" class="cancel-btn small" (click)="share()" [disabled]="!!busy">{{ busy === 'share' ? 'Preparing…' : 'Share' }}</button>
+        <span class="push-right"></span>
+        <button *ngIf="can('CANCEL')" type="button" class="link-btn danger" (click)="cancelQuotation()" [disabled]="!!busy">Cancel quotation</button>
+        <button *ngIf="can('DELETE')" type="button" class="delete-btn" (click)="remove()" [disabled]="!!busy">Delete draft</button>
+      </div>
+
+      <div *ngIf="showDuplicateChoice" class="duplicate-choice">
+        <span>Create a new draft for {{ current.customer.customerName }} dated today, using:</span>
+        <button type="button" class="save-btn small" (click)="duplicate(true)">Today's slab prices</button>
+        <button type="button" class="cancel-btn small" (click)="duplicate(false)">The same rates as {{ current.displayNumber }}</button>
+        <button type="button" class="link-btn" (click)="showDuplicateChoice = false">Cancel</button>
+      </div>
+
+      <!-- Conversion status -->
+      <div class="conversion-status" *ngIf="current.conversions.length || current.status === 'ISSUED' || current.status === 'ACCEPTED'">
+        <strong>Conversion:</strong>
+        <span *ngIf="current.conversionStatus === 'NOT_CONVERTED'" class="muted">Not converted yet</span>
+        <span *ngIf="current.conversionStatus === 'CONVERSION_CANCELLED'" class="muted">Converted earlier, but the document was cancelled</span>
+        <ul *ngIf="current.conversions.length">
+          <li *ngFor="let c of current.conversions">
+            <button type="button" class="link-btn" (click)="openSalesDocument(c.salesDocumentId)">{{ c.docTypeLabel }} {{ c.documentNumber }}</button>
+            <span class="conv-chip" [class.cancelled]="c.status === 'CANCELLED'">{{ statusLabel(c.status) }}</span>
+            · {{ c.grandTotal | currency:'INR':'symbol':'1.2-2' }} · {{ c.convertedAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="c.convertedBy"> by {{ c.convertedBy }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Convert panel -->
+      <div *ngIf="showConvert" class="convert-panel">
+        <h3 class="ws-title">Convert {{ current.displayNumber }}</h3>
+        <p class="muted">Customer, addresses, GST details, items, HSN, quantities, the quoted rates, GST and totals are copied exactly. Current price slabs are not used.</p>
+        <div *ngIf="convertError" class="error-banner" role="alert">{{ convertError }}</div>
+        <div *ngIf="stockShortages.length" class="error-banner">
+          <strong>Not enough wholesale stock:</strong>
+          <ul><li *ngFor="let s of stockShortages">{{ s }}</li></ul>
+          Record a wholesale purchase first.
+        </div>
+
+        <div class="convert-to" role="radiogroup" aria-label="Convert to">
+          <label class="type-option" [class.active]="convertTo === 'SALES_RECEIPT'">
+            <input type="radio" name="convertTo" value="SALES_RECEIPT" [(ngModel)]="convertTo">
+            <span><strong>Sales Receipt</strong><br><small>Customer pays now</small></span>
+          </label>
+          <label class="type-option" [class.active]="convertTo === 'CREDIT_NOTE'">
+            <input type="radio" name="convertTo" value="CREDIT_NOTE" [(ngModel)]="convertTo">
+            <span><strong>Credit Note</strong><br><small>Credit sale — customer pays later</small></span>
+          </label>
+        </div>
+
+        <div class="ws-grid">
+          <div class="form-group"><label for="cvDate">Document date</label>
+            <input id="cvDate" type="date" class="form-input" [(ngModel)]="convertDate" (ngModelChange)="onConvertDateChange()"
+                   [min]="current.quotationDate" [max]="today"></div>
+          <ng-container *ngIf="convertTo === 'SALES_RECEIPT'">
+            <div class="form-group"><label for="cvAmt">Amount received now (₹)</label>
+              <input id="cvAmt" type="number" inputmode="decimal" min="0" step="0.01" class="form-input" [(ngModel)]="amountReceived"
+                     [placeholder]="current.totals.grandTotal + ' (full)'">
+              <span class="hint">Empty = full amount; 0 = nothing received yet.</span></div>
+            <div class="form-group"><label for="cvMode">Paid by <span class="req">*</span></label>
+              <select id="cvMode" class="form-input" [(ngModel)]="paymentMode">
+                <option *ngFor="let m of paymentModes" [value]="m.value">{{ m.label }}</option>
+              </select></div>
+            <div class="form-group"><label for="cvRef">Payment reference</label>
+              <input id="cvRef" class="form-input" [(ngModel)]="paymentReference" maxlength="100" placeholder="UTR / cheque no. (optional)"></div>
+          </ng-container>
+          <div *ngIf="convertTo === 'CREDIT_NOTE'" class="form-group"><label for="cvDue">Payment due date <span class="req">*</span></label>
+            <input id="cvDue" type="date" class="form-input" [(ngModel)]="dueDate" [min]="convertDate">
+            <span class="hint">Default: {{ dueDays }} days after the document date.</span></div>
+          <div class="form-group full"><label for="cvNotes">Notes</label>
+            <input id="cvNotes" class="form-input" [(ngModel)]="convertNotes" placeholder="Leave empty to copy the quotation notes"></div>
+        </div>
+
+        <label *ngIf="alreadyConverted" class="checkbox dup-confirm">
+          <input type="checkbox" [(ngModel)]="allowDuplicate">
+          This quotation is already converted ({{ activeConversionNumbers }}). Create another document anyway.
+        </label>
+
+        <div class="form-actions">
+          <button type="button" class="save-btn" (click)="submitConvert()" [disabled]="converting || stockShortages.length > 0">
+            {{ converting ? 'Converting…' : 'Convert to ' + (convertTo === 'SALES_RECEIPT' ? 'Sales Receipt' : 'Credit Note') }}</button>
+          <button type="button" class="cancel-btn" (click)="showConvert = false" [disabled]="converting">Cancel</button>
+        </div>
+      </div>
+
+      <iframe *ngIf="previewHtml" class="doc-frame" [srcdoc]="previewHtml" [title]="'Quotation ' + current.displayNumber"></iframe>
+    </ng-container>
+  </div>
+</div>

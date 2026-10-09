@@ -1,0 +1,30 @@
+<div class="picker">
+  <label class="picker-label">{{ label }} <span class="req" *ngIf="required">*</span></label>
+
+  <div *ngIf="customer" class="selected-card">
+    <div>
+      <strong>{{ customer.customerName }}</strong><span *ngIf="customer.businessName" class="muted"> · {{ customer.businessName }}</span>
+      <div class="muted">
+        <span *ngIf="customer.gstNumber">GSTIN {{ customer.gstNumber }} · </span>
+        <span *ngIf="!customer.gstNumber">Unregistered · </span>
+        {{ customer.shippingCity || customer.city || '' }} {{ customer.shippingStateName || customer.stateName || '' }}
+      </div>
+    </div>
+    <button type="button" class="link-btn" (click)="clear()">Change</button>
+  </div>
+
+  <div *ngIf="!customer" class="search-box">
+    <input type="search" class="form-input" [(ngModel)]="term" (focus)="onFocus()" (input)="onInput()" (blur)="onBlur()"
+           placeholder="Search wholesale customers by name, GSTIN, phone or city" autocomplete="off"
+           [attr.aria-label]="label">
+    <div *ngIf="open" class="dropdown-list">
+      <div *ngIf="searching && results.length === 0" class="dropdown-empty">Searching…</div>
+      <div *ngIf="!searching && results.length === 0" class="dropdown-empty">No matching wholesale customers.</div>
+      <div *ngFor="let c of results" class="dropdown-item" (mousedown)="select(c)">
+        <span><strong>{{ c.customerName }}</strong><span *ngIf="c.businessName" class="muted"> · {{ c.businessName }}</span></span>
+        <span class="muted">{{ c.gstNumber || 'No GSTIN' }}<span *ngIf="c.city"> · {{ c.city }}</span></span>
+      </div>
+      <div *ngIf="allowCreate" class="dropdown-item create" (mousedown)="createNew.emit()">+ New wholesale customer</div>
+    </div>
+  </div>
+</div>

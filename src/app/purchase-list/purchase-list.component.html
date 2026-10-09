@@ -3,6 +3,7 @@
     <h2 class="card-title">Purchase Management</h2>
     <button class="add-btn" (click)="addNewPurchase()">Add New Purchase</button>
 
+    <ng-container>
     <div class="filters">
       <div class="filter-group">
         <label for="search">Search:</label>
@@ -67,10 +68,13 @@
         </tbody>
       </table>
     </div>
+    </ng-container>
   </div>
 
   <div *ngIf="selectedPurchase" class="form-card">
     <h3 class="form-title">{{ selectedPurchase.purchaseId ? 'Edit' : 'Add' }} Purchase</h3>
+
+    <ng-container>
     <form class="purchase-form" (ngSubmit)="savePurchase()">
       <div class="form-group">
         <label for="supplier">Supplier:</label>
@@ -216,6 +220,7 @@
         <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancel</button>
       </div>
     </form>
+    </ng-container>
   </div>
 
   <div *ngIf="debitNoteDraft && debitNotePurchase" class="modal-overlay" (click)="closeDebitNote()">

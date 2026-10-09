@@ -1,0 +1,211 @@
+<div class="qe">
+  <div class="qe-header">
+    <h3 class="ws-title">{{ documentId ? 'Edit ' + docLabel + ' ' + (displayNumber || 'Draft') : 'New ' + docLabel }}</h3>
+    <span class="muted qe-subtitle">Prices come from wholesale quantity slabs — never retail prices. Saved rates stay fixed.</span>
+  </div>
+
+  <div *ngIf="loading" class="empty">Loading…</div>
+  <div *ngIf="error" class="error-banner" role="alert">{{ error }}</div>
+
+  <div class="qe-top">
+    <div class="qe-customer">
+      <app-wholesale-customer-picker [customer]="customer" (customerChange)="onCustomerChange($event)"
+                                     [allowCreate]="false" label="Customer"></app-wholesale-customer-picker>
+      <div *ngIf="customer" class="muted supply">
+        Ship to: {{ customer.shippingCity || customer.city || '—' }}{{ (customer.shippingStateName || customer.stateName) ? ', ' + (customer.shippingStateName || customer.stateName) : '' }}
+        <span *ngIf="preview"> · GST: <strong>{{ preview.interstate ? 'IGST (other state)' : 'CGST + SGST (same state)' }}</strong></span>
+      </div>
+      <span class="hint" *ngIf="!customer">New customers are added under Wholesale Customers.</span>
+    </div>
+    <div class="form-group">
+      <label for="qeDate">{{ docLabel }} Date <span class="req">*</span></label>
+      <input id="qeDate" type="date" class="form-input" [(ngModel)]="quotationDate" (ngModelChange)="onQuotationDateChange()"
+             [max]="isSalesDoc ? today : ''">
+    </div>
+    <div class="form-group" *ngIf="hasDueDate">
+      <label for="qeDue">Payment Due Date</label>
+      <input id="qeDue" type="date" class="form-input" [(ngModel)]="dueDate" [min]="quotationDate">
+    </div>
+    <div class="form-group" *ngIf="!isSalesDoc">
+      <label for="qeValid">Valid Until</label>
+      <input id="qeValid" type="date" class="form-input" [(ngModel)]="validUntil" [min]="quotationDate" (ngModelChange)="schedulePreview()">
+      <span class="hint" *ngIf="validityDaysLabel">{{ validityDaysLabel }} validity</span>
+    </div>
+  </div>
+
+  <!-- Reference + reason (Sales Receipt / Credit Note / Debit Note, per configuration) -->
+  <div *ngIf="isSalesDoc && (referenceAllowed || reasonRequired || kind !== 'SALES_RECEIPT')" class="qe-ref">
+    <div *ngIf="referenceAllowed" class="ref-block">
+      <label class="ref-title">Reference document <span class="req" *ngIf="typeSettings?.referenceMode === 'REQUIRED'">*</span></label>
+      <div class="ref-kinds" role="radiogroup" aria-label="Reference type">
+        <label *ngIf="typeSettings?.referenceMode !== 'REQUIRED'"><input type="radio" name="qeRefKind" value="NONE" [(ngModel)]="refKind" (ngModelChange)="onReferenceChange()"> None</label>
+        <label *ngIf="allowsDocuments"><input type="radio" name="qeRefKind" value="DOCUMENT" [(ngModel)]="refKind" (ngModelChange)="onReferenceChange()"> Earlier receipt / invoice</label>
+        <label *ngIf="allowsQuotations"><input type="radio" name="qeRefKind" value="QUOTATION" [(ngModel)]="refKind" (ngModelChange)="onReferenceChange()"> Quotation</label>
+        <label><input type="radio" name="qeRefKind" value="EXTERNAL" [(ngModel)]="refKind" (ngModelChange)="onReferenceChange()"> External invoice</label>
+      </div>
+      <div class="ref-pick" *ngIf="refKind === 'DOCUMENT'">
+        <select class="form-input" [(ngModel)]="refDocumentId" (ngModelChange)="onReferenceChange()" aria-label="Referenced document" [disabled]="!customer">
+          <option [ngValue]="null">{{ customer ? (refDocs.length ? 'Select document' : 'No issued documents for this customer') : 'Select a customer first' }}</option>
+          <option *ngFor="let d of refDocs" [ngValue]="d.salesDocumentId">{{ d.docTypeLabel }} {{ d.documentNumber }} · {{ d.documentDate | date:'dd/MM/yyyy' }} · {{ d.grandTotal | currency:'INR':'symbol':'1.2-2' }}</option>
+        </select>
+        <button type="button" class="link-btn" (click)="copyItemsFromReference()" [disabled]="!refDocumentId">Copy its items</button>
+      </div>
+      <div class="ref-pick" *ngIf="refKind === 'QUOTATION'">
+        <select class="form-input" [(ngModel)]="refQuotationId" (ngModelChange)="onReferenceChange()" aria-label="Referenced quotation" [disabled]="!customer">
+          <option [ngValue]="null">{{ customer ? (refQuotes.length ? 'Select quotation' : 'No issued quotations for this customer') : 'Select a customer first' }}</option>
+          <option *ngFor="let q of refQuotes" [ngValue]="q.quotationId">{{ q.displayNumber }} · {{ q.quotationDate | date:'dd/MM/yyyy' }} · {{ q.grandTotal | currency:'INR':'symbol':'1.2-2' }}</option>
+        </select>
+        <button type="button" class="link-btn" (click)="copyItemsFromReference()" [disabled]="!refQuotationId">Copy its items</button>
+      </div>
+      <div class="ref-pick" *ngIf="refKind === 'EXTERNAL'">
+        <input class="form-input" [(ngModel)]="extNumber" (ngModelChange)="onReferenceChange()" maxlength="60" placeholder="Original invoice number" aria-label="External invoice number">
+        <input type="date" class="form-input" [(ngModel)]="extDate" (ngModelChange)="onReferenceChange()" [max]="quotationDate" aria-label="External invoice date">
+        <span class="hint">For invoices issued before this system or outside it.</span>
+      </div>
+    </div>
+    <div class="form-group reason">
+      <label for="qeReason">Reason <span class="req" *ngIf="reasonRequired">*</span></label>
+      <textarea id="qeReason" class="form-textarea" [(ngModel)]="reason" maxlength="500"
+                [placeholder]="kind === 'DEBIT_NOTE' ? 'e.g. Price revision agreed on 10/10, freight charged later' : 'Why this document is issued'"></textarea>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="ws-table qe-items">
+      <thead>
+        <tr>
+          <th class="c-no">#</th><th class="c-product">Product</th><th class="c-qty">Quantity</th><th class="c-rate">Rate (₹)</th>
+          <th class="c-small">Disc %</th><th class="c-small">GST %</th>
+          <th class="num">Taxable</th><th class="num">GST</th><th class="num">Total</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let line of lines; let i = index">
+          <td class="c-no">{{ i + 1 }}</td>
+          <td class="c-product">
+            <div class="searchable">
+              <input type="text" class="form-input" autocomplete="off" [name]="'qeProd' + i" [id]="'qeProd' + i"
+                     [(ngModel)]="line.search" (focus)="openDropdown = i" (input)="onSearchInput(line)" (blur)="onSearchBlur()"
+                     placeholder="Search wholesale product" [attr.aria-label]="'Item ' + (i + 1) + ' product'">
+              <div *ngIf="openDropdown === i" class="dropdown-list">
+                <div *ngIf="filteredProducts(line).length === 0" class="dropdown-empty">No active wholesale products match.</div>
+                <div *ngFor="let p of filteredProducts(line)" class="dropdown-item" (mousedown)="selectProduct(line, p)">
+                  <span>{{ productLabel(p) }}</span>
+                  <span class="muted">{{ p.availableQuantity }} {{ p.unit }} · {{ p.activePriceRuleCount ? p.activePriceRuleCount + ' slabs' : 'no slabs' }}</span>
+                </div>
+              </div>
+            </div>
+            <input type="text" class="form-input desc" [(ngModel)]="line.description" (ngModelChange)="schedulePreview()"
+                   [name]="'qeDesc' + i" placeholder="Description (optional)" maxlength="500">
+            <div class="line-hint" *ngIf="line.product">
+              HSN {{ line.product.hsnCode || '—' }} · Stock {{ line.product.availableQuantity }} {{ line.product.unit }}
+              <span class="warn" *ngIf="line.quantity && line.product.availableQuantity < line.quantity"> · exceeds stock</span>
+            </div>
+          </td>
+          <td class="c-qty" data-label="Quantity">
+            <div class="qty-wrap">
+              <input type="number" inputmode="decimal" min="0" step="0.001" class="form-input" [(ngModel)]="line.quantity" [name]="'qeQty' + i" [id]="'qeQty' + i"
+                     (ngModelChange)="onQuantityChange(line)" [attr.aria-label]="'Item ' + (i + 1) + ' quantity'">
+              <span class="unit">{{ line.product?.unit || '' }}</span>
+            </div>
+          </td>
+          <td class="c-rate" data-label="Rate (₹)">
+            <input type="number" inputmode="decimal" min="0" step="0.01" class="form-input" [(ngModel)]="line.rate" [name]="'qeRate' + i"
+                   (ngModelChange)="onRateInput(line)" [attr.aria-label]="'Item ' + (i + 1) + ' rate'">
+            <div class="line-hint" *ngIf="line.suggestion">
+              {{ slabLabel(line.suggestion) }}
+              <span *ngIf="line.rateMode === 'AUTO'" class="ok"> ✓ applied</span>
+              <button *ngIf="rateDiffersFromSlab(line)" type="button" class="link-btn" (click)="useSlabPrice(line)">Use slab price</button>
+            </div>
+            <div class="line-hint" *ngIf="!line.suggestion && line.rateMode === 'FIXED' && documentId && line.product">
+              Saved rate <button type="button" class="link-btn" (click)="useSlabPrice(line)">Check current slab</button>
+            </div>
+            <div class="line-hint warn" *ngIf="line.suggestionError">{{ line.suggestionError }}</div>
+            <div class="line-hint manual" *ngIf="result(i)?.rateSource === 'MANUAL'">Manual rate</div>
+          </td>
+          <td class="c-small c-disc" data-label="Disc %"><input type="number" inputmode="decimal" min="0" max="100" step="0.01" class="form-input" [(ngModel)]="line.discountPct"
+                     [name]="'qeDisc' + i" (ngModelChange)="schedulePreview()" placeholder="0"></td>
+          <td class="c-small c-gst" data-label="GST %"><input type="number" inputmode="decimal" min="0" max="100" step="0.01" class="form-input" [(ngModel)]="line.gstPct"
+                     [name]="'qeGst' + i" (ngModelChange)="schedulePreview()" [placeholder]="result(i) ? result(i)!.gstPct + '' : 'auto'"></td>
+          <td class="num c-amt" data-label="Taxable">{{ result(i) ? (result(i)!.taxableAmount | currency:'INR':'symbol':'1.2-2') : '—' }}</td>
+          <td class="num c-amt" data-label="GST">{{ result(i) ? (result(i)!.gstAmount | currency:'INR':'symbol':'1.2-2') : '—' }}</td>
+          <td class="num c-amt c-total" data-label="Total"><strong>{{ result(i) ? (result(i)!.totalAmount | currency:'INR':'symbol':'1.2-2') : '—' }}</strong></td>
+          <td class="c-remove"><button type="button" class="link-btn remove" (click)="removeLine(i)" [attr.aria-label]="'Remove item ' + (i + 1)">✕</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <button type="button" class="add-btn add-line" (click)="addLineAndFocus()">+ Add item</button>
+
+  <div class="qe-bottom">
+    <div class="qe-extra">
+      <div class="other-charges">
+        <div class="form-group"><label for="qeOcLabel">Other charges</label>
+          <input id="qeOcLabel" class="form-input" [(ngModel)]="otherChargesLabel" (ngModelChange)="schedulePreview()" placeholder="e.g. Freight, Packing" maxlength="60"></div>
+        <div class="form-group"><label for="qeOcAmt">Amount (₹)</label>
+          <input id="qeOcAmt" type="number" inputmode="decimal" min="0" step="0.01" class="form-input" [(ngModel)]="otherChargesAmount" (ngModelChange)="schedulePreview()"></div>
+        <div class="form-group"><label for="qeOcGst">GST %</label>
+          <input id="qeOcGst" type="number" inputmode="decimal" min="0" max="100" step="0.01" class="form-input" [(ngModel)]="otherChargesGstPct" (ngModelChange)="schedulePreview()" placeholder="0"></div>
+      </div>
+      <div class="form-group"><label for="qeNotes">Notes</label>
+        <textarea id="qeNotes" class="form-textarea" [(ngModel)]="notes" placeholder="Shown on the quotation"></textarea></div>
+      <div class="form-group"><label for="qeTerms">Terms &amp; Conditions</label>
+        <textarea id="qeTerms" class="form-textarea terms" [(ngModel)]="terms"></textarea></div>
+    </div>
+
+    <div class="qe-totals ws-card" #totalsCard>
+      <h4>Totals <span class="muted" *ngIf="previewing">updating…</span></h4>
+      <div *ngIf="previewError" class="error-banner">{{ previewError }}</div>
+      <ng-container *ngIf="preview; else noPreview">
+        <div *ngIf="preview.totals.discountAmount > 0" class="row"><span>Gross</span><span>{{ preview.totals.grossAmount | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        <div *ngIf="preview.totals.discountAmount > 0" class="row"><span>Discount</span><span>− {{ preview.totals.discountAmount | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        <div class="row"><span>Subtotal (taxable)</span><span>{{ preview.totals.subtotal | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        <div *ngIf="preview.totals.otherChargesAmount > 0" class="row"><span>{{ preview.totals.otherChargesLabel || 'Other charges' }}</span><span>{{ preview.totals.otherChargesAmount | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        <ng-container *ngIf="!preview.interstate">
+          <div class="row"><span>CGST</span><span>{{ preview.totals.cgstAmount | currency:'INR':'symbol':'1.2-2' }}</span></div>
+          <div class="row"><span>SGST</span><span>{{ preview.totals.sgstAmount | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        </ng-container>
+        <div *ngIf="preview.interstate" class="row"><span>IGST</span><span>{{ preview.totals.igstAmount | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        <div *ngIf="preview.totals.roundOff != 0" class="row"><span>Round off</span><span>{{ preview.totals.roundOff | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        <div class="row grand"><span>Grand Total</span><span>{{ preview.totals.grandTotal | currency:'INR':'symbol':'1.2-2' }}</span></div>
+        <ul *ngIf="preview.warnings.length" class="warnings"><li *ngFor="let w of preview.warnings">{{ w }}</li></ul>
+      </ng-container>
+      <ng-template #noPreview><p class="muted">{{ validate() || 'Calculating…' }}</p></ng-template>
+
+      <div *ngIf="isReceipt" class="pay-now">
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="payNow"> Payment received now (on issue)</label>
+        <ng-container *ngIf="payNow">
+          <div class="pay-grid">
+            <div class="form-group"><label for="qePayAmt">Amount (₹)</label>
+              <input id="qePayAmt" type="number" inputmode="decimal" min="0" step="0.01" class="form-input" [(ngModel)]="payAmount"
+                     [placeholder]="preview ? (preview.totals.grandTotal + ' (full)') : 'Full amount'"></div>
+            <div class="form-group"><label for="qePayMode">Method</label>
+              <select id="qePayMode" class="form-input" [(ngModel)]="payMode">
+                <option *ngFor="let m of paymentModes" [value]="m.value">{{ m.label }}</option>
+              </select></div>
+          </div>
+          <input class="form-input" [(ngModel)]="payReference" maxlength="100" placeholder="Reference (UTR / cheque no.)" aria-label="Payment reference">
+          <span class="hint">Leave the amount empty to record the full grand total. Partial amounts make the receipt "Partially paid".</span>
+        </ng-container>
+      </div>
+
+      <div class="form-actions stacked">
+        <button type="button" class="save-btn desktop-only" (click)="save(false)" [disabled]="saving">{{ saving ? 'Saving…' : 'Save Draft' }}</button>
+        <button type="button" class="edit-btn issue-btn desktop-only" (click)="save(true)" [disabled]="saving">Save &amp; Issue{{ isReceipt && payNow ? ' with payment' : '' }}</button>
+        <button type="button" class="cancel-btn" (click)="cancelled.emit()" [disabled]="saving">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <!-- Phones: running total + save actions stay reachable while scrolling the items -->
+  <div class="qe-mobile-bar">
+    <div *ngIf="error" class="mb-error" role="alert">{{ error }}</div>
+    <div class="mb-row">
+    <button type="button" class="mb-total" (click)="totalsCard.scrollIntoView({ behavior: 'smooth', block: 'start' })" aria-label="Show totals">
+      <span>{{ lines.length }} item{{ lines.length === 1 ? '' : 's' }} · Total <span *ngIf="previewing">…</span></span>
+      <strong>{{ preview ? (preview.totals.grandTotal | currency:'INR':'symbol':'1.2-2') : '—' }}</strong>
+    </button>
+    <button type="button" class="mb-draft" (click)="save(false)" [disabled]="saving">{{ saving ? '…' : 'Draft' }}</button>
+    <button type="button" class="mb-issue" (click)="save(true)" [disabled]="saving">Issue{{ isReceipt && payNow ? ' + Pay' : '' }}</button>
+    </div>
+  </div>
+</div>

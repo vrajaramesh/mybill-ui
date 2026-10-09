@@ -1,0 +1,137 @@
+<div class="ws-ai">
+  <div class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale AI Assistant</h2>
+        <p class="muted">Answers customers (Instagram) from your wholesale products, price slabs, stock and the knowledge below — through controlled backend tools only. It never invents prices, stock, GST, HSN or delivery details.</p>
+      </div>
+      <div class="status-chips" *ngIf="settings">
+        <span class="chip" [class.on]="settings.aiConfigured">{{ settings.aiConfigured ? 'AI ready · ' + settings.model : 'AI key not configured' }}</span>
+        <span class="chip" [class.on]="settings.allowQuotationDrafts">{{ !settings.allowQuotationDrafts ? 'Quotations: staff only' : settings.autoIssueQuotations ? 'Quotations: auto-issue' : 'Quotations: drafts for approval' }}</span>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" [class.active]="tab === 'chat'" (click)="setTab('chat')">Test Chat</button>
+      <button type="button" role="tab" [class.active]="tab === 'knowledge'" (click)="setTab('knowledge')">Knowledge &amp; Rules</button>
+    </div>
+
+    <div *ngIf="error" class="error-banner" role="alert">{{ error }}</div>
+    <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+
+    <!-- ── Test chat ────────────────────────────────────────────────────────────────────────── -->
+    <div *ngIf="tab === 'chat'" class="chat-layout">
+      <section class="chat">
+        <div class="chat-toolbar">
+          <div class="as-customer">
+            <app-wholesale-customer-picker [customer]="customer" [required]="false" [allowCreate]="false"
+                                           label="Chat as wholesale customer (optional)" (customerChange)="onCustomer($event)"></app-wholesale-customer-picker>
+          </div>
+          <button type="button" class="cancel-btn small" (click)="reset()" [disabled]="!entries.length">New conversation</button>
+        </div>
+        <p class="muted">Test mode: same assistant and data as Instagram, but nothing is saved or sent — quotations are only previewed.</p>
+
+        <div class="thread" #thread>
+          <div *ngIf="!entries.length" class="empty">Type a customer message, or pick one:
+            <div class="samples"><button type="button" class="sample" *ngFor="let s of samples" (click)="send(s)">{{ s }}</button></div>
+          </div>
+          <div *ngFor="let e of entries" class="msg" [class.out]="e.role === 'ASSISTANT'">
+            <div class="bubble">
+              <div class="who">{{ e.role === 'CUSTOMER' ? 'Customer' : 'Assistant' }}</div>
+              <div class="text">{{ e.text }}</div>
+              <div class="meta" *ngIf="e.result as r">
+                <span class="intent">{{ r.intent }}</span>
+                <span [class.ok]="r.replySource === 'AI'" [class.bad]="r.replySource !== 'AI'">{{ sourceLabel(r) }}</span>
+                <span *ngIf="!r.answered" class="bad">not fully answered</span>
+                <span *ngIf="r.confidence === 'low'" class="bad">low confidence</span>
+                <span *ngIf="r.needsHuman" class="warn" [title]="r.attentionReason || ''">staff follow-up: {{ r.attentionReason }}</span>
+                <button type="button" class="link-btn" (click)="e.showTools = !e.showTools">{{ e.showTools ? 'Hide' : 'Show' }} tools ({{ r.toolCalls.length }})</button>
+              </div>
+              <div class="tools" *ngIf="e.showTools && e.result">
+                <div *ngIf="!e.result.toolCalls.length" class="muted">No business data was looked up.</div>
+                <details *ngFor="let c of e.result.toolCalls">
+                  <summary><code>{{ c.tool }}</code> {{ json(c.input) }}</summary>
+                  <pre>{{ json(c.result) }}</pre>
+                </details>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="thinking" class="msg out"><div class="bubble typing">Assistant is looking up your data…</div></div>
+        </div>
+
+        <div class="composer">
+          <textarea class="form-textarea" rows="2" maxlength="1000" [(ngModel)]="input" placeholder="Customer message…"
+                    (keydown.enter)="$event.preventDefault(); send()" aria-label="Customer message"></textarea>
+          <button type="button" class="save-btn" (click)="send()" [disabled]="thinking || !input.trim()">Send</button>
+        </div>
+      </section>
+
+      <aside class="context-panel">
+        <h3>Conversation context</h3>
+        <p class="muted">Remembered between messages, so "100 meters?" or "Price?" need no product name.</p>
+        <div *ngFor="let c of contextItems" class="ctx"><span>{{ c.label }}</span><strong>{{ c.value }}</strong></div>
+        <div *ngIf="!contextItems.length" class="muted">Nothing yet.</div>
+        <h3>Tools the AI can use</h3>
+        <ul class="tool-list">
+          <li><code>search_wholesale_products</code></li>
+          <li><code>get_wholesale_product</code></li>
+          <li><code>get_wholesale_price</code> (product, quantity)</li>
+          <li><code>get_wholesale_stock</code></li>
+          <li><code>get_wholesale_minimum_quantity</code></li>
+          <li><code>get_wholesale_business_profile</code></li>
+          <li><code>get_customer_details</code></li>
+          <li><code>create_quotation_draft</code></li>
+        </ul>
+        <p class="muted">All read-only except the quotation draft, which staff approve before it is issued (unless auto-issue is on).</p>
+      </aside>
+    </div>
+
+    <!-- ── Knowledge & rules ────────────────────────────────────────────────────────────────── -->
+    <div *ngIf="tab === 'knowledge' && form" class="knowledge">
+      <div class="warn-banner" *ngIf="!isAdmin">Only an admin can change these settings.</div>
+      <p class="muted">The assistant answers these topics only from what is written here. Leave a field empty and it will say it doesn't have that information.
+        Product colours, designs and specifications are edited on each product (Wholesale → Products); business name, address and contact come from Wholesale → Business Profile.</p>
+      <div class="ws-grid">
+        <div class="form-group wide">
+          <label for="kbOrder">Ordering process</label>
+          <textarea id="kbOrder" class="form-textarea" rows="3" maxlength="4000" [(ngModel)]="form.orderingProcess" [disabled]="!isAdmin"
+                    placeholder="e.g. Send product, quantity and colour. We confirm stock and send a quotation; the order is confirmed after 50% advance."></textarea>
+        </div>
+        <div class="form-group wide">
+          <label for="kbShip">Shipping / delivery information</label>
+          <textarea id="kbShip" class="form-textarea" rows="3" maxlength="4000" [(ngModel)]="form.shippingInfo" [disabled]="!isAdmin"
+                    placeholder="e.g. Dispatch within 2 working days by transport of your choice. Andhra Pradesh & Telangana: 2–3 days; other states: 4–7 days. Freight paid by customer."></textarea>
+        </div>
+        <div class="form-group wide">
+          <label for="kbPay">Payment terms</label>
+          <textarea id="kbPay" class="form-textarea" rows="2" maxlength="4000" [(ngModel)]="form.paymentTerms" [disabled]="!isAdmin"
+                    placeholder="e.g. 50% advance, balance before dispatch. UPI / bank transfer."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="kbHours">Business hours</label>
+          <input id="kbHours" class="form-input" maxlength="500" [(ngModel)]="form.businessHours" [disabled]="!isAdmin" placeholder="e.g. Mon–Sat 10 am – 8 pm">
+        </div>
+        <div class="form-group wide">
+          <label for="kbOther">Other information (FAQ)</label>
+          <textarea id="kbOther" class="form-textarea" rows="3" maxlength="8000" [(ngModel)]="form.additionalInfo" [disabled]="!isAdmin"
+                    placeholder="Anything else customers ask about: samples, returns, cut lengths, …"></textarea>
+        </div>
+        <div class="form-group wide">
+          <label for="kbUnknown">Reply when information is not available <span class="req">*</span></label>
+          <input id="kbUnknown" class="form-input" maxlength="500" [(ngModel)]="form.unknownReply" [disabled]="!isAdmin">
+        </div>
+      </div>
+
+      <h3 class="section-title">Rules</h3>
+      <div class="rules">
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="form.shareStockQuantity" [disabled]="!isAdmin"> Tell customers the exact stock quantity <span class="muted">(off: only "available" / "not available")</span></label>
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="form.allowQuotationDrafts" [disabled]="!isAdmin"> Let the assistant prepare quotation drafts <span class="muted">(for customers linked to a wholesale customer; otherwise staff are notified)</span></label>
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="form.autoIssueQuotations" [disabled]="!isAdmin || !form.allowQuotationDrafts"> Issue AI quotations automatically <span class="muted">(off = recommended: staff review and issue every draft)</span></label>
+      </div>
+      <div class="form-actions" *ngIf="isAdmin">
+        <button type="button" class="save-btn" (click)="save()" [disabled]="saving || !form.unknownReply.trim()">{{ saving ? 'Saving…' : 'Save' }}</button>
+      </div>
+      <div class="muted" *ngIf="settings?.updatedBy">Last changed by {{ settings?.updatedBy }} on {{ settings?.updatedAt | date:'dd/MM/yyyy HH:mm' }}</div>
+    </div>
+  </div>
+</div>

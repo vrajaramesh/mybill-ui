@@ -1,0 +1,47 @@
+<div class="ws-purchases">
+  <div class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Purchases</h2>
+        <p class="muted">Stock from these purchases goes to wholesale products only. Retail purchases stay under Purchases.</p>
+      </div>
+      <button type="button" class="add-btn" *ngIf="!showForm" (click)="startNew()">Add Wholesale Purchase</button>
+    </div>
+    <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+
+    <app-wholesale-purchase-form *ngIf="showForm"
+                                 [suppliers]="suppliers"
+                                 [(supplier)]="supplier"
+                                 (addSupplier)="openSupplierModal()"
+                                 (saved)="onSaved($event)"
+                                 (cancelled)="onCancelled()">
+    </app-wholesale-purchase-form>
+
+    <app-wholesale-purchase-list *ngIf="!showForm"></app-wholesale-purchase-list>
+  </div>
+
+  <div *ngIf="showSupplierModal" class="modal-overlay" (click)="showSupplierModal = false">
+    <div class="ws-card modal-content" (click)="$event.stopPropagation()" role="dialog" aria-label="Add supplier">
+      <h3 class="ws-title">Add Supplier</h3>
+      <div *ngIf="supplierError" class="error-banner">{{ supplierError }}</div>
+      <div class="ws-grid">
+        <div class="form-group"><label for="wsSupName">Supplier Name <span class="req">*</span></label>
+          <input id="wsSupName" class="form-input" [(ngModel)]="newSupplier.supplierName"></div>
+        <div class="form-group"><label for="wsSupContact">Contact Person</label>
+          <input id="wsSupContact" class="form-input" [(ngModel)]="newSupplier.contactPerson"></div>
+        <div class="form-group"><label for="wsSupPhone">Phone</label>
+          <input id="wsSupPhone" type="tel" class="form-input" [(ngModel)]="newSupplier.phone"></div>
+        <div class="form-group"><label for="wsSupEmail">Email</label>
+          <input id="wsSupEmail" type="email" class="form-input" [(ngModel)]="newSupplier.email"></div>
+        <div class="form-group"><label for="wsSupGst">GST Number</label>
+          <input id="wsSupGst" class="form-input" [(ngModel)]="newSupplier.gstNumber"></div>
+        <div class="form-group"><label for="wsSupAddr">Address</label>
+          <textarea id="wsSupAddr" class="form-textarea" [(ngModel)]="newSupplier.address"></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="save-btn" (click)="saveSupplier()">Save Supplier</button>
+        <button type="button" class="cancel-btn" (click)="showSupplierModal = false">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>

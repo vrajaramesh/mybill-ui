@@ -250,22 +250,52 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title">Top Selling Products</span>
-          <span class="card-sub">by revenue</span>
-        </div>
-        <div class="ranked-list" *ngIf="topProducts.length; else emptyProd">
-          <div class="ranked-item" *ngFor="let p of topProducts; let i = index">
-            <span class="rank">{{ i + 1 }}</span>
-            <div class="ranked-info">
-              <div class="ranked-name">{{ p.productName }}</div>
-              <div class="ranked-sub">{{ p.category }} · {{ p.quantitySold | number:'1.0-1' }} units sold</div>
-              <div class="bar-bg">
-                <div class="bar-fill" [style.width]="(+p.revenue / topProductMax() * 100) + '%'"></div>
-              </div>
-            </div>
-            <div class="ranked-value">{{ fmt(p.revenue) }}</div>
+          <span class="card-sub">{{ tpDateRange() }}</span>
+          <div class="tp-sort" role="group" aria-label="Rank by">
+            <button type="button" [class.active]="tpSort === 'revenue'" (click)="setTpSort('revenue')">By revenue</button>
+            <button type="button" [class.active]="tpSort === 'quantity'" (click)="setTpSort('quantity')">By quantity</button>
           </div>
         </div>
-        <ng-template #emptyProd><div class="no-data">No sales data for this period</div></ng-template>
+
+        <div class="tp-periods" role="tablist" aria-label="Period">
+          <button *ngFor="let p of tpPeriods" type="button" role="tab" class="tp-chip"
+                  [class.active]="tpPeriod === p.key" [attr.aria-selected]="tpPeriod === p.key"
+                  (click)="selectTpPeriod(p.key)">{{ p.key === 'year' ? selectedYear : p.label }}</button>
+        </div>
+
+        <div class="tp-summary" *ngIf="tpSummary && !tpLoading && tpProducts.length">
+          <span><strong>{{ fmt(tpSummary.totalRevenue) }}</strong> sales</span>
+          <span><strong>{{ tpSummary.totalQuantity | number:'1.0-1' }}</strong> units</span>
+          <span><strong>{{ tpSummary.billCount }}</strong> bills</span>
+          <span><strong>{{ tpSummary.productsSold }}</strong> products</span>
+        </div>
+
+        <div class="cs-loading" *ngIf="tpLoading"><div class="spinner-sm"></div> Loading...</div>
+        <div class="no-data" *ngIf="tpError && !tpLoading">{{ tpError }}</div>
+
+        <ng-container *ngIf="!tpLoading && !tpError">
+          <div class="ranked-list" *ngIf="tpProducts.length; else emptyProd">
+            <div class="ranked-item" *ngFor="let p of tpProducts; let i = index">
+              <span class="rank">{{ i + 1 }}</span>
+              <div class="ranked-info">
+                <div class="ranked-name">{{ p.productName }}</div>
+                <div class="ranked-sub">
+                  {{ p.category }} · {{ p.quantitySold | number:'1.0-1' }} units
+                  <ng-container *ngIf="p.billCount != null"> · {{ p.billCount }} bill{{ p.billCount === 1 ? '' : 's' }}</ng-container>
+                  <ng-container *ngIf="p.sharePct != null"> · {{ p.sharePct }}% of sales</ng-container>
+                </div>
+                <div class="bar-bg">
+                  <div class="bar-fill" [style.width]="(tpMetric(p) / tpMax() * 100) + '%'"></div>
+                </div>
+              </div>
+              <div class="ranked-value">
+                {{ tpSort === 'quantity' ? ((p.quantitySold | number:'1.0-1') + ' units') : fmt(p.revenue) }}
+                <div class="tp-alt">{{ tpSort === 'quantity' ? fmt(p.revenue) : ((p.quantitySold | number:'1.0-1') + ' units') }}</div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #emptyProd><div class="no-data">No products sold in this period</div></ng-template>
       </div>
 
       <!-- Category Revenue -->

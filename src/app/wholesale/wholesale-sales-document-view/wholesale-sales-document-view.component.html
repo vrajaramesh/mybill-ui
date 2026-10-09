@@ -1,0 +1,120 @@
+<div *ngIf="error" class="error-banner" role="alert">{{ error }}</div>
+<ng-container *ngIf="doc">
+  <div class="sd-header">
+    <h2 class="sd-title">{{ doc.docTypeLabel }} {{ doc.documentNumber }}
+      <span class="sd-status" [ngClass]="'st-' + doc.status">{{ statusLabel(doc.status) }}</span>
+    </h2>
+    <div class="muted">
+      {{ doc.customer.customerName }} · {{ doc.documentDate | date:'dd/MM/yyyy' }}
+      <span *ngIf="doc.sourceQuotationId"> · from quotation
+        <button type="button" class="link-btn" (click)="openQuotation.emit(doc.sourceQuotationId!)">{{ doc.sourceQuotationNumber }}</button></span>
+      <span *ngIf="!isCredit && doc.payment.dueDate"> · due {{ doc.payment.dueDate | date:'dd/MM/yyyy' }}</span>
+    </div>
+    <div class="muted">
+      Printed as <strong>{{ doc.printTitle }}</strong> · {{ gstLabels[doc.semantics.gstClassification] }}
+      · {{ isCredit ? 'reduces what the customer owes' : 'customer owes' }}
+      · stock {{ doc.semantics.stockEffect === 'OUT' ? 'out' : doc.semantics.stockEffect === 'IN' ? 'back in' : 'unchanged' }}
+    </div>
+    <div class="muted" *ngIf="doc.reference">
+      Against {{ doc.reference.docType === 'EXTERNAL' ? 'external invoice' : doc.reference.docType === 'QUOTATION' ? 'quotation' : 'document' }}
+      <button *ngIf="doc.reference.documentId || doc.reference.quotationId" type="button" class="link-btn" (click)="openReference()">{{ doc.reference.number }}</button>
+      <strong *ngIf="!doc.reference.documentId && !doc.reference.quotationId">{{ doc.reference.number }}</strong>
+      <span *ngIf="doc.reference.date"> dated {{ doc.reference.date | date:'dd/MM/yyyy' }}</span>
+    </div>
+    <div class="reason" *ngIf="doc.reason"><strong>Reason:</strong> {{ doc.reason }}</div>
+    <div class="muted">
+      Created {{ doc.createdAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="doc.createdBy"> by {{ doc.createdBy }}</span>
+      <span *ngIf="doc.issuedAt"> · issued {{ doc.issuedAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="doc.issuedBy"> by {{ doc.issuedBy }}</span></span>
+      <span *ngIf="doc.convertedAt"> · converted {{ doc.convertedAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="doc.convertedBy"> by {{ doc.convertedBy }}</span></span>
+    </div>
+    <div class="muted" *ngIf="doc.status === 'CANCELLED'">
+      Cancelled {{ doc.cancelledAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="doc.cancelledBy"> by {{ doc.cancelledBy }}</span> — {{ doc.cancelReason }}
+    </div>
+  </div>
+
+  <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+
+  <!-- Payment summary -->
+  <div class="pay-summary" *ngIf="doc.status !== 'DRAFT' && !isCredit">
+    <div><span>Grand total</span><strong>{{ doc.totals.grandTotal | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+    <div><span>Paid</span><strong>{{ doc.payment.amountPaid | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+    <div [class.due]="doc.payment.balanceDue > 0"><span>Balance</span><strong>{{ doc.payment.balanceDue | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+    <div *ngIf="doc.payment.paymentMode"><span>Last method</span><strong>{{ paymentModeLabel(doc.payment.paymentMode) }}</strong></div>
+  </div>
+
+  <div class="sd-actions">
+    <button *ngIf="can('EDIT')" type="button" class="edit-btn small" (click)="editDraft.emit(doc.salesDocumentId)" [disabled]="!!busy">Edit</button>
+    <button *ngIf="can('ISSUE')" type="button" class="save-btn small" (click)="openIssue()" [disabled]="!!busy">Issue…</button>
+    <button *ngIf="can('ADD_PAYMENT')" type="button" class="save-btn small" (click)="issuing = false; openPaymentForm()" [disabled]="!!busy">Record Payment</button>
+    <span class="divider"></span>
+    <button type="button" class="cancel-btn small" (click)="print()" [disabled]="!!busy" title="A4">Print</button>
+    <button type="button" class="cancel-btn small" (click)="print(true)" [disabled]="!!busy" title="Compact 80 mm thermal print">Print 80 mm</button>
+    <button type="button" class="cancel-btn small" (click)="downloadPdf()" [disabled]="!!busy">{{ busy === 'pdf' ? 'Creating PDF…' : 'Download PDF' }}</button>
+    <button type="button" class="cancel-btn small" (click)="share()" [disabled]="!!busy">{{ busy === 'share' ? 'Preparing…' : 'Share' }}</button>
+    <button *ngFor="let o of againstOptions" type="button" class="cancel-btn small"
+            (click)="createAgainst.emit({ type: o.type, referenceId: doc.salesDocumentId })" [disabled]="!!busy">New {{ o.label }} against this</button>
+    <span class="push-right"></span>
+    <button *ngIf="can('CANCEL')" type="button" class="link-btn danger" (click)="cancelDocument()" [disabled]="!!busy">Cancel {{ doc.docTypeLabel }}</button>
+    <button *ngIf="can('DELETE')" type="button" class="delete-btn small" (click)="deleteDraft()" [disabled]="!!busy">Delete draft</button>
+  </div>
+
+  <!-- Issue / record payment form -->
+  <div *ngIf="showPaymentForm" class="pay-form">
+    <h4>{{ issuing ? 'Issue ' + doc.documentNumber : 'Record a payment' }}</h4>
+    <p class="muted" *ngIf="issuing">The receipt gets its number and the quantities are taken out of wholesale stock.</p>
+    <label *ngIf="issuing" class="checkbox"><input type="checkbox" [(ngModel)]="payNow"> Payment received now</label>
+    <div class="pay-grid" *ngIf="!issuing || payNow">
+      <div class="form-group"><label for="pfDate">Date</label>
+        <input id="pfDate" type="date" class="form-input" [(ngModel)]="payDate" [min]="doc.documentDate" [max]="today"></div>
+      <div class="form-group"><label for="pfAmt">Amount (₹)</label>
+        <input id="pfAmt" type="number" inputmode="decimal" min="0" step="0.01" class="form-input" [(ngModel)]="payAmount"
+               [placeholder]="(issuing ? doc.totals.grandTotal : doc.payment.balanceDue) + ' (full)'"></div>
+      <div class="form-group"><label for="pfMode">Method</label>
+        <select id="pfMode" class="form-input" [(ngModel)]="payMode">
+          <option *ngFor="let m of paymentModes" [value]="m.value">{{ m.label }}</option>
+        </select></div>
+      <div class="form-group"><label for="pfRef">Reference</label>
+        <input id="pfRef" class="form-input" [(ngModel)]="payReference" maxlength="100" placeholder="UTR / cheque no."></div>
+      <div class="form-group wide"><label for="pfNotes">Notes</label>
+        <input id="pfNotes" class="form-input" [(ngModel)]="payNotes" maxlength="255"></div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="save-btn" (click)="submitPayment()" [disabled]="!!busy">
+        {{ busy === 'action' ? 'Saving…' : (issuing ? (payNow ? 'Issue with payment' : 'Issue (unpaid)') : 'Save payment') }}</button>
+      <button type="button" class="cancel-btn" (click)="closePaymentForm()" [disabled]="!!busy">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Payment history -->
+  <div class="pay-history" *ngIf="doc.payments.length">
+    <h4>Payments</h4>
+    <table class="ws-table ws-cards">
+      <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Notes</th><th class="num">Amount</th><th>Recorded</th><th></th></tr></thead>
+      <tbody>
+        <tr *ngFor="let p of doc.payments" [class.voided]="p.status === 'VOIDED'">
+          <td data-label="Date">{{ p.paymentDate | date:'dd/MM/yyyy' }}</td>
+          <td data-label="Method">{{ paymentModeLabel(p.paymentMode) }}</td>
+          <td data-label="Reference">{{ p.reference || '—' }}</td>
+          <td [attr.data-label]="p.notes || p.status === 'VOIDED' ? 'Notes' : null"><span>{{ p.notes || '' }}<span *ngIf="p.status === 'VOIDED'" class="muted block">Voided {{ p.voidedAt | date:'dd/MM/yyyy' }}<span *ngIf="p.voidedBy"> by {{ p.voidedBy }}</span>: {{ p.voidReason }}</span></span></td>
+          <td class="num" data-label="Amount"><strong>{{ p.amount | currency:'INR':'symbol':'1.2-2' }}</strong></td>
+          <td class="muted" data-label="Recorded"><span>{{ p.createdAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="p.createdBy"> · {{ p.createdBy }}</span></span></td>
+          <td><button *ngIf="p.status === 'RECORDED' && can('VOID_PAYMENT')" type="button" class="link-btn danger" (click)="voidPayment(p)" [disabled]="!!busy">Void</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Audit trail -->
+  <div class="audit" *ngIf="doc.auditTrail.length">
+    <button type="button" class="link-btn" (click)="showAudit = !showAudit">{{ showAudit ? 'Hide' : 'Show' }} audit trail ({{ doc.auditTrail.length }})</button>
+    <ol *ngIf="showAudit">
+      <li *ngFor="let e of doc.auditTrail">
+        <strong>{{ eventLabel(e.eventType) }}</strong>
+        <span class="muted"> · {{ e.eventAt | date:'dd/MM/yyyy HH:mm:ss' }}<span *ngIf="e.eventBy"> · {{ e.eventBy }}</span></span>
+        <div *ngIf="e.details" class="muted">{{ e.details }}</div>
+      </li>
+    </ol>
+  </div>
+
+  <iframe *ngIf="previewHtml" class="doc-frame" [srcdoc]="previewHtml" [title]="doc.docTypeLabel + ' ' + doc.documentNumber"></iframe>
+</ng-container>

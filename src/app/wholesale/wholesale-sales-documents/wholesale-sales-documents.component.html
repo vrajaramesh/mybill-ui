@@ -1,0 +1,74 @@
+<div class="ws-sales">
+  <div *ngIf="selectedId === null && !editing" class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Sales</h2>
+        <p class="muted">{{ typeLabels['SALES_RECEIPT'] }}s, {{ typeLabels['CREDIT_NOTE'] }}s and {{ typeLabels['DEBIT_NOTE'] }}s. Rates are fixed at the time of sale; issued documents are corrected with a credit or debit note.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="cancel-btn small" (click)="downloadCsv()" [disabled]="!documents.length">Download (CSV)</button>
+        <div class="new-menu">
+          <button type="button" class="add-btn" (click)="showNewMenu = !showNewMenu" aria-haspopup="menu" [attr.aria-expanded]="showNewMenu">+ New ▾</button>
+          <div *ngIf="showNewMenu" class="new-menu-list" role="menu">
+            <button *ngFor="let t of docTypes" type="button" role="menuitem" (click)="newDocument(t)">{{ typeLabels[t] }}</button>
+            <div class="muted hint-row">Credit/Debit Notes against an existing document: open it and use "New … against this".</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+
+    <div class="type-tabs" role="tablist">
+      <button type="button" role="tab" [class.active]="typeFilter === ''" (click)="setType('')">All</button>
+      <button *ngFor="let t of docTypes" type="button" role="tab" [class.active]="typeFilter === t" (click)="setType(t)">{{ typeLabels[t] }}s</button>
+    </div>
+
+    <div class="filters-row">
+      <input type="search" class="form-input search" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+             placeholder="Search number or customer" aria-label="Search sales documents">
+      <select class="form-input" [(ngModel)]="statusFilter" (ngModelChange)="load()" aria-label="Status filter">
+        <option *ngFor="let o of statusOptions" [value]="o.value">{{ o.label }}</option>
+      </select>
+      <label class="date-filter">From <input type="date" class="form-input" [(ngModel)]="fromDate" (ngModelChange)="load()"></label>
+      <label class="date-filter">To <input type="date" class="form-input" [(ngModel)]="toDate" (ngModelChange)="load()"></label>
+    </div>
+
+    <div *ngIf="error" class="error-banner">{{ error }}</div>
+
+    <div class="table-container">
+      <table class="ws-table ws-cards">
+        <thead><tr><th>Number</th><th>Type</th><th>Date</th><th>Customer</th><th>Reference</th><th class="num">Grand Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let d of documents" class="clickable" (click)="open(d.salesDocumentId)">
+            <td class="card-title"><strong>{{ d.documentNumber }}</strong></td>
+            <td data-label="Type">{{ d.docTypeLabel }}</td>
+            <td data-label="Date">{{ d.documentDate | date:'dd/MM/yyyy' }}</td>
+            <td data-label="Customer"><span>{{ d.customerName }}<span class="muted block" *ngIf="d.customerBusinessName">{{ d.customerBusinessName }}</span></span></td>
+            <td data-label="Reference">{{ d.referenceNumber || d.sourceQuotationNumber || '—' }}</td>
+            <td class="num" data-label="Grand total"><strong class="amt">{{ d.grandTotal | currency:'INR':'symbol':'1.2-2' }}</strong></td>
+            <td class="num" data-label="Paid">{{ d.amountPaid | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td class="num" data-label="Balance" [class.due]="d.balanceDue > 0 && d.status !== 'CANCELLED' && d.status !== 'DRAFT'"><span>{{ d.balanceDue | currency:'INR':'symbol':'1.2-2' }}
+              <span class="muted block" *ngIf="d.dueDate" [class.overdue]="isOverdue(d)">due {{ d.dueDate | date:'dd/MM/yyyy' }}{{ isOverdue(d) ? ' · overdue' : '' }}</span></span></td>
+            <td data-label="Status"><span class="st" [ngClass]="'st-' + d.status">{{ statusLabel(d.status) }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!loading && documents.length === 0" class="empty">No sales documents match. Create a Sales Receipt or convert an issued quotation.</div>
+    </div>
+    <div class="muted total-line" *ngIf="documents.length">Issued total shown: <strong>{{ totalShown | currency:'INR':'symbol':'1.2-2' }}</strong>
+      · balance due: <strong>{{ balanceShown | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+  </div>
+
+  <div *ngIf="editing" class="ws-card">
+    <button type="button" class="link-btn back" (click)="onEditorCancelled()">← Back</button>
+    <app-wholesale-quotation-editor [kind]="editKind" [documentId]="editId" [prefillReferenceId]="prefillReferenceId"
+                                    (saved)="onSaved($event)" (cancelled)="onEditorCancelled()"></app-wholesale-quotation-editor>
+  </div>
+
+  <div *ngIf="selectedId !== null && !editing" class="ws-card">
+    <button type="button" class="link-btn back" (click)="back()">← All sales documents</button>
+    <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+    <app-wholesale-sales-document-view [documentId]="selectedId" (editDraft)="editDraft($event)" (deleted)="onDeleted()"
+                                       (openDocument)="open($event)" (createAgainst)="onCreateAgainst($event)"></app-wholesale-sales-document-view>
+  </div>
+</div>

@@ -1,0 +1,16 @@
+.picker { display: flex; flex-direction: column; }
+.picker-label { margin-bottom: 5px; font-weight: 500; color: #555; }
+.selected-card { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid #cfe2ff; background: #f5f9ff; border-radius: 4px; padding: 8px 12px; }
+.search-box { position: relative; }
+.search-box .form-input { width: 100%; box-sizing: border-box; }
+.dropdown-list { position: absolute; z-index: 20; left: 0; right: 0; max-height: 280px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.dropdown-item { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; cursor: pointer; }
+.dropdown-item:hover { background: #e7f1ff; }
+.dropdown-item.create { color: #007bff; border-top: 1px solid #eee; }
+.dropdown-empty { padding: 10px 12px; color: #6c757d; font-size: 13px; }
+@media (max-width: 768px) {
+  .selected-card { padding: 10px 12px; }
+  .selected-card .link-btn { padding: 8px 4px; }
+  .dropdown-list { max-height: 50vh; }
+  .dropdown-item { flex-direction: column; gap: 2px; padding: 12px; border-bottom: 1px solid #f1f3f5; }
+}

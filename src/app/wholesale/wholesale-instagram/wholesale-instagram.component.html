@@ -1,0 +1,192 @@
+<div class="ws-ig">
+  <div class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Instagram</h2>
+        <p class="muted">Customer messages from Instagram. The AI answers from your wholesale products, price slabs and stock only — never made-up prices, stock, GST or HSN.</p>
+      </div>
+      <div class="status-chips" *ngIf="settings">
+        <span class="chip" [class.on]="settings.isEnabled">{{ settings.isEnabled ? 'Connected' : 'Not connected' }}</span>
+        <span class="chip" [class.on]="settings.isEnabled && settings.autoReplyEnabled && settings.aiConfigured">
+          {{ !settings.aiConfigured ? 'AI not configured' : settings.autoReplyEnabled ? 'AI auto-reply on' : 'AI auto-reply off' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" [class.active]="tab === 'inbox'" (click)="setTab('inbox')">Inbox</button>
+      <button type="button" role="tab" [class.active]="tab === 'settings'" (click)="setTab('settings')">Settings</button>
+    </div>
+
+    <div *ngIf="error" class="error-banner" role="alert">{{ error }}</div>
+    <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+
+    <!-- ── Inbox ─────────────────────────────────────────────────────────────────────────────── -->
+    <div *ngIf="tab === 'inbox'" class="inbox">
+      <aside class="conv-list">
+        <input type="search" class="form-input" [(ngModel)]="search" (ngModelChange)="onSearch()" placeholder="Search name, username, customer, message" aria-label="Search conversations">
+        <div class="filter-chips">
+          <button type="button" *ngFor="let f of filters" [class.active]="filter === f.value" (click)="setFilter(f.value)">{{ f.label }}</button>
+        </div>
+        <button type="button" *ngFor="let c of conversations" class="conv"
+                [class.active]="selected?.conversation?.conversationId === c.conversationId" (click)="open(c)">
+          <div class="conv-top">
+            <strong>{{ title(c) }}</strong>
+            <span class="muted">{{ c.lastMessageAt | date:'dd/MM HH:mm' }}</span>
+          </div>
+          <div class="conv-text">{{ c.lastMessageText || '—' }}</div>
+          <div class="conv-tags">
+            <span *ngIf="c.unreadCount > 0" class="tag unread">{{ c.unreadCount }} new</span>
+            <span *ngIf="c.needsAttention" class="tag attention" [title]="c.attentionReason || ''">Needs attention</span>
+            <span *ngIf="!c.aiEnabled" class="tag takeover">Human</span>
+            <span *ngIf="c.customerName" class="tag linked">Customer</span>
+          </div>
+        </button>
+        <div *ngIf="!conversations.length" class="empty">No conversations yet.<br><span class="muted">Messages appear here once Instagram is connected in Settings.</span></div>
+      </aside>
+
+      <section class="conv-view" *ngIf="selected as conv; else pick">
+        <header class="conv-header">
+          <div>
+            <h3>{{ title(conv.conversation) }}</h3>
+            <div class="muted">
+              <span *ngIf="conv.conversation.instagramUsername">&#64;{{ conv.conversation.instagramUsername }} · </span>
+              <span *ngIf="conv.conversation.customerName">Customer: <strong>{{ conv.conversation.customerName }}</strong>
+                <button type="button" class="link-btn" (click)="unlinkCustomer()">Unlink</button> · </span>
+              <button type="button" class="link-btn" (click)="showLinkPicker = !showLinkPicker">{{ conv.conversation.customerName ? 'Change customer' : 'Link to wholesale customer' }}</button>
+            </div>
+            <div class="link-picker" *ngIf="showLinkPicker">
+              <app-wholesale-customer-picker [customer]="null" [required]="false" [allowCreate]="false" label="Wholesale customer"
+                                             (customerChange)="linkCustomer($event)"></app-wholesale-customer-picker>
+            </div>
+          </div>
+          <div class="conv-actions">
+            <div class="ai-state" [class.human]="!conv.conversation.aiEnabled">
+              <ng-container *ngIf="conv.conversation.aiEnabled">🤖 AI is replying</ng-container>
+              <ng-container *ngIf="!conv.conversation.aiEnabled">🙋 Human takeover
+                <span class="muted" *ngIf="conv.conversation.takeoverBy">by {{ conv.conversation.takeoverBy }}</span></ng-container>
+            </div>
+            <button type="button" class="edit-btn" *ngIf="conv.conversation.aiEnabled" (click)="takeOver()">Take over</button>
+            <button type="button" class="add-btn" *ngIf="!conv.conversation.aiEnabled" (click)="release()">Re-enable AI</button>
+          </div>
+        </header>
+
+        <div class="attention-bar" *ngIf="conv.conversation.needsAttention">
+          <span>⚠️ {{ conv.conversation.attentionReason || 'Needs attention' }}</span>
+          <button type="button" class="link-btn" (click)="resolve()">Mark handled</button>
+        </div>
+
+        <div class="thread" #thread>
+          <div *ngFor="let m of conv.messages" class="msg" [class.out]="m.direction === 'OUTBOUND'" [class.ai]="m.senderType === 'AI'">
+            <div class="bubble" [class.failed]="m.status === 'FAILED'">
+              <div class="who">{{ senderLabel(m) }} · {{ m.messageAt | date:'dd/MM/yyyy HH:mm' }}</div>
+              <div class="text" *ngIf="m.messageText">{{ m.messageText }}</div>
+              <div class="text muted" *ngIf="!m.messageText && m.attachments?.length">
+                [{{ m.attachments!.length }} attachment{{ m.attachments!.length > 1 ? 's' : '' }}]
+                <ng-container *ngFor="let a of m.attachments"><a *ngIf="a.payload?.url" [href]="a.payload!.url" target="_blank" rel="noopener">{{ a.type || 'open' }}</a> </ng-container>
+              </div>
+              <div class="meta">
+                <span class="st st-{{ m.status }}">{{ statusLabel(m.status) }}</span>
+                <span *ngIf="m.intent" class="intent">{{ m.intent }}</span>
+                <button type="button" class="link-btn" *ngIf="m.direction === 'INBOUND' && (m.facts || m.extracted)" (click)="toggleDetails(m)">
+                  {{ expanded.has(m.messageId) ? 'Hide AI details' : 'AI details' }}</button>
+              </div>
+              <div class="err" *ngIf="m.errorMessage">{{ m.errorMessage }}</div>
+              <div class="details" *ngIf="expanded.has(m.messageId)">
+                <div *ngIf="replySourceLabel(m)"><strong>Reply:</strong> {{ replySourceLabel(m) }}</div>
+                <div *ngIf="m.aiResponse && m.status !== 'REPLIED'"><strong>AI would have replied:</strong> {{ m.aiResponse }}</div>
+                <div *ngIf="toolCalls(m).length; else noTools"><strong>Tools called:</strong>
+                  <details *ngFor="let c of toolCalls(m)"><summary>{{ c.tool }} {{ json(c.input) }}</summary><pre>{{ json(c.result) }}</pre></details>
+                </div>
+                <ng-template #noTools><div class="muted">No business data was looked up.</div></ng-template>
+                <details><summary>Raw data</summary><pre>{{ json({ understood: m.extracted, facts: m.facts }) }}</pre></details>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="!conv.messages.length" class="empty">No messages.</div>
+        </div>
+
+        <div class="composer">
+          <div class="warn-banner" *ngIf="!conv.conversation.replyWindowOpen">
+            The customer's last message is older than 24 hours — Instagram usually refuses replies until they write again.
+          </div>
+          <div class="muted" *ngIf="conv.conversation.aiEnabled">Sending a reply turns on human takeover (the AI stops replying here until you re-enable it).</div>
+          <div class="composer-row">
+            <textarea class="form-textarea" rows="2" maxlength="1000" [(ngModel)]="reply" placeholder="Type a reply…"
+                      (keydown.control.enter)="send()" (keydown.meta.enter)="send()" aria-label="Reply"></textarea>
+            <button type="button" class="save-btn" (click)="send()" [disabled]="sending || !reply.trim()">{{ sending ? 'Sending…' : 'Send' }}</button>
+          </div>
+        </div>
+      </section>
+      <ng-template #pick><section class="conv-view empty">Select a conversation.</section></ng-template>
+    </div>
+
+    <!-- ── Settings ──────────────────────────────────────────────────────────────────────────── -->
+    <div *ngIf="tab === 'settings' && form && settings" class="settings">
+      <div class="warn-banner" *ngIf="!settings.aiConfigured">The AI service key is not configured on the server, so messages are answered with the holding message only.</div>
+      <div class="warn-banner" *ngIf="!isAdmin">Only an admin can change these settings.</div>
+
+      <h3 class="section-title">Webhook (Meta App → Instagram → Webhooks)</h3>
+      <div class="ws-grid">
+        <div class="form-group wide">
+          <label>Callback URL</label>
+          <div class="copy-row"><input class="form-input" [value]="webhookUrl" readonly aria-label="Callback URL">
+            <button type="button" class="edit-btn" (click)="copy(webhookUrl)">Copy</button></div>
+          <span class="hint">Subscribe the <strong>messages</strong> field (and <strong>message_echoes</strong> so replies typed in the Instagram app switch the conversation to human takeover). The URL must be public HTTPS.</span>
+        </div>
+        <div class="form-group">
+          <label>Verify token <span class="req">*</span></label>
+          <div class="copy-row"><input class="form-input" [(ngModel)]="form.verifyToken" [disabled]="!isAdmin" aria-label="Verify token">
+            <button type="button" class="edit-btn" (click)="generateVerifyToken()" [disabled]="!isAdmin">Generate</button></div>
+          <span class="hint">Paste the same value in Meta's "Verify token" field.</span>
+        </div>
+      </div>
+
+      <h3 class="section-title">Instagram account</h3>
+      <div class="ws-grid">
+        <div class="form-group">
+          <label>Instagram professional account ID</label>
+          <input class="form-input" [(ngModel)]="form.instagramAccountId" [disabled]="!isAdmin" placeholder="e.g. 17841400000000000">
+          <span class="hint">Only messages for this account are accepted. Leave empty to accept the app's account.</span>
+        </div>
+        <div class="form-group">
+          <label>Graph API base URL</label>
+          <input class="form-input" [(ngModel)]="form.apiBaseUrl" [disabled]="!isAdmin">
+          <span class="hint">https://graph.facebook.com/v21.0 (Facebook Page token) or https://graph.instagram.com/v21.0 (Instagram login token).</span>
+        </div>
+        <div class="form-group">
+          <label>Access token {{ settings.accessTokenSet ? '(saved)' : '' }}</label>
+          <input class="form-input" type="password" autocomplete="new-password" [(ngModel)]="newAccessToken" [disabled]="!isAdmin || clearAccessToken"
+                 [placeholder]="settings.accessTokenSet ? 'Leave empty to keep the saved token' : 'Paste token'">
+          <label class="checkbox" *ngIf="settings.accessTokenSet"><input type="checkbox" [(ngModel)]="clearAccessToken" [disabled]="!isAdmin"> Remove saved token</label>
+          <span class="hint">Needs instagram_manage_messages (or instagram_business_manage_messages). Never shown again after saving.</span>
+        </div>
+        <div class="form-group">
+          <label>App secret {{ settings.appSecretSet ? '(saved)' : '' }}</label>
+          <input class="form-input" type="password" autocomplete="new-password" [(ngModel)]="newAppSecret" [disabled]="!isAdmin || clearAppSecret"
+                 [placeholder]="settings.appSecretSet ? 'Leave empty to keep the saved secret' : 'Paste app secret'">
+          <label class="checkbox" *ngIf="settings.appSecretSet"><input type="checkbox" [(ngModel)]="clearAppSecret" [disabled]="!isAdmin"> Remove saved secret</label>
+          <span class="hint">Used to check that webhook calls really come from Meta.</span>
+        </div>
+      </div>
+
+      <h3 class="section-title">Replies</h3>
+      <div class="ws-grid">
+        <div class="form-group">
+          <label class="checkbox"><input type="checkbox" [(ngModel)]="form.isEnabled" [disabled]="!isAdmin"> Receive Instagram messages</label>
+          <label class="checkbox"><input type="checkbox" [(ngModel)]="form.autoReplyEnabled" [disabled]="!isAdmin"> AI auto-reply (can be turned off per conversation with "Take over")</label>
+          <span class="hint">What the assistant knows and may do (ordering, shipping, stock quantities, quotations) is set in <strong>Wholesale → AI Assistant → Knowledge &amp; Rules</strong>.</span>
+        </div>
+        <div class="form-group wide">
+          <label>Holding message <span class="req">*</span></label>
+          <textarea class="form-textarea" rows="2" maxlength="500" [(ngModel)]="form.handoffMessage" [disabled]="!isAdmin"></textarea>
+          <span class="hint">Sent when the AI cannot process a message or the question needs a person.</span>
+        </div>
+      </div>
+      <div class="form-actions" *ngIf="isAdmin">
+        <button type="button" class="save-btn" (click)="saveSettings()" [disabled]="savingSettings || !form.handoffMessage.trim()">{{ savingSettings ? 'Saving…' : 'Save Settings' }}</button>
+      </div>
+      <div class="muted" *ngIf="settings.updatedBy">Last changed by {{ settings.updatedBy }} on {{ settings.updatedAt | date:'dd/MM/yyyy HH:mm' }}</div>
+    </div>
+  </div>
+</div>

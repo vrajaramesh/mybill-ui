@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+export type TopProductPeriod = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month';
+
 @Injectable({ providedIn: 'root' })
 export class ReportService {
   private readonly base = '/api/reports';
@@ -18,6 +20,11 @@ export class ReportService {
 
   getTopProducts(year: number, limit = 10): Observable<any[]> {
     return this.http.get<any[]>(`${this.base}/top-products?year=${year}&limit=${limit}`);
+  }
+
+  /** Top selling products for a calendar period (India time; weeks Monday–Sunday). */
+  getTopProductsByPeriod(period: TopProductPeriod, sort: 'revenue' | 'quantity' = 'revenue', limit = 10): Observable<any> {
+    return this.http.get<any>(`${this.base}/top-products-period?period=${period}&sort=${sort}&limit=${limit}`);
   }
 
   getCategoryRevenue(year: number): Observable<any[]> {

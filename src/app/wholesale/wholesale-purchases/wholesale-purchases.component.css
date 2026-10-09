@@ -1,0 +1,7 @@
+.ws-purchases { padding: 20px; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.page-title { margin: 0 0 4px; color: #333; font-size: 22px; }
+.success-banner { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; border-radius: 4px; padding: 10px 12px; margin-bottom: 12px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-start; justify-content: center; padding: 32px 16px; z-index: 1000; overflow-y: auto; }
+.modal-content { width: 100%; max-width: 640px; }
+@media (max-width: 600px) { .ws-purchases { padding: 8px; } }

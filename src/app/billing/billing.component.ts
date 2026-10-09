@@ -68,7 +68,7 @@ export class BillingComponent implements OnInit, OnChanges {
 
   // Settings
   showSettingsModal: boolean = false;
-  businessPhone: string = localStorage.getItem('mybill_business_phone') || '8008152007';
+  businessPhone: string = '';
 
   // Customer search
   customerSearchTerm: string = '';
@@ -102,6 +102,10 @@ export class BillingComponent implements OnInit, OnChanges {
     private userService: UserService,
     private authService: AuthService,
   ) {}
+
+  billsLoading = false;
+  billsError = '';
+  billsLoadedAt: Date | null = null;
 
   ngOnInit(): void {
     this.loadBills();
@@ -161,7 +165,40 @@ export class BillingComponent implements OnInit, OnChanges {
   }
 
   loadBills(): void {
-    this.billService.getBills().subscribe(data => { this.bills = data; });
+    if (this.billsLoading) return;
+    this.billsLoading = true;
+    this.billsError = '';
+    this.billService.getBills().subscribe({
+      next: data => {
+        this.bills = data;
+        this.billsLoading = false;
+        this.billsLoadedAt = new Date();
+      },
+      error: err => {
+        this.billsLoading = false;
+        // 401 is handled by AuthInterceptor (back to login); anything else is shown with a retry.
+        if (err?.status !== 401) {
+          this.billsError = err?.status === 0
+            ? 'Could not reach the server. Check the internet connection and tap Refresh.'
+            : 'Could not load transactions. Tap Refresh to try again.';
+        }
+      }
+    });
+  }
+
+  /** Refresh button: transactions plus the lists the bill form uses. */
+  refreshAll(): void {
+    this.loadBills();
+    this.loadCustomers();
+    this.loadProducts();
+  }
+
+  /** Coming back to a tab that was left open: reload so the list is not stale. */
+  @HostListener('document:visibilitychange')
+  onVisibilityChange(): void {
+    if (document.visibilityState !== 'visible' || this.view !== 'list') return;
+    const ageMs = this.billsLoadedAt ? Date.now() - this.billsLoadedAt.getTime() : Infinity;
+    if (ageMs > 60_000) this.loadBills();
   }
 
   loadCustomers(): void {
@@ -689,7 +726,10 @@ export class BillingComponent implements OnInit, OnChanges {
 
   // ── Settings ───────────────────────────────────────────────
 
-  openSettings(): void { this.showSettingsModal = true; }
+  openSettings(): void {
+    this.businessPhone = this.settings.whatsappPhone;
+    this.showSettingsModal = true;
+  }
   closeSettings(): void { this.showSettingsModal = false; }
 
   saveSettings(): void {
@@ -741,8 +781,12 @@ export class BillingComponent implements OnInit, OnChanges {
     const gst      = Number(bill.gstAmount || 0).toFixed(2);
     const total    = Number(bill.totalAmount || 0).toFixed(2);
     const greeting = bill.customer?.customerName ? `Dear ${bill.customer.customerName},\n\n` : '';
+    // Logged-in firm's details (Settings → Store Details / WhatsApp Business), never another firm's.
+    const storeName = (this.settings.firmName || 'Our Store').toUpperCase();
+    const website   = this.settings.website;
+    const phone     = this.settings.whatsappPhone;
 
-    return `${greeting}*🧾 SRISA FABRICS*\n` +
+    return `${greeting}*🧾 ${storeName}*\n` +
       `Bill #: *${bill.billNumber}*\n` +
       `Date: ${date}  |  Payment: ${bill.paymentMethod}\n` +
       `──────────────────────\n` +
@@ -752,9 +796,9 @@ export class BillingComponent implements OnInit, OnChanges {
       `GST (5%): ₹${gst}\n` +
       `*TOTAL: ₹${total}*\n` +
       `──────────────────────\n` +
-      `Thank you for shopping with us! 🙏\n` +
-      `VISIT : https://srisafabrics.com/ \n` +
-      `For queries: ${this.businessPhone}`;
+      `Thank you for shopping with us! 🙏` +
+      (website ? `\nVISIT : ${website}` : '') +
+      (phone ? `\nFor queries: ${phone}` : '');
   }
 
   getPaymentBadgeColor(method: string): string {
@@ -796,7 +840,7 @@ export class BillingComponent implements OnInit, OnChanges {
   }
 
   private buildReceiptHtml(bill: Bill): string {
-    const firmName  = this.settings.firmName  || 'SRISA FABRICS';
+    const firmName  = this.settings.firmName  || 'STORE';
     const gstNumber = this.settings.gstNumber;
     const address   = this.settings.address;
     const dateStr = bill.billDate

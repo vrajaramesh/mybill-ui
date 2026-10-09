@@ -1,0 +1,73 @@
+<div class="filters-row">
+  <input type="text" class="form-input" [(ngModel)]="searchTerm" placeholder="Search by invoice or supplier">
+  <select class="form-input" [(ngModel)]="selectedStatus">
+    <option value="">All Status</option>
+    <option value="PENDING">Pending</option>
+    <option value="PARTIAL">Partial</option>
+    <option value="PAID">Paid</option>
+  </select>
+</div>
+
+<div *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</div>
+
+<div class="table-container">
+  <table class="ws-table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Invoice</th><th>Supplier</th><th>Date</th><th>GST Type</th>
+        <th class="num">Taxable</th><th class="num">GST</th><th class="num">Total</th><th class="num">Paid</th>
+        <th>Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <ng-container *ngFor="let p of filteredPurchases">
+        <tr class="clickable" (click)="toggle(p)">
+          <td>{{ p.wholesalePurchaseId }}</td>
+          <td>{{ p.invoiceNumber }}</td>
+          <td>{{ p.supplierName }}</td>
+          <td>{{ p.invoiceDate | date:'dd/MM/yyyy' }}</td>
+          <td>{{ p.interstate ? 'IGST' : 'CGST + SGST' }}</td>
+          <td class="num">{{ p.taxableAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+          <td class="num">{{ p.gstAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+          <td class="num">{{ p.totalAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+          <td class="num">{{ p.paidAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+          <td>
+            <span *ngIf="p.status !== 'CANCELLED'" class="status-badge" [ngClass]="'status-' + p.paymentStatus">{{ p.paymentStatus }}</span>
+            <span *ngIf="p.status === 'CANCELLED'" class="status-badge cancelled" [title]="p.cancelReason || ''">CANCELLED</span>
+          </td>
+          <td>
+            <button class="edit-btn" (click)="toggle(p); $event.stopPropagation()">{{ expandedId === p.wholesalePurchaseId ? 'Hide' : 'View' }}</button>
+            <button *ngIf="p.status !== 'CANCELLED'" class="delete-btn" (click)="cancelPurchase(p, $event)">Cancel</button>
+          </td>
+        </tr>
+        <tr *ngIf="expandedId === p.wholesalePurchaseId">
+          <td colspan="11">
+            <table class="ws-table inner">
+              <thead>
+                <tr><th>Product</th><th>HSN</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">GST %</th>
+                    <th class="num">Taxable</th><th class="num">{{ p.interstate ? 'IGST' : 'CGST / SGST' }}</th><th class="num">Total</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let i of p.items">
+                  <td>{{ i.productName }} <span class="muted" *ngIf="i.productCode">[{{ i.productCode }}]</span></td>
+                  <td>{{ i.hsnCode || '—' }}</td>
+                  <td class="num">{{ i.quantity }} {{ i.unit }}</td>
+                  <td class="num">{{ i.purchaseRate | currency:'INR':'symbol':'1.2-2' }}</td>
+                  <td class="num">{{ i.gstPct }}%</td>
+                  <td class="num">{{ i.taxableAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+                  <td class="num" *ngIf="p.interstate">{{ i.igstAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+                  <td class="num" *ngIf="!p.interstate">{{ i.cgstAmount | currency:'INR':'symbol':'1.2-2' }} / {{ i.sgstAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+                  <td class="num">{{ i.totalAmount | currency:'INR':'symbol':'1.2-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="muted" *ngIf="p.notes">Notes: {{ p.notes }}</p>
+            <p class="muted" *ngIf="p.status === 'CANCELLED'">Cancelled {{ p.cancelledAt | date:'dd/MM/yyyy HH:mm' }}<span *ngIf="p.cancelledBy"> by {{ p.cancelledBy }}</span>: {{ p.cancelReason }}</p>
+            <p class="muted" *ngIf="p.paymentDueDate">Payment due: {{ p.paymentDueDate | date:'dd/MM/yyyy' }}</p>
+          </td>
+        </tr>
+      </ng-container>
+    </tbody>
+  </table>
+  <div *ngIf="!loading && filteredPurchases.length === 0" class="empty">No wholesale purchases yet.</div>
+</div>

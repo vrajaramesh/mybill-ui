@@ -1,0 +1,209 @@
+<div class="ws-stock">
+  <div class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Stock</h2>
+        <p class="muted">Wholesale inventory only — separate from retail stock. Every movement comes from a purchase, sales document or stock adjustment.</p>
+      </div>
+      <div class="neg-setting" *ngIf="settings">
+        <label class="checkbox" [title]="isAdmin ? '' : 'Only an admin can change this'">
+          <input type="checkbox" [checked]="settings.allowNegativeStock" [disabled]="!isAdmin"
+                 (change)="toggleNegativeStock($any($event.target).checked)"> Allow negative stock
+        </label>
+        <span class="muted">{{ settings.allowNegativeStock ? 'Movements may take stock below zero.' : 'Movements below zero are refused.' }}</span>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" [class.active]="tab === 'stock'" (click)="setTab('stock')">Current Stock</button>
+      <button type="button" role="tab" [class.active]="tab === 'ledger'" (click)="setTab('ledger')">Stock Ledger</button>
+      <button type="button" role="tab" [class.active]="tab === 'movement'" (click)="setTab('movement')">Stock Movement</button>
+      <button type="button" role="tab" [class.active]="tab === 'adjustments'" (click)="setTab('adjustments')">Adjustments</button>
+    </div>
+
+    <div *ngIf="error" class="error-banner" role="alert">{{ error }}</div>
+    <div *ngIf="message" class="success-banner" role="status">{{ message }}</div>
+
+    <!-- Current stock -->
+    <ng-container *ngIf="tab === 'stock'">
+      <div class="filters-row">
+        <input type="search" class="form-input search" [(ngModel)]="stockSearch" (ngModelChange)="onSearch()" placeholder="Search name, code, type or HSN" aria-label="Search stock">
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="onlyInStock" (ngModelChange)="loadStock()"> Only in stock</label>
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="includeInactive" (ngModelChange)="loadStock()"> Include inactive</label>
+      </div>
+      <div *ngIf="outOfSync.length" class="warn-banner">
+        {{ outOfSync.length }} product{{ outOfSync.length > 1 ? 's' : '' }} where the stock ledger does not match the stock quantity — check with your administrator.
+      </div>
+      <div class="table-container">
+        <table class="ws-table">
+          <thead><tr><th>Product</th><th>Type</th><th class="num">Available</th><th class="num">Last Purchase Rate</th><th class="num">Stock Value</th><th>Last Movement</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of stock" class="clickable" (click)="openHistory(r.wholesaleProductId)">
+              <td><strong>{{ r.productName }}</strong><div class="muted" *ngIf="r.productCode">{{ r.productCode }}</div>
+                <span *ngIf="!r.isActive" class="ws-badge inactive">Inactive</span></td>
+              <td>{{ r.productType || '—' }}</td>
+              <td class="num" [class.neg]="r.availableQuantity < 0" [class.zero]="r.availableQuantity == 0">{{ r.availableQuantity }} {{ r.unit }}
+                <div *ngIf="!r.inSync" class="warn-text" title="Ledger total differs">ledger: {{ r.ledgerQuantity }}</div></td>
+              <td class="num">{{ r.purchaseRate | currency:'INR':'symbol':'1.2-2' }}</td>
+              <td class="num">{{ r.stockValue | currency:'INR':'symbol':'1.2-2' }}</td>
+              <td>{{ r.lastMovementDate ? (r.lastMovementDate | date:'dd/MM/yyyy') : '—' }}</td>
+              <td><button type="button" class="link-btn" (click)="openHistory(r.wholesaleProductId); $event.stopPropagation()">History</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="!stock.length" class="empty">No wholesale products match.</div>
+      </div>
+      <div class="muted total-line" *ngIf="stock.length">Stock value at last purchase rate: <strong>{{ stockValue | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+    </ng-container>
+
+    <!-- Ledger -->
+    <ng-container *ngIf="tab === 'ledger'">
+      <div class="filters-row">
+        <select class="form-input" [(ngModel)]="ledgerProductId" (ngModelChange)="loadLedger()" aria-label="Product">
+          <option [ngValue]="null">All products</option>
+          <option *ngFor="let p of products" [ngValue]="p.wholesaleProductId">{{ p.productName }}{{ p.productCode ? ' [' + p.productCode + ']' : '' }}</option>
+        </select>
+        <label class="date-filter">From <input type="date" class="form-input" [(ngModel)]="ledgerFrom" (ngModelChange)="loadLedger()"></label>
+        <label class="date-filter">To <input type="date" class="form-input" [(ngModel)]="ledgerTo" (ngModelChange)="loadLedger()"></label>
+        <select class="form-input" [(ngModel)]="ledgerType" (ngModelChange)="loadLedger()" aria-label="Transaction type">
+          <option value="">All types</option>
+          <option *ngFor="let t of transactionTypes" [value]="t">{{ typeLabel(t) }}</option>
+        </select>
+        <select class="form-input" [(ngModel)]="ledgerRefType" (ngModelChange)="loadLedger()" aria-label="Document type">
+          <option value="">All documents</option>
+          <option *ngFor="let r of referenceTypes" [value]="r.value">{{ r.label }}</option>
+        </select>
+        <input type="search" class="form-input" [(ngModel)]="ledgerRefNo" (ngModelChange)="loadLedger()" placeholder="Document no." aria-label="Document number">
+        <button type="button" class="cancel-btn small" (click)="downloadLedgerCsv()" [disabled]="!ledger.length">Download (CSV)</button>
+      </div>
+      <ng-container *ngTemplateOutlet="ledgerTable; context: { $implicit: ledger, showProduct: true }"></ng-container>
+      <p class="muted">Newest first. "Balance" is the product's stock right after that movement was recorded.</p>
+    </ng-container>
+
+    <!-- Movement -->
+    <ng-container *ngIf="tab === 'movement'">
+      <div class="filters-row">
+        <label class="date-filter">From <input type="date" class="form-input" [(ngModel)]="movFrom" (ngModelChange)="loadMovements()"></label>
+        <label class="date-filter">To <input type="date" class="form-input" [(ngModel)]="movTo" (ngModelChange)="loadMovements()"></label>
+        <input type="search" class="form-input search" [(ngModel)]="movSearch" (ngModelChange)="onSearch()" placeholder="Search product" aria-label="Search product">
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="onlyMoved" (ngModelChange)="loadMovements()"> Only products that moved</label>
+      </div>
+      <div class="table-container">
+        <table class="ws-table">
+          <thead><tr><th>Product</th><th class="num">Opening</th><th class="num">In</th><th class="num">Out</th><th class="num">Closing</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let m of movements" class="clickable" (click)="openHistory(m.wholesaleProductId)">
+              <td><strong>{{ m.productName }}</strong><div class="muted" *ngIf="m.productCode">{{ m.productCode }}</div></td>
+              <td class="num">{{ m.openingQuantity }} {{ m.unit }}</td>
+              <td class="num in">{{ m.quantityIn > 0 ? '+' + m.quantityIn : '—' }}</td>
+              <td class="num out">{{ m.quantityOut > 0 ? '−' + m.quantityOut : '—' }}</td>
+              <td class="num"><strong>{{ m.closingQuantity }} {{ m.unit }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="!movements.length" class="empty">No stock movement in this period.</div>
+      </div>
+    </ng-container>
+
+    <!-- Adjustments -->
+    <ng-container *ngIf="tab === 'adjustments'">
+      <div class="filters-row">
+        <span class="muted">Manual corrections (stock count differences, damage, found stock). Each one is a numbered document with a reason.</span>
+        <span class="push-right"></span>
+        <button *ngIf="isAdmin" type="button" class="add-btn" (click)="openAdjustmentForm()">+ New Adjustment</button>
+      </div>
+
+      <div *ngIf="showAdjustmentForm" class="adj-form">
+        <div class="ws-grid">
+          <div class="form-group"><label for="adjDate">Date</label>
+            <input id="adjDate" type="date" class="form-input" [(ngModel)]="adjDate" [max]="today"></div>
+          <div class="form-group wide"><label for="adjReason">Reason <span class="req">*</span></label>
+            <input id="adjReason" class="form-input" [(ngModel)]="adjReason" maxlength="500" placeholder="e.g. Stock count on 05/10: 3 m damaged"></div>
+        </div>
+        <table class="ws-table adj-lines">
+          <thead><tr><th>Product</th><th class="num">Change (+ add / − remove)</th><th>Notes</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let l of adjLines; let i = index">
+              <td><select class="form-input" [(ngModel)]="l.productId" [attr.aria-label]="'Line ' + (i + 1) + ' product'">
+                    <option [ngValue]="null">Select product</option>
+                    <option *ngFor="let p of products" [ngValue]="p.wholesaleProductId">{{ p.productName }}{{ p.productCode ? ' [' + p.productCode + ']' : '' }}</option>
+                  </select>
+                  <div class="muted">{{ productQty(l.productId) }}</div></td>
+              <td><input type="number" step="0.001" class="form-input num-input" [(ngModel)]="l.quantityChange" [attr.aria-label]="'Line ' + (i + 1) + ' change'"></td>
+              <td><input class="form-input" [(ngModel)]="l.notes" maxlength="255"></td>
+              <td><button type="button" class="link-btn danger" (click)="adjLines.splice(i, 1)" [disabled]="adjLines.length === 1">✕</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <button type="button" class="link-btn" (click)="adjLines.push({ productId: null, quantityChange: null, notes: '' })">+ Add line</button>
+        <div class="form-actions">
+          <button type="button" class="save-btn" (click)="saveAdjustment()" [disabled]="saving">{{ saving ? 'Posting…' : 'Post Adjustment' }}</button>
+          <button type="button" class="cancel-btn" (click)="showAdjustmentForm = false" [disabled]="saving">Cancel</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="ws-table">
+          <thead><tr><th>Number</th><th>Date</th><th>Reason</th><th>Lines</th><th>By</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let a of adjustments">
+              <td><strong>{{ a.adjustmentNumber }}</strong><span *ngIf="a.isOpening" class="ws-badge">Opening</span></td>
+              <td>{{ a.adjustmentDate | date:'dd/MM/yyyy' }}</td>
+              <td>{{ a.reason }}</td>
+              <td><div *ngFor="let i of a.items">{{ i.productName }}: <strong [class.in]="i.quantityChange > 0" [class.out]="i.quantityChange < 0">{{ i.quantityChange > 0 ? '+' : '' }}{{ i.quantityChange }} {{ i.unit }}</strong>
+                <span class="muted" *ngIf="i.notes"> — {{ i.notes }}</span></div></td>
+              <td class="muted">{{ a.createdBy || '—' }}<div>{{ a.createdAt | date:'dd/MM/yyyy HH:mm' }}</div></td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="!adjustments.length" class="empty">No stock adjustments yet.</div>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Product-wise history -->
+  <div *ngIf="history" class="modal-overlay" (click)="closeHistory()">
+    <div class="modal-content ws-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="detail-header">
+        <div>
+          <h3 class="ws-title">{{ history.productName }} <span class="muted" *ngIf="history.productCode">[{{ history.productCode }}]</span></h3>
+          <div class="muted">Now in stock: <strong>{{ history.availableQuantity }} {{ history.unit }}</strong></div>
+        </div>
+        <button type="button" class="modal-close" (click)="closeHistory()" aria-label="Close">&times;</button>
+      </div>
+      <div class="filters-row">
+        <label class="date-filter">From <input type="date" class="form-input" [(ngModel)]="historyFrom" (ngModelChange)="loadHistory()"></label>
+        <label class="date-filter">To <input type="date" class="form-input" [(ngModel)]="historyTo" (ngModelChange)="loadHistory()"></label>
+      </div>
+      <div class="summary">
+        <div><span>Opening</span><strong>{{ history.openingQuantity }}</strong></div>
+        <div><span>In</span><strong class="in">+{{ history.totalIn }}</strong></div>
+        <div><span>Out</span><strong class="out">−{{ history.totalOut }}</strong></div>
+        <div><span>Closing</span><strong>{{ history.closingQuantity }} {{ history.unit }}</strong></div>
+      </div>
+      <ng-container *ngTemplateOutlet="ledgerTable; context: { $implicit: history.entries, showProduct: false }"></ng-container>
+    </div>
+  </div>
+
+  <ng-template #ledgerTable let-entries let-showProduct="showProduct">
+    <div class="table-container">
+      <table class="ws-table">
+        <thead><tr><th>Date</th><th *ngIf="showProduct">Product</th><th>Type</th><th>Document</th><th class="num">In</th><th class="num">Out</th><th class="num">Balance</th><th>By / Notes</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let e of entries" [class.reversal]="e.transactionType === 'REVERSAL'">
+            <td>{{ e.transactionDate | date:'dd/MM/yyyy' }}</td>
+            <td *ngIf="showProduct"><button type="button" class="link-btn" (click)="openHistory(e.wholesaleProductId)">{{ e.productName }}</button></td>
+            <td><span class="tx" [ngClass]="'tx-' + e.transactionType">{{ typeLabel(e.transactionType) }}</span></td>
+            <td>{{ refLabel(e.referenceType) }} <strong>{{ e.referenceNumber || ('#' + e.referenceId) }}</strong>
+              <div class="muted" *ngIf="e.reversesLedgerId">reverses entry #{{ e.reversesLedgerId }}</div></td>
+            <td class="num in">{{ e.quantityIn > 0 ? '+' + e.quantityIn : '' }}</td>
+            <td class="num out">{{ e.quantityOut > 0 ? '−' + e.quantityOut : '' }}</td>
+            <td class="num" [class.neg]="e.balanceQuantity < 0"><strong>{{ e.balanceQuantity }}</strong> {{ e.unit }}</td>
+            <td class="muted">{{ e.createdBy || '—' }}<div *ngIf="e.notes">{{ e.notes }}</div></td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!entries.length" class="empty">No stock movements in this period.</div>
+    </div>
+  </ng-template>
+</div>

@@ -1,0 +1,176 @@
+<div class="ws-products">
+  <div class="ws-card">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Wholesale Products</h2>
+        <p class="muted">Separate from retail products. Stock comes from wholesale purchases; selling price comes from quantity price rules.</p>
+      </div>
+      <button type="button" class="add-btn" (click)="startCreate()">+ Add Wholesale Product</button>
+    </div>
+
+    <div class="summary">
+      <div class="stat"><span class="stat-value">{{ summary.active }}</span><span class="stat-label">Active products</span></div>
+      <button type="button" class="stat warn" (click)="statusFilter = 'ACTIVE'; stockFilter = 'OUT_OF_STOCK'">
+        <span class="stat-value">{{ summary.outOfStock }}</span><span class="stat-label">Out of stock</span>
+      </button>
+      <button type="button" class="stat warn" (click)="statusFilter = 'ACTIVE'; pricingFilter = 'UNPRICED'">
+        <span class="stat-value">{{ summary.unpriced }}</span><span class="stat-label">Without price rules</span>
+      </button>
+    </div>
+
+    <div class="filters-row">
+      <input type="search" class="form-input search" [(ngModel)]="searchTerm" placeholder="Search name, code, type, material or HSN" aria-label="Search wholesale products">
+      <select class="form-input" [(ngModel)]="statusFilter" aria-label="Status filter">
+        <option value="ACTIVE">Active</option>
+        <option value="INACTIVE">Inactive</option>
+        <option value="ALL">All statuses</option>
+      </select>
+      <select class="form-input" [(ngModel)]="stockFilter" aria-label="Stock filter">
+        <option value="ALL">All stock</option>
+        <option value="IN_STOCK">In stock</option>
+        <option value="OUT_OF_STOCK">Out of stock</option>
+      </select>
+      <select class="form-input" [(ngModel)]="pricingFilter" aria-label="Pricing filter">
+        <option value="ALL">All pricing</option>
+        <option value="PRICED">Has price rules</option>
+        <option value="UNPRICED">No price rules</option>
+      </select>
+    </div>
+
+    <div *ngIf="listError" class="error-banner">{{ listError }}</div>
+
+    <div class="table-container">
+      <table class="ws-table">
+        <thead>
+          <tr>
+            <th></th><th>Product</th><th>Type / Material</th><th>HSN</th>
+            <th class="num">Available</th><th class="num">Last Purchase Rate</th><th class="num">GST %</th>
+            <th>Pricing</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of filteredProducts" class="clickable" (click)="open(p)">
+            <td class="thumb-cell"><img *ngIf="p.images.length" [src]="p.images[0].imageUrl" [alt]="p.productName" class="thumb"></td>
+            <td>
+              <strong>{{ p.productName }}</strong>
+              <div class="muted" *ngIf="p.productCode">{{ p.productCode }}</div>
+            </td>
+            <td>{{ p.productType || '—' }}<div class="muted" *ngIf="p.material">{{ p.material }}</div></td>
+            <td>{{ p.hsnCode || '—' }}</td>
+            <td class="num"><span [class.qty-zero]="p.availableQuantity <= 0">{{ p.availableQuantity }} {{ p.unit }}</span></td>
+            <td class="num">{{ p.purchaseRate | currency:'INR':'symbol':'1.2-2' }}</td>
+            <td class="num">{{ p.gstPct }}%</td>
+            <td>
+              <button type="button" class="link-btn" (click)="open(p, 'pricing'); $event.stopPropagation()">
+                {{ p.activePriceRuleCount > 0 ? p.activePriceRuleCount + ' slab' + (p.activePriceRuleCount > 1 ? 's' : '') : 'Set prices' }}
+              </button>
+            </td>
+            <td>
+              <button type="button" class="status-toggle" [class.off]="!p.isActive" (click)="toggleStatus(p, $event)"
+                      [attr.aria-label]="(p.isActive ? 'Deactivate ' : 'Activate ') + p.productName">
+                {{ p.isActive ? 'Active' : 'Inactive' }}
+              </button>
+            </td>
+            <td><button type="button" class="edit-btn" (click)="open(p); $event.stopPropagation()">Open</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div *ngIf="!loading && filteredProducts.length === 0" class="empty">
+        {{ products.length === 0 ? 'No wholesale products yet. Add one here or record a wholesale purchase.' : 'No products match the filters.' }}
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="selected || creating" class="modal-overlay" (click)="close()">
+    <div class="modal-content ws-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="detail-header">
+        <div>
+          <h3 class="ws-title">{{ creating ? 'New Wholesale Product' : selected!.productName }}</h3>
+          <div *ngIf="selected" class="facts">
+            <span><strong [class.qty-zero]="selected.availableQuantity <= 0">{{ selected.availableQuantity }} {{ selected.unit }}</strong> available</span>
+            <span>Last purchase rate <strong>{{ selected.purchaseRate | currency:'INR':'symbol':'1.2-2' }}</strong></span>
+            <span *ngIf="selected.supplierName">Last supplier <strong>{{ selected.supplierName }}</strong></span>
+            <span class="ws-badge" [class.inactive]="!selected.isActive">{{ selected.isActive ? 'Active' : 'Inactive' }}</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close" (click)="close()" aria-label="Close">&times;</button>
+      </div>
+
+      <div *ngIf="selected" class="detail-tabs" role="tablist">
+        <button type="button" role="tab" [class.active]="tab === 'details'" (click)="tab = 'details'">Details</button>
+        <button type="button" role="tab" [class.active]="tab === 'pricing'" (click)="tab = 'pricing'">Pricing ({{ selected.activePriceRuleCount }})</button>
+        <button type="button" role="tab" [class.active]="tab === 'images'" (click)="tab = 'images'">Images ({{ selected.images.length }})</button>
+      </div>
+
+      <div *ngIf="detailError" class="error-banner" role="alert">{{ detailError }}</div>
+
+      <ng-container *ngIf="tab === 'details'">
+        <div class="ws-grid">
+          <div class="form-group"><label for="wpName">Product Name <span class="req">*</span></label>
+            <input id="wpName" class="form-input" [(ngModel)]="draft.productName" maxlength="200"></div>
+          <div class="form-group"><label for="wpCode">Product Code / SKU</label>
+            <input id="wpCode" class="form-input" [(ngModel)]="draft.productCode" maxlength="50"></div>
+          <div class="form-group"><label for="wpType">Product Type</label>
+            <input id="wpType" class="form-input" [(ngModel)]="draft.productType" maxlength="100" placeholder="e.g. Fabric, Saree"></div>
+          <div class="form-group"><label for="wpMaterial">Fabric / Material</label>
+            <input id="wpMaterial" class="form-input" [(ngModel)]="draft.material" maxlength="200" placeholder="e.g. 100% cotton, 58 inch"></div>
+          <div class="form-group"><label for="wpHsn">HSN Code</label>
+            <input id="wpHsn" class="form-input" [(ngModel)]="draft.hsnCode" maxlength="8" inputmode="numeric" placeholder="4, 6 or 8 digits"></div>
+          <div class="form-group"><label for="wpUnit">Unit <span class="req">*</span></label>
+            <select id="wpUnit" class="form-input" [(ngModel)]="draft.unit">
+              <option *ngFor="let u of units" [value]="u">{{ u }}</option>
+              <option *ngIf="draft.unit && !units.includes(draft.unit)" [value]="draft.unit">{{ draft.unit }}</option>
+            </select></div>
+          <div class="form-group"><label for="wpGst">Default GST %</label>
+            <input id="wpGst" type="number" min="0" max="100" step="0.01" class="form-input" [(ngModel)]="draft.gstPct">
+            <span class="hint">Used when a price rule has no GST of its own.</span></div>
+          <div class="form-group"><label for="wpSupplier">Supplier</label>
+            <select id="wpSupplier" class="form-input" [(ngModel)]="draft.supplierId">
+              <option [ngValue]="undefined">—</option>
+              <option *ngFor="let s of suppliers" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
+            </select>
+            <span class="hint">Updated automatically by each wholesale purchase.</span></div>
+          <div class="form-group full"><label for="wpDesc">Description</label>
+            <textarea id="wpDesc" class="form-textarea" [(ngModel)]="draft.description"></textarea></div>
+          <div class="form-group full knowledge-head"><strong>Customer information (used by the AI assistant)</strong>
+            <span class="hint">The assistant answers colours, designs and specifications only from these fields; empty = "our team will confirm".</span></div>
+          <div class="form-group"><label for="wpFabric">Fabric Type</label>
+            <input id="wpFabric" class="form-input" [(ngModel)]="draft.fabricType" maxlength="100" placeholder="e.g. Cotton, Rayon, Silk"></div>
+          <div class="form-group"><label for="wpColors">Available Colours</label>
+            <input id="wpColors" class="form-input" [(ngModel)]="draft.availableColors" maxlength="1000" placeholder="e.g. Red, Blue, Green"></div>
+          <div class="form-group"><label for="wpDesigns">Available Designs</label>
+            <input id="wpDesigns" class="form-input" [(ngModel)]="draft.availableDesigns" maxlength="1000" placeholder="e.g. Small check, Big check"></div>
+          <div class="form-group full"><label for="wpSpecs">Specifications</label>
+            <textarea id="wpSpecs" class="form-textarea" [(ngModel)]="draft.specifications" maxlength="4000" placeholder="One per line, e.g.&#10;Width: 58 inch&#10;GSM: 110"></textarea></div>
+          <div class="form-group"><label class="checkbox"><input type="checkbox" [(ngModel)]="draft.isActive"> Active</label>
+            <span class="hint">Inactive products can't be purchased or priced.</span></div>
+          <div class="form-group" *ngIf="selected">
+            <label>Record</label>
+            <span class="muted">Created {{ selected.createdAt | date:'dd/MM/yyyy HH:mm' }} · Updated {{ selected.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        </div>
+        <p class="hint" *ngIf="creating">Available quantity starts at 0 and increases through wholesale purchases. After saving you can add quantity price rules.</p>
+        <div class="form-actions">
+          <button type="button" class="save-btn" (click)="saveDetails()" [disabled]="saving">{{ saving ? 'Saving…' : (creating ? 'Create Product' : 'Save Changes') }}</button>
+          <button type="button" class="cancel-btn" (click)="close()">Close</button>
+          <button *ngIf="selected" type="button" class="delete-btn push-right" (click)="deleteProduct()">Delete Product</button>
+        </div>
+      </ng-container>
+
+      <app-wholesale-price-rules *ngIf="tab === 'pricing' && selected" [product]="selected" (rulesChanged)="load()"></app-wholesale-price-rules>
+
+      <ng-container *ngIf="tab === 'images' && selected">
+        <div class="images">
+          <div *ngFor="let img of selected.images" class="image-tile">
+            <img [src]="img.imageUrl" [alt]="selected.productName">
+            <button type="button" class="delete-btn" (click)="removeImage(img.imageId)">Remove</button>
+          </div>
+          <label class="upload-tile" [class.busy]="uploading">
+            <input type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="uploading" hidden>
+            {{ uploading ? 'Uploading…' : '+ Add image' }}
+          </label>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>

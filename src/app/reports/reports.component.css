@@ -824,3 +824,21 @@ tr.stock-low      { background: #fffef0; }
   .chat-overview { grid-template-columns: repeat(3, 1fr); }
   .ci-cat-row { grid-template-columns: 100px 1fr 32px; }
 }
+
+/* ── Top Selling Products: period chips + sort ───────── */
+.card-header .tp-sort { margin-left: auto; display: inline-flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+.tp-sort button { border: none; background: white; padding: 5px 10px; font-size: 12px; color: #6b7280; cursor: pointer; }
+.tp-sort button + button { border-left: 1px solid #e5e7eb; }
+.tp-sort button.active { background: #2d6a4f; color: white; }
+.tp-periods { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 10px; }
+.tp-chip { border: 1px solid #e5e7eb; background: #f9fafb; color: #374151; border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.tp-chip:hover { background: #f3f4f6; }
+.tp-chip.active { background: #2d6a4f; border-color: #2d6a4f; color: white; font-weight: 600; }
+.tp-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 18px; margin: 0 0 4px; background: #f0fdf4; border-top: 1px solid #dcfce7; border-bottom: 1px solid #dcfce7; font-size: 12px; color: #4b5563; }
+.tp-summary strong { color: #1e2a3a; font-size: 13px; }
+.tp-alt { font-size: 11px; font-weight: 400; color: #9ca3af; text-align: right; }
+@media (max-width: 600px) {
+  .card-header { flex-wrap: wrap; }
+  .card-header .tp-sort { margin-left: 0; }
+  .tp-chip { padding: 7px 12px; font-size: 13px; }
+}

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, of, map, catchError } from 'rxjs';
 
 export interface CurrentUser {
   userId: number;
@@ -243,8 +243,54 @@ export class AuthService {
     return raw ? JSON.parse(raw) : null;
   }
 
+  /** Logged in = a stored token that has not expired. An expired token is cleared so the login screen shows straight away. */
   isLoggedIn(): boolean {
-    return this.getToken() !== null;
+    const token = this.getToken();
+    if (token === null) return false;
+    if (this.isTokenExpired(token)) {
+      this.logout();
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Sliding session: swaps the stored token for a fresh one (new expiry) when it is older than `minAgeHours`.
+   * Called on app open, when the tab becomes visible again and hourly while open — so regular use never logs out.
+   * Emits true when the server refused (user/firm deactivated, token expired): the caller should show the login screen.
+   */
+  refreshSessionIfNeeded(minAgeHours = 12): Observable<boolean> {
+    const token = this.getToken();
+    if (!token || this.isTokenExpired(token) || this.tokenAgeHours(token) < minAgeHours) return of(false);
+    return this.http.post<{ token: string }>(`${this.apiUrl}/refresh`, {}).pipe(
+      map(resp => {
+        // Ignore the answer if the user logged out / switched firm meanwhile.
+        if (resp?.token && this.getToken() === token) localStorage.setItem(TOKEN_KEY, resp.token);
+        return false;
+      }),
+      catchError(err => of(err?.status === 401 && this.getToken() === token))
+    );
+  }
+
+  private tokenAgeHours(token: string): number {
+    try {
+      const json = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return typeof json.iat === 'number' ? (Date.now() / 1000 - json.iat) / 3600 : Infinity;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Reads the JWT `exp` claim (seconds). Tokens without a readable `exp` are left to the server to judge. */
+  isTokenExpired(token: string): boolean {
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) return false;
+      const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      return typeof json.exp === 'number' && json.exp * 1000 <= Date.now();
+    } catch {
+      return false;
+    }
   }
 
   isSuperadmin(): boolean {

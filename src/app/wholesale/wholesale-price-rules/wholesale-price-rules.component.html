@@ -1,0 +1,112 @@
+<div class="pricing">
+  <div class="pricing-header">
+    <div>
+      <h4>Quantity Pricing</h4>
+      <p class="muted">Price per {{ product.unit }} (excl. GST) depends on the quantity bought. Ranges include both ends; leave Max empty for "and above".</p>
+    </div>
+    <button type="button" class="add-btn" (click)="startAdd()" [disabled]="!!draft">+ Add price rule</button>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-banner" role="alert">{{ errorMessage }}</div>
+
+  <div *ngIf="draft" class="rule-form">
+    <div class="rule-grid">
+      <div class="form-group">
+        <label for="prMin">Min Qty <span class="req">*</span></label>
+        <input id="prMin" type="number" min="0" step="0.001" class="form-input" [(ngModel)]="draft.minQuantity">
+      </div>
+      <div class="form-group">
+        <label for="prMax">Max Qty</label>
+        <input id="prMax" type="number" min="0" step="0.001" class="form-input" [(ngModel)]="draft.maxQuantity" placeholder="and above">
+      </div>
+      <div class="form-group">
+        <label for="prPrice">Price / {{ product.unit }} (₹) <span class="req">*</span></label>
+        <input id="prPrice" type="number" min="0" step="0.01" class="form-input" [(ngModel)]="draft.price">
+      </div>
+      <div class="form-group">
+        <label for="prGst">GST %</label>
+        <input id="prGst" type="number" min="0" max="100" step="0.01" class="form-input" [(ngModel)]="draft.gstPct"
+               [placeholder]="'Product default ' + product.gstPct + '%'">
+      </div>
+      <div class="form-group">
+        <label for="prFrom">Effective From</label>
+        <input id="prFrom" type="date" class="form-input" [(ngModel)]="draft.effectiveFrom">
+      </div>
+      <div class="form-group">
+        <label for="prTo">Effective To</label>
+        <input id="prTo" type="date" class="form-input" [(ngModel)]="draft.effectiveTo">
+      </div>
+      <div class="form-group wide">
+        <label for="prNotes">Notes</label>
+        <input id="prNotes" class="form-input" [(ngModel)]="draft.notes" maxlength="255" placeholder="e.g. Diwali rate">
+      </div>
+      <div class="form-group">
+        <label class="checkbox"><input type="checkbox" [(ngModel)]="draft.isActive"> Active</label>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="save-btn" (click)="saveDraft()" [disabled]="saving">{{ draft.priceRuleId ? 'Update rule' : 'Add rule' }}</button>
+      <button type="button" class="cancel-btn" (click)="cancelDraft()" [disabled]="saving">Cancel</button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="ws-table">
+      <thead>
+        <tr><th>Quantity Range</th><th class="num">Price / {{ product.unit }}</th><th class="num">GST %</th><th>Effective</th><th>Notes</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of rules" [class.inactive-row]="!r.isActive">
+          <td><strong>{{ rangeLabel(r) }}</strong></td>
+          <td class="num">{{ r.price | currency:'INR':'symbol':'1.2-2' }}</td>
+          <td class="num">
+            <ng-container *ngIf="r.gstPct !== null && r.gstPct !== undefined; else defaultGst">{{ r.gstPct }}%</ng-container>
+            <ng-template #defaultGst><span class="muted">{{ product.gstPct }}% (product)</span></ng-template>
+          </td>
+          <td>{{ datesLabel(r) }}</td>
+          <td class="muted">{{ r.notes || '' }}</td>
+          <td><span class="ws-badge" [class.inactive]="!r.isActive">{{ r.isActive ? 'Active' : 'Inactive' }}</span></td>
+          <td class="row-actions">
+            <button type="button" class="edit-btn" (click)="startEdit(r)">Edit</button>
+            <button type="button" class="link-btn" (click)="toggleActive(r)">{{ r.isActive ? 'Deactivate' : 'Activate' }}</button>
+            <button type="button" class="delete-btn" (click)="deleteRule(r)">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div *ngIf="rules.length === 0" class="empty">No price rules yet. This product cannot be priced for wholesale sale until you add at least one.</div>
+  </div>
+
+  <ul *ngIf="coverageHints.length" class="coverage-hints">
+    <li *ngFor="let h of coverageHints">{{ h }}</li>
+  </ul>
+
+  <div class="price-check">
+    <h4>Check Price</h4>
+    <div class="check-row">
+      <div class="form-group">
+        <label for="pcQty">Quantity ({{ product.unit }})</label>
+        <input id="pcQty" type="number" min="0" step="0.001" class="form-input" [(ngModel)]="checkQuantity" (keyup.enter)="checkPrice()">
+      </div>
+      <div class="form-group">
+        <label for="pcDate">On date</label>
+        <input id="pcDate" type="date" class="form-input" [(ngModel)]="checkDate">
+      </div>
+      <label class="checkbox"><input type="checkbox" [(ngModel)]="checkInterstate"> Other state (IGST)</label>
+      <button type="button" class="edit-btn check-btn" (click)="checkPrice()">Get price</button>
+    </div>
+    <div *ngIf="quoteError" class="error-banner">{{ quoteError }}</div>
+    <div *ngIf="quote" class="quote">
+      <div><span>Slab</span><strong>{{ rangeLabel(quote) }}</strong></div>
+      <div><span>Price / {{ quote.unit }}</span><strong>{{ quote.unitPrice | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+      <div><span>Taxable ({{ quote.quantity }} {{ quote.unit }})</span><strong>{{ quote.taxableAmount | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+      <div><span>GST {{ quote.gstPct }}% <span class="muted">({{ quote.gstSource === 'RULE' ? 'from rule' : 'product default' }}{{ quote.interstate ? ', IGST' : ', CGST+SGST' }})</span></span>
+           <strong>{{ quote.gstAmount | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+      <div class="grand"><span>Total</span><strong>{{ quote.totalAmount | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+      <div [class.stock-short]="!quote.sufficientStock">
+        <span>Stock</span>
+        <strong>{{ quote.sufficientStock ? 'Available' : 'Only ' + quote.availableQuantity + ' ' + quote.unit + ' in stock' }}</strong>
+      </div>
+    </div>
+  </div>
+</div>

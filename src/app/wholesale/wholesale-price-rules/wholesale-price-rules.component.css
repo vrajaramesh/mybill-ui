@@ -1,0 +1,21 @@
+.pricing-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pricing-header h4, .price-check h4 { margin: 0 0 4px; color: #333; }
+.add-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.rule-form { border: 1px solid #cfe2ff; background: #f5f9ff; border-radius: 6px; padding: 14px; margin: 12px 0; }
+.rule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; }
+.rule-grid .wide { grid-column: span 2; }
+.checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #555; }
+.rule-form .form-actions { margin-top: 12px; }
+.inactive-row td { color: #9aa0a6; }
+.row-actions { white-space: nowrap; }
+.row-actions .link-btn { margin-right: 8px; }
+.coverage-hints { background: #fff8e1; border: 1px solid #ffe08a; color: #6b4e00; border-radius: 4px; padding: 10px 12px 10px 28px; margin: 12px 0 0; font-size: 13px; }
+.price-check { margin-top: 20px; border-top: 1px solid #e3e6ea; padding-top: 16px; }
+.check-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin: 8px 0 12px; }
+.check-row .form-group { width: 160px; }
+.check-btn { padding: 10px 16px; font-size: 14px; }
+.quote { max-width: 420px; border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 14px; background: #fcfcfd; }
+.quote div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.quote .grand { border-top: 1px solid #ddd; margin-top: 4px; padding-top: 6px; font-size: 16px; }
+.quote .stock-short { color: #b02a37; }
+@media (max-width: 600px) { .rule-grid .wide { grid-column: auto; } }

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor, HttpErrorResponse } from '@angular/common/http';
+import { Observable, catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 @Injectable()
@@ -15,6 +15,16 @@ export class AuthInterceptor implements HttpInterceptor {
         setHeaders: { Authorization: `Bearer ${token}` }
       });
     }
-    return next.handle(req);
+    return next.handle(req).pipe(
+      catchError((err: unknown) => {
+        // Session expired / revoked: go back to the login screen instead of showing empty lists.
+        if (err instanceof HttpErrorResponse && err.status === 401 && token && !isExternal
+            && !req.url.includes('/api/auth/') && this.authService.getToken() === token) {
+          this.authService.logout();
+          window.location.reload();
+        }
+        return throwError(() => err);
+      })
+    );
   }
 }
