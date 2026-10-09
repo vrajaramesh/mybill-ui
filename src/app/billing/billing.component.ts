@@ -820,14 +820,47 @@ export class BillingComponent implements OnInit, OnChanges {
     }
   }
 
+  // Thermal printer could not reconnect by itself: ask (a picker can only open from a click).
+  printerPromptBill: Bill | null = null;
+  printerPromptBusy = false;
+  printerPromptError = '';
+
   private async _doPrint(bill: Bill): Promise<void> {
     // Try BLE thermal printer first
     if (this.printer.receiptConnected || await this.printer.reconnectReceipt()) {
       const ok = await this.printer.printReceipt(bill);
       if (ok) return;
     }
+    // A thermal printer was used on this browser before → offer to reconnect instead of the browser dialog.
+    if (this.printer.supported && this.printer.receiptPairedBefore) {
+      this.printerPromptError = '';
+      this.printerPromptBill = bill;
+      return;
+    }
     // Fall back to browser print dialog
     this._openPrintWindow(bill);
+  }
+
+  /** "Connect thermal printer" button: opens the Bluetooth picker, then prints. */
+  async connectPrinterAndPrint(): Promise<void> {
+    const bill = this.printerPromptBill;
+    if (!bill) return;
+    this.printerPromptBusy = true;
+    this.printerPromptError = '';
+    const err = await this.printer.pairReceipt();
+    if (!err && this.printer.receiptConnected && await this.printer.printReceipt(bill)) {
+      this.printerPromptBusy = false;
+      this.printerPromptBill = null;
+      return;
+    }
+    this.printerPromptBusy = false;
+    this.printerPromptError = err || 'Printer not connected. Switch the printer on, keep it close, and try again.';
+  }
+
+  printOnNormalPrinter(): void {
+    const bill = this.printerPromptBill;
+    this.printerPromptBill = null;
+    if (bill) this._openPrintWindow(bill);
   }
 
   private _openPrintWindow(bill: Bill): void {

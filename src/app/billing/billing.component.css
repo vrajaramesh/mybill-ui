@@ -768,3 +768,7 @@
 }
 .bills-error button { background: #842029; color: white; border: none; border-radius: 4px; padding: 6px 12px; cursor: pointer; }
 @media (max-width: 600px) { .loaded-at { display: none; } }
+
+/* ── Thermal printer reconnect prompt ─────────────────── */
+.printer-prompt-text { font-size: 14px; color: #444; line-height: 1.5; margin: 0 0 12px; }
+.printer-prompt-error { background: #f8d7da; color: #842029; border-radius: 4px; padding: 8px 10px; font-size: 13px; margin-bottom: 12px; white-space: pre-line; }

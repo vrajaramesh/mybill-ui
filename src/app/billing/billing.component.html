@@ -348,6 +348,26 @@
     </form>
   </div>
 
+  <!-- Thermal printer not connected -->
+  <div *ngIf="printerPromptBill" class="modal-overlay" (click)="printerPromptBill = null">
+    <div class="modal-content printer-prompt" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>🖨️ Thermal printer not connected</h3>
+        <button type="button" class="modal-close" (click)="printerPromptBill = null">×</button>
+      </div>
+      <div class="modal-form">
+        <p class="printer-prompt-text">Switch the printer on, then tap <strong>Connect thermal printer</strong> and choose it in the list.
+          Bill <strong>{{ printerPromptBill.billNumber }}</strong> prints right after it connects.</p>
+        <div *ngIf="printerPromptError" class="printer-prompt-error">{{ printerPromptError }}</div>
+        <div class="modal-actions">
+          <button type="button" class="save-btn" (click)="connectPrinterAndPrint()" [disabled]="printerPromptBusy">
+            {{ printerPromptBusy ? 'Connecting…' : 'Connect thermal printer' }}</button>
+          <button type="button" class="cancel-btn" (click)="printOnNormalPrinter()" [disabled]="printerPromptBusy">Use normal printer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div *ngIf="showSettingsModal" class="modal-overlay" (click)="closeSettings()">
     <div class="modal-content" (click)="$event.stopPropagation()">

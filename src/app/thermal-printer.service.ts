@@ -46,6 +46,13 @@ export class ThermalPrinterService {
 
   constructor(private settings: SettingsService) {}
 
+  // Remembered per device so reconnect (after a page reload) picks the right printer.
+  private static readonly RECEIPT_ID_KEY = 'mybill_receipt_printer_id';
+  private static readonly LABEL_ID_KEY   = 'mybill_label_printer_id';
+
+  /** True when a receipt printer was paired on this browser before (reconnect may need one click). */
+  get receiptPairedBefore(): boolean { return !!localStorage.getItem(ThermalPrinterService.RECEIPT_ID_KEY); }
+
   // ── DTPWeb SDK (local Windows service at 127.0.0.1:15216) ────────────────
 
   get dtpWebPrinterName(): string { return this._dtpPrinterName; }
@@ -193,27 +200,40 @@ export class ThermalPrinterService {
     } catch {
       return null; // user dismissed the picker — not an error
     }
-    return this._connectDevice(this.receiptDevice, 'receipt');
+    const err = await this._connectDevice(this.receiptDevice, 'receipt');
+    if (!err && this.receiptDevice?.id) localStorage.setItem(ThermalPrinterService.RECEIPT_ID_KEY, this.receiptDevice.id);
+    return err;
   }
 
+  /**
+   * Reconnects the receipt printer without a picker: the device from this session, else the one paired
+   * earlier on this browser (navigator.bluetooth.getDevices). Never grabs the label printer.
+   * Note: _connectDevice returns null on SUCCESS and an error message on failure.
+   */
   async reconnectReceipt(): Promise<boolean> {
     if (!this.supported) return false;
     if (this.receiptConnected) return true;
-    if (this.receiptDevice) {
-      const ok = await this._connectDevice(this.receiptDevice, 'receipt');
-      if (ok) return true;
-    }
+    if (this.receiptDevice && !(await this._connectDevice(this.receiptDevice, 'receipt'))) return true;
     try {
       const bt = (navigator as any).bluetooth;
       if (typeof bt.getDevices === 'function') {
+        const savedId = localStorage.getItem(ThermalPrinterService.RECEIPT_ID_KEY);
+        const labelId = localStorage.getItem(ThermalPrinterService.LABEL_ID_KEY) || this.labelDevice?.id;
         const devices: any[] = await bt.getDevices();
-        for (const d of devices) {
-          this.receiptDevice = d;
-          const ok = await this._connectDevice(d, 'receipt');
-          if (ok) return true;
+        // Without a remembered receipt printer, only auto-pick when it is unambiguous (one known device).
+        const others = devices.filter(d => d.id !== labelId);
+        const candidates = savedId ? devices.filter(d => d.id === savedId) : (others.length === 1 ? others : []);
+        for (const d of candidates) {
+          if (!(await this._connectDevice(d, 'receipt'))) {
+            this.receiptDevice = d;
+            if (d.id) localStorage.setItem(ThermalPrinterService.RECEIPT_ID_KEY, d.id);
+            return true;
+          }
         }
       }
-    } catch {}
+    } catch (e: any) {
+      console.warn('[BLE] reconnectReceipt failed:', e?.message ?? e);
+    }
     return false;
   }
 
@@ -243,7 +263,9 @@ export class ThermalPrinterService {
     } catch {
       return null; // user dismissed the picker — not an error
     }
-    return this._connectDevice(this.labelDevice, 'label');
+    const err = await this._connectDevice(this.labelDevice, 'label');
+    if (!err && this.labelDevice?.id) localStorage.setItem(ThermalPrinterService.LABEL_ID_KEY, this.labelDevice.id);
+    return err;
   }
 
   async reconnectLabel(): Promise<boolean> {
