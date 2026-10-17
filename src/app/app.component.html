@@ -216,6 +216,11 @@
           <span class="nav-icon">&#9986;</span>
           <span class="nav-label" *ngIf="!sidebarCollapsed">Boutique</span>
         </div>
+        <div class="nav-item parent" [class.active]="activeMenu==='boutique-orders'"
+             (click)="navigate('boutique-orders')">
+          <span class="nav-icon">🧵</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Boutique Orders</span>
+        </div>
       </div>
 
       <!-- Users (admin only) -->
@@ -323,6 +328,7 @@
     <app-reports         *ngIf="activeSection==='reports'"></app-reports>
     <app-chat-insights   *ngIf="activeSection==='chat-insights'"></app-chat-insights>
     <app-boutique        *ngIf="activeSection==='boutique'"></app-boutique>
+    <app-boutique-orders *ngIf="activeSection==='boutique-orders'"></app-boutique-orders>
     <app-user-management *ngIf="activeSection==='users'"></app-user-management>
     <app-ecom-orders     *ngIf="activeSection==='ecom-orders'" (click)="loadNewOrderCount()"></app-ecom-orders>
     <app-settings        *ngIf="activeSection==='settings'"></app-settings>

@@ -1,0 +1,133 @@
+<div class="bo-container">
+
+  <!-- Header -->
+  <div class="bo-header">
+    <div>
+      <h1 class="bo-title">Boutique Orders</h1>
+      <p class="bo-sub">Made-to-order requests from the WhatsApp assistant (read-only)</p>
+    </div>
+    <button class="btn btn-secondary btn-sm" (click)="load()">↻ Refresh</button>
+  </div>
+
+  <!-- Status filter chips -->
+  <div class="bo-status-bar">
+    <button
+      *ngFor="let s of statuses"
+      class="status-chip"
+      [class.active]="statusFilter === s"
+      (click)="setFilter(s)">
+      {{ s === 'ALL' ? 'All' : (statusLabel[s] || s) }}
+    </button>
+  </div>
+
+  <!-- Search -->
+  <div class="bo-search-row">
+    <input type="text" class="search-input" [(ngModel)]="searchQuery"
+           placeholder="Search by order no, customer, phone or design...">
+    <span class="order-count">{{ filteredOrders.length }} orders</span>
+  </div>
+
+  <div *ngIf="loading" class="bo-loading">Loading orders...</div>
+  <div *ngIf="!loading && error" class="bo-error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && filteredOrders.length === 0" class="bo-empty">
+    <p>No boutique orders found.</p>
+    <p style="font-size:0.85rem;color:#9ca3af">Orders appear here when a customer orders a design through WhatsApp.</p>
+  </div>
+
+  <!-- Orders list -->
+  <div class="bo-list" *ngIf="!loading && filteredOrders.length > 0">
+
+    <div class="bo-card" *ngFor="let order of filteredOrders">
+
+      <div class="bo-card-head" (click)="toggleExpand(order.order_no)">
+        <div class="bo-card-left">
+          <span class="bo-order-num">{{ order.order_no }}</span>
+          <span class="bo-status-badge" [style.background]="statusColor[order.status]">
+            {{ statusLabel[order.status] || order.status }}
+          </span>
+        </div>
+        <div class="bo-card-mid">
+          <span class="bo-customer">{{ order.customer_name || 'Customer #' + order.customer_id }}</span>
+          <span class="bo-phone">{{ order.customer_phone }}</span>
+        </div>
+        <div class="bo-card-design">
+          <span class="bo-design">{{ order.design_code }} · {{ order.design_name }}</span>
+          <span class="bo-size">Size {{ order.size_code }}<span *ngIf="order.qty > 1"> × {{ order.qty }}</span></span>
+        </div>
+        <div class="bo-card-right">
+          <span class="bo-amount">₹{{ order.total | number:'1.2-2' }}</span>
+          <span class="bo-date">{{ order.created_at | date:'d MMM, h:mm a' }}</span>
+        </div>
+        <span class="bo-chevron">{{ expandedOrderNo === order.order_no ? '▲' : '▼' }}</span>
+      </div>
+
+      <!-- Expanded detail -->
+      <div class="bo-card-body" *ngIf="expandedOrderNo === order.order_no">
+        <div *ngIf="loadingDetail === order.order_no" class="bo-loading">Loading...</div>
+
+        <ng-container *ngIf="details[order.order_no] as d">
+          <div class="bo-three-col">
+            <!-- Delivery -->
+            <div class="bo-section">
+              <h4>Delivery Address</h4>
+              <p>{{ d.delivery.name }}</p>
+              <p>{{ d.delivery.phone }}</p>
+              <p>{{ d.delivery.address_line1 }}</p>
+              <p *ngIf="d.delivery.address_line2">{{ d.delivery.address_line2 }}</p>
+              <p>{{ d.delivery.city }}, {{ d.delivery.state }} – {{ d.delivery.pincode }}</p>
+              <p class="bo-muted" *ngIf="d.estimated_delivery_date">
+                Est. delivery: {{ d.estimated_delivery_date | date:'d MMM y' }}
+              </p>
+              <p class="bo-muted">Channel: {{ d.channel | titlecase }}</p>
+            </div>
+
+            <!-- Design & options -->
+            <div class="bo-section" *ngFor="let item of d.items">
+              <h4>Design & Options</h4>
+              <p class="bo-strong">{{ item.design_code }} · {{ item.design_name }}</p>
+              <p>Size {{ item.size_code }} · Qty {{ item.qty }}</p>
+              <table class="bo-items-table">
+                <tr>
+                  <td>Base + options (per piece)</td>
+                  <td class="bo-num">₹{{ item.unit_price | number:'1.2-2' }}</td>
+                </tr>
+                <tr *ngFor="let opt of item.options">
+                  <td><span class="bo-group-tag">{{ opt.option_group }}</span>{{ opt.name }}</td>
+                  <td class="bo-num">{{ opt.price_delta > 0 ? '+₹' + (opt.price_delta | number:'1.2-2') : 'included' }}</td>
+                </tr>
+                <tr *ngIf="item.options.length === 0">
+                  <td colspan="2" class="bo-muted">No customisation options</td>
+                </tr>
+                <tr><td>Subtotal</td><td class="bo-num">₹{{ d.subtotal | number:'1.2-2' }}</td></tr>
+                <tr>
+                  <td>Delivery</td>
+                  <td class="bo-num">{{ d.delivery_charge > 0 ? '₹' + (d.delivery_charge | number:'1.2-2') : 'Free' }}</td>
+                </tr>
+                <tr class="bo-total-row"><td>Total</td><td class="bo-num">₹{{ d.total | number:'1.2-2' }}</td></tr>
+              </table>
+            </div>
+
+            <!-- Measurements -->
+            <div class="bo-section" *ngFor="let item of d.items">
+              <h4>Measurements</h4>
+              <ng-container *ngIf="item.measurements; else noMeasurements">
+                <table class="bo-items-table">
+                  <tr *ngFor="let row of measurementRows(item.measurements)">
+                    <td>{{ row.label }}</td>
+                    <td class="bo-num">{{ row.value }}</td>
+                  </tr>
+                </table>
+                <p class="bo-muted">{{ measurementSource(item.measurements) }}</p>
+              </ng-container>
+              <ng-template #noMeasurements>
+                <p class="bo-muted">No measurements recorded for this order.</p>
+              </ng-template>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
+  </div>
+</div>

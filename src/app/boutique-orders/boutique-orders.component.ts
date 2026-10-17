@@ -1,0 +1,166 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+/** Row of GET /api/boutique-orders (made-to-order boutique orders placed through the WhatsApp agent). */
+export interface BoutiqueOrderSummary {
+  order_no: string;
+  status: string;
+  channel: string;
+  customer_id: number;
+  customer_name: string | null;
+  customer_phone: string | null;
+  design_code: string | null;
+  design_name: string | null;
+  size_code: string | null;
+  qty: number;
+  total: number;
+  currency: string;
+  estimated_delivery_date: string | null;
+  created_at: string;
+}
+
+export interface BoutiqueOrderOption {
+  option_id: number;
+  option_group: string;
+  name: string;
+  price_delta: number;
+}
+
+export interface BoutiqueOrderDetail {
+  order_no: string;
+  status: string;
+  customer_id: number;
+  channel: string;
+  delivery: {
+    name: string; phone: string; address_line1: string; address_line2: string | null;
+    city: string; state: string; pincode: string;
+  };
+  items: {
+    design_code: string; design_name: string; size_code: string;
+    options: BoutiqueOrderOption[];
+    measurements: { [key: string]: any } | null;
+    unit_price: number; qty: number; line_total: number;
+  }[];
+  subtotal: number;
+  delivery_charge: number;
+  total: number;
+  currency: string;
+  estimated_delivery_date: string | null;
+  created_at: string;
+}
+
+type StatusFilter = 'ALL' | 'DRAFT' | 'PAID' | 'IN_STITCHING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+
+@Component({
+  selector: 'app-boutique-orders',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './boutique-orders.component.html',
+  styleUrl: './boutique-orders.component.css'
+})
+export class BoutiqueOrdersComponent implements OnInit {
+  orders: BoutiqueOrderSummary[] = [];
+  loading = false;
+  error = '';
+  statusFilter: StatusFilter = 'ALL';
+  searchQuery = '';
+
+  expandedOrderNo: string | null = null;
+  details: { [orderNo: string]: BoutiqueOrderDetail } = {};
+  loadingDetail: string | null = null;
+
+  readonly statuses: StatusFilter[] = ['ALL', 'DRAFT', 'PAID', 'IN_STITCHING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
+  readonly statusLabel: { [s: string]: string } = {
+    'DRAFT':        'Draft',
+    'PAID':         'Paid',
+    'IN_STITCHING': 'In Stitching',
+    'DISPATCHED':   'Dispatched',
+    'DELIVERED':    'Delivered',
+    'CANCELLED':    'Cancelled'
+  };
+  readonly statusColor: { [s: string]: string } = {
+    'DRAFT':        '#9ca3af',
+    'PAID':         '#f59e0b',
+    'IN_STITCHING': '#3b82f6',
+    'DISPATCHED':   '#06b6d4',
+    'DELIVERED':    '#10b981',
+    'CANCELLED':    '#ef4444'
+  };
+  /** Measurement snapshot keys shown in the detail view, in this order. */
+  readonly measurementFields: { key: string; label: string; unit: string }[] = [
+    { key: 'size_code', label: 'Size', unit: '' },
+    { key: 'height_cm', label: 'Height', unit: ' cm' },
+    { key: 'bust_in', label: 'Bust', unit: '"' },
+    { key: 'waist_in', label: 'Waist', unit: '"' },
+    { key: 'hip_in', label: 'Hip', unit: '"' },
+    { key: 'fit_preference', label: 'Fit', unit: '' },
+    { key: 'notes', label: 'Notes', unit: '' }
+  ];
+
+  constructor(private http: HttpClient) {}
+
+  ngOnInit() { this.load(); }
+
+  private headers(): HttpHeaders {
+    const token = localStorage.getItem('mybill_token');
+    return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders();
+  }
+
+  load() {
+    this.loading = true;
+    this.error = '';
+    const params: any = { limit: 100 };
+    if (this.statusFilter !== 'ALL') params['status'] = this.statusFilter;
+
+    this.http.get<BoutiqueOrderSummary[]>('/api/boutique-orders', { headers: this.headers(), params }).subscribe({
+      next: orders => { this.orders = orders; this.loading = false; },
+      error: err => { this.loading = false; this.error = err?.error?.message || 'Could not load boutique orders'; }
+    });
+  }
+
+  setFilter(s: StatusFilter) {
+    this.statusFilter = s;
+    this.expandedOrderNo = null;
+    this.load();
+  }
+
+  toggleExpand(orderNo: string) {
+    this.expandedOrderNo = this.expandedOrderNo === orderNo ? null : orderNo;
+    if (this.expandedOrderNo && !this.details[orderNo]) this.loadDetail(orderNo);
+  }
+
+  private loadDetail(orderNo: string) {
+    this.loadingDetail = orderNo;
+    this.http.get<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}`,
+      { headers: this.headers() }).subscribe({
+      next: d => { this.details[orderNo] = d; this.loadingDetail = null; },
+      error: () => { this.loadingDetail = null; }
+    });
+  }
+
+  /** Measurement rows that have a value; source tells whether they came with the order or from the saved profile. */
+  measurementRows(m: { [key: string]: any } | null): { label: string; value: string }[] {
+    if (!m) return [];
+    return this.measurementFields
+      .filter(f => m[f.key] !== null && m[f.key] !== undefined && m[f.key] !== '')
+      .map(f => ({ label: f.label, value: `${m[f.key]}${f.unit}` }));
+  }
+
+  measurementSource(m: { [key: string]: any } | null): string {
+    if (!m) return '';
+    return m['source'] === 'order_request' ? 'given with the order' : 'from saved profile';
+  }
+
+  get filteredOrders(): BoutiqueOrderSummary[] {
+    if (!this.searchQuery.trim()) return this.orders;
+    const q = this.searchQuery.toLowerCase();
+    return this.orders.filter(o =>
+      o.order_no.toLowerCase().includes(q) ||
+      (o.customer_name || '').toLowerCase().includes(q) ||
+      (o.customer_phone || '').toLowerCase().includes(q) ||
+      (o.design_code || '').toLowerCase().includes(q)
+    );
+  }
+}
