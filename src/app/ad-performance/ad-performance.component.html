@@ -1,0 +1,67 @@
+<div class="ap-container">
+
+  <div class="ap-header">
+    <div>
+      <h1 class="ap-title">Ad performance</h1>
+      <p class="ap-sub">WhatsApp conversations, orders and paid revenue per Click-to-WhatsApp ad / Instagram post.</p>
+    </div>
+  </div>
+
+  <div class="ap-filters">
+    <button class="status-chip" *ngFor="let p of presets" (click)="applyPreset(p.days)">{{ p.label }}</button>
+    <label>From <input type="date" [(ngModel)]="from"></label>
+    <label>To <input type="date" [(ngModel)]="to"></label>
+    <button class="btn btn-primary btn-sm" (click)="load()">Apply</button>
+  </div>
+
+  <div *ngIf="loading" class="ap-loading">Loading report...</div>
+  <div *ngIf="!loading && error" class="ap-error">{{ error }}</div>
+
+  <ng-container *ngIf="!loading && !error && report as r">
+    <div class="ap-cards">
+      <div class="ap-card"><span class="ap-card-label">Conversations</span><span class="ap-card-value">{{ r.total.conversations }}</span></div>
+      <div class="ap-card"><span class="ap-card-label">Orders</span><span class="ap-card-value">{{ r.total.orders }}</span></div>
+      <div class="ap-card"><span class="ap-card-label">Paid orders</span><span class="ap-card-value">{{ r.total.paid_orders }}</span></div>
+      <div class="ap-card"><span class="ap-card-label">Paid revenue</span><span class="ap-card-value">₹{{ r.total.paid_revenue | number:'1.0-0' }}</span></div>
+    </div>
+
+    <div class="ap-table-wrap">
+      <table class="ap-table">
+        <thead>
+          <tr>
+            <th>Ad / post</th><th>Design</th>
+            <th class="num">Conversations</th><th class="num">Orders</th><th class="num">Paid</th>
+            <th class="num">Paid revenue</th><th class="num">Conversion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of r.rows" [class.other]="row.link_id === null" [class.inactive]="row.active === false">
+            <td>
+              <span class="ap-strong">{{ row.label }}</span>
+              <span class="ap-tag" *ngIf="row.active === false">inactive</span>
+              <span class="ap-muted ap-block" *ngIf="row.source_type">{{ sourceLabel(row) }}</span>
+              <span class="ap-muted ap-block" *ngIf="row.link_id === null">Ads without a link + orders not from an ad</span>
+            </td>
+            <td>{{ row.design_code || '—' }}</td>
+            <td class="num">{{ row.conversations }}</td>
+            <td class="num">{{ row.orders }}</td>
+            <td class="num">{{ row.paid_orders }}</td>
+            <td class="num">₹{{ row.paid_revenue | number:'1.2-2' }}</td>
+            <td class="num">{{ row.conversion_pct === null ? '—' : (row.conversion_pct | number:'1.1-1') + '%' }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2">Total</td>
+            <td class="num">{{ r.total.conversations }}</td>
+            <td class="num">{{ r.total.orders }}</td>
+            <td class="num">{{ r.total.paid_orders }}</td>
+            <td class="num">₹{{ r.total.paid_revenue | number:'1.2-2' }}</td>
+            <td class="num">{{ r.total.conversion_pct === null ? '—' : (r.total.conversion_pct | number:'1.1-1') + '%' }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p class="ap-note">Conversion = paid orders ÷ conversations. Conversations are counted by start time and orders by order date ({{ r.from | date:'d MMM y' }} – {{ r.to | date:'d MMM y' }}, IST).</p>
+  </ng-container>
+</div>

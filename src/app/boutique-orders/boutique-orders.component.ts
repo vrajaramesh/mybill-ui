@@ -63,6 +63,8 @@ export interface BoutiqueOrderDetail {
   estimated_delivery_date: string | null;
   paid_at: string | null;
   payment: BoutiqueOrderPayment | null;
+  source_type: string | null;
+  source_id: string | null;
   created_at: string;
 }
 

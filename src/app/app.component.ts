@@ -14,6 +14,8 @@ import { RegisterFirmComponent } from './register-firm/register-firm.component';
 import { SuperadminDashboardComponent } from './superadmin-dashboard/superadmin-dashboard.component';
 import { EcomOrdersComponent } from './ecom-orders/ecom-orders.component';
 import { BoutiqueOrdersComponent } from './boutique-orders/boutique-orders.component';
+import { AdLinksComponent } from './ad-links/ad-links.component';
+import { AdPerformanceComponent } from './ad-performance/ad-performance.component';
 import { ChatInsightsComponent } from './chat-insights/chat-insights.component';
 import { AiConfigComponent } from './ai-config/ai-config.component';
 import { EcomCoverageComponent } from './ecom-coverage/ecom-coverage.component';
@@ -43,7 +45,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
     GstReportComponent, UserManagementComponent, ReportsComponent, BoutiqueComponent,
     SettingsComponent, ProductCategoryComponent, ProductMediaComponent,
     LoginComponent, RegisterFirmComponent, SuperadminDashboardComponent,
-    EcomOrdersComponent, BoutiqueOrdersComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
+    EcomOrdersComponent, BoutiqueOrdersComponent, AdLinksComponent, AdPerformanceComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
     EcomCoverageComponent, ExpensesComponent, AiInsightsComponent, WholesaleProductsComponent, WholesaleCustomersComponent, WholesaleSettingsComponent, WholesaleQuotationsComponent, WholesaleSalesDocumentsComponent, WholesaleStockComponent, WholesaleInstagramComponent, WholesaleAssistantComponent, WholesalePurchasesComponent,
     FormsModule, CommonModule
   ],

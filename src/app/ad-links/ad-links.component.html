@@ -1,0 +1,70 @@
+<div class="mk-container">
+
+  <div class="mk-header">
+    <div>
+      <h1 class="mk-title">Ad &amp; post links</h1>
+      <p class="mk-sub">Map each Click-to-WhatsApp ad (or Instagram post) to the design it promotes. The WhatsApp assistant opens that design when a customer messages from the ad.</p>
+    </div>
+    <div class="mk-actions">
+      <button class="btn btn-secondary btn-sm" (click)="load()">↻ Refresh</button>
+      <button class="btn btn-primary btn-sm" (click)="openNew()" [disabled]="form !== null">+ Add link</button>
+    </div>
+  </div>
+
+  <!-- Add / edit form -->
+  <div class="mk-form" *ngIf="form">
+    <h3>{{ editingId == null ? 'New link' : 'Edit link' }}</h3>
+    <div class="mk-form-grid">
+      <label>Source type
+        <select [(ngModel)]="form.source_type">
+          <option value="AD">Click-to-WhatsApp ad</option>
+          <option value="IG_MEDIA">Instagram post</option>
+        </select>
+      </label>
+      <label>{{ form.source_type === 'AD' ? 'Ad ID' : 'Media ID' }}
+        <input type="text" inputmode="numeric" [(ngModel)]="form.source_id" placeholder="e.g. 120210000000000001">
+      </label>
+      <label>Design
+        <select [(ngModel)]="form.design_code">
+          <option *ngFor="let d of designs" [value]="d.code">{{ d.code }} · {{ d.name }}{{ d.active ? '' : ' (inactive)' }}</option>
+        </select>
+      </label>
+      <label class="mk-wide">Label
+        <input type="text" maxlength="150" [(ngModel)]="form.label" placeholder="Mustard kurti reel – Diwali boost">
+      </label>
+    </div>
+    <p class="mk-error" *ngIf="formError">{{ formError }}</p>
+    <div class="mk-form-actions">
+      <button class="btn btn-secondary btn-sm" (click)="cancel()">Cancel</button>
+      <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="saving">{{ saving ? 'Saving…' : 'Save' }}</button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="mk-loading">Loading links...</div>
+  <div *ngIf="!loading && error" class="mk-error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && links.length === 0 && !form" class="mk-empty">
+    <p>No ad or post links yet.</p>
+    <p class="mk-muted">Add one with the ad ID from Meta Ads Manager to see which ads bring orders.</p>
+  </div>
+
+  <table class="mk-table" *ngIf="!loading && links.length > 0">
+    <thead>
+      <tr><th>Label</th><th>Source</th><th>ID</th><th>Design</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let l of links" [class.inactive]="!l.active">
+        <td class="mk-strong">{{ l.label }}</td>
+        <td>{{ typeLabel[l.source_type] }}</td>
+        <td class="mk-mono">{{ l.source_id }}</td>
+        <td>{{ l.design_code }}<span class="mk-muted" *ngIf="l.design_name"> · {{ l.design_name }}</span></td>
+        <td><span class="mk-badge" [class.on]="l.active">{{ l.active ? 'Active' : 'Inactive' }}</span></td>
+        <td class="mk-row-actions">
+          <button class="btn btn-secondary btn-sm" (click)="edit(l)">Edit</button>
+          <button class="btn btn-secondary btn-sm" *ngIf="l.active" (click)="setActive(l, false)">Deactivate</button>
+          <button class="btn btn-secondary btn-sm" *ngIf="!l.active" (click)="setActive(l, true)">Activate</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

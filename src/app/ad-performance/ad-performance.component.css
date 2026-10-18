@@ -1,0 +1,40 @@
+.ap-container { padding: 24px 28px; max-width: 1100px; }
+.ap-header { margin-bottom: 16px; }
+.ap-title { font-size: 1.4rem; font-weight: 700; color: #111; margin: 0; }
+.ap-sub { font-size: 0.82rem; color: #6b7280; margin: 2px 0 0; }
+
+.ap-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 18px; }
+.ap-filters label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #6b7280; }
+.ap-filters input { padding: 5px 8px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.85rem; }
+.status-chip {
+  padding: 5px 14px; border-radius: 20px; border: 1px solid #e5e7eb;
+  background: #f9fafb; font-size: 0.78rem; font-weight: 500; color: #374151; cursor: pointer;
+}
+.status-chip:hover { border-color: #9ca3af; }
+
+.ap-loading { padding: 40px; text-align: center; color: #6b7280; }
+.ap-error { color: #b91c1c; font-size: 0.85rem; margin: 8px 0; }
+
+.ap-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.ap-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; background: #fff; }
+.ap-card-label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+.ap-card-value { display: block; font-size: 1.3rem; font-weight: 700; color: #111; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+.ap-table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
+.ap-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.ap-table th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.ap-table td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+.ap-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ap-table tr.other td { background: #f9fafb; }
+.ap-table tr.inactive td { color: #9ca3af; }
+.ap-table tfoot td { font-weight: 700; color: #111; border-top: 2px solid #e5e7eb; border-bottom: none; }
+.ap-strong { font-weight: 600; color: #111; }
+.ap-block { display: block; }
+.ap-muted { color: #9ca3af; font-size: 0.78rem; }
+.ap-tag { font-size: 0.68rem; background: #e5e7eb; color: #6b7280; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+.ap-note { font-size: 0.78rem; color: #9ca3af; margin-top: 10px; }
+
+@media (max-width: 768px) {
+  .ap-container { padding: 16px; }
+  .ap-cards { grid-template-columns: repeat(2, 1fr); }
+}

@@ -84,6 +84,7 @@
                 Est. delivery: {{ d.estimated_delivery_date | date:'d MMM y' }}
               </p>
               <p class="bo-muted">Channel: {{ d.channel | titlecase }}</p>
+              <p class="bo-muted" *ngIf="d.source_type">Came from {{ d.source_type === 'AD' ? 'ad' : 'Instagram post' }} {{ d.source_id }}</p>
 
               <h4 class="bo-subhead">Payment</h4>
               <ng-container *ngIf="d.payment; else noPayment">
