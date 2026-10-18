@@ -57,6 +57,10 @@
         </div>
         <div class="bo-card-right">
           <span class="bo-amount">₹{{ order.total | number:'1.2-2' }}</span>
+          <span class="bo-pay" *ngIf="order.payment_status" [class.paid]="order.payment_status === 'paid'">
+            {{ paymentLabel[order.payment_status] || order.payment_status }}
+            <span *ngIf="order.paid_at"> · {{ order.paid_at | date:'d MMM, h:mm a' }}</span>
+          </span>
           <span class="bo-date">{{ order.created_at | date:'d MMM, h:mm a' }}</span>
         </div>
         <span class="bo-chevron">{{ expandedOrderNo === order.order_no ? '▲' : '▼' }}</span>
@@ -80,6 +84,22 @@
                 Est. delivery: {{ d.estimated_delivery_date | date:'d MMM y' }}
               </p>
               <p class="bo-muted">Channel: {{ d.channel | titlecase }}</p>
+
+              <h4 class="bo-subhead">Payment</h4>
+              <ng-container *ngIf="d.payment; else noPayment">
+                <p>
+                  <span class="bo-pay" [class.paid]="d.payment.status === 'paid'">{{ paymentLabel[d.payment.status] || d.payment.status }}</span>
+                  ₹{{ d.payment.amount | number:'1.2-2' }}
+                </p>
+                <p *ngIf="d.payment.paid_at">Paid {{ d.payment.paid_at | date:'d MMM y, h:mm a' }}</p>
+                <p *ngIf="d.payment.razorpay_payment_id" class="bo-mono">{{ d.payment.razorpay_payment_id }}</p>
+                <p *ngIf="d.payment.status === 'created' && d.payment.short_url">
+                  <a [href]="d.payment.short_url" target="_blank" rel="noopener">{{ d.payment.short_url }}</a>
+                  <span class="bo-muted" *ngIf="d.payment.expires_at"> · expires {{ d.payment.expires_at | date:'d MMM, h:mm a' }}</span>
+                </p>
+                <p *ngIf="d.payment.needs_review" class="bo-review">⚠ Amount mismatch reported by Razorpay - check manually</p>
+              </ng-container>
+              <ng-template #noPayment><p class="bo-muted">No payment link yet.</p></ng-template>
             </div>
 
             <!-- Design & options -->

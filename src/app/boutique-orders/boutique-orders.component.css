@@ -126,3 +126,8 @@
 .bo-num { text-align: right; white-space: nowrap; }
 .bo-group-tag { background: #f3f4f6; color: #6b7280; font-size: 0.68rem; padding: 1px 5px;
   border-radius: 3px; margin-right: 6px; text-transform: uppercase; letter-spacing: .03em; }
+.bo-pay { display: block; font-size: 0.72rem; color: #7c3aed; }
+.bo-pay.paid { color: #059669; font-weight: 600; }
+.bo-subhead { margin-top: 14px !important; }
+.bo-mono { font-family: ui-monospace, monospace; font-size: 0.78rem !important; color: #6b7280 !important; }
+.bo-review { color: #b91c1c !important; font-weight: 600; }

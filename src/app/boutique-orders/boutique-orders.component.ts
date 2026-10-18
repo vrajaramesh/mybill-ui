@@ -18,7 +18,20 @@ export interface BoutiqueOrderSummary {
   total: number;
   currency: string;
   estimated_delivery_date: string | null;
+  payment_status: string | null;
+  paid_at: string | null;
+  razorpay_payment_id: string | null;
   created_at: string;
+}
+
+export interface BoutiqueOrderPayment {
+  status: string;              // created | paid | expired | cancelled
+  short_url: string | null;
+  amount: number;
+  expires_at: string | null;
+  paid_at: string | null;
+  razorpay_payment_id: string | null;
+  needs_review: boolean;
 }
 
 export interface BoutiqueOrderOption {
@@ -48,10 +61,12 @@ export interface BoutiqueOrderDetail {
   total: number;
   currency: string;
   estimated_delivery_date: string | null;
+  paid_at: string | null;
+  payment: BoutiqueOrderPayment | null;
   created_at: string;
 }
 
-type StatusFilter = 'ALL' | 'DRAFT' | 'PAID' | 'IN_STITCHING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+type StatusFilter = 'ALL' | 'DRAFT' | 'PAYMENT_PENDING' | 'PAID' | 'IN_STITCHING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
 
 @Component({
   selector: 'app-boutique-orders',
@@ -71,10 +86,11 @@ export class BoutiqueOrdersComponent implements OnInit {
   details: { [orderNo: string]: BoutiqueOrderDetail } = {};
   loadingDetail: string | null = null;
 
-  readonly statuses: StatusFilter[] = ['ALL', 'DRAFT', 'PAID', 'IN_STITCHING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
+  readonly statuses: StatusFilter[] = ['ALL', 'DRAFT', 'PAYMENT_PENDING', 'PAID', 'IN_STITCHING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
   readonly statusLabel: { [s: string]: string } = {
     'DRAFT':        'Draft',
-    'PAID':         'Paid',
+    'PAYMENT_PENDING': 'Payment Pending',
+    'PAID':         'Paid (tailor queue)',
     'IN_STITCHING': 'In Stitching',
     'DISPATCHED':   'Dispatched',
     'DELIVERED':    'Delivered',
@@ -82,6 +98,7 @@ export class BoutiqueOrdersComponent implements OnInit {
   };
   readonly statusColor: { [s: string]: string } = {
     'DRAFT':        '#9ca3af',
+    'PAYMENT_PENDING': '#a855f7',
     'PAID':         '#f59e0b',
     'IN_STITCHING': '#3b82f6',
     'DISPATCHED':   '#06b6d4',
@@ -147,6 +164,10 @@ export class BoutiqueOrdersComponent implements OnInit {
       .filter(f => m[f.key] !== null && m[f.key] !== undefined && m[f.key] !== '')
       .map(f => ({ label: f.label, value: `${m[f.key]}${f.unit}` }));
   }
+
+  readonly paymentLabel: { [s: string]: string } = {
+    'created': 'Link sent', 'paid': 'Paid', 'expired': 'Link expired', 'cancelled': 'Link cancelled'
+  };
 
   measurementSource(m: { [key: string]: any } | null): string {
     if (!m) return '';
