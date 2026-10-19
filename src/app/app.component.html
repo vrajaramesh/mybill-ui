@@ -231,6 +231,12 @@
           <span class="nav-icon">📈</span>
           <span class="nav-label" *ngIf="!sidebarCollapsed">Ad performance</span>
         </div>
+        <div class="nav-item parent" [class.active]="activeMenu==='customer-chats'"
+             (click)="navigate('customer-chats'); loadChatCount()">
+          <span class="nav-icon">💬</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Customer chats</span>
+          <span class="nav-badge" *ngIf="chatsWaiting > 0">{{ chatsWaiting }}</span>
+        </div>
       </div>
 
       <!-- Users (admin only) -->
@@ -341,6 +347,7 @@
     <app-boutique-orders *ngIf="activeSection==='boutique-orders'"></app-boutique-orders>
     <app-ad-links        *ngIf="activeSection==='ad-links'"></app-ad-links>
     <app-ad-performance  *ngIf="activeSection==='ad-performance'"></app-ad-performance>
+    <app-customer-chats  *ngIf="activeSection==='customer-chats'" [initialChatId]="pendingChatId"></app-customer-chats>
     <app-user-management *ngIf="activeSection==='users'"></app-user-management>
     <app-ecom-orders     *ngIf="activeSection==='ecom-orders'" (click)="loadNewOrderCount()"></app-ecom-orders>
     <app-settings        *ngIf="activeSection==='settings'"></app-settings>

@@ -1,0 +1,100 @@
+<div class="cc-container">
+  <div class="cc-header">
+    <div>
+      <h1 class="cc-title">Customer chats</h1>
+      <p class="cc-sub">WhatsApp &amp; Instagram customers the AI assistant handed to the team. Reply here; the message goes from the shop's account.</p>
+    </div>
+    <div class="cc-filters">
+      <button class="status-chip" [class.active]="filter === 'waiting'" (click)="setFilter('waiting')">Waiting for team</button>
+      <button class="status-chip" [class.active]="filter === 'all'" (click)="setFilter('all')">All recent</button>
+      <button class="btn btn-secondary btn-sm" (click)="load()">↻</button>
+    </div>
+  </div>
+
+  <div class="cc-layout">
+    <!-- List -->
+    <div class="cc-list">
+      <div *ngIf="loading" class="cc-muted cc-pad">Loading...</div>
+      <div *ngIf="!loading && error" class="cc-error cc-pad">{{ error }}</div>
+      <div *ngIf="!loading && !error && chats.length === 0" class="cc-empty">
+        <p>🎉 Nobody is waiting.</p>
+        <p class="cc-muted">When the assistant hands a customer to the team, she appears here and you get an alert.</p>
+      </div>
+      <div class="cc-row" *ngFor="let c of chats" [class.active]="selected?.id === c.id" (click)="open(c.id)">
+        <div class="cc-row-top">
+          <span class="cc-channel" [class.ig]="c.channel === 'instagram'">{{ c.channel === 'instagram' ? 'IG' : 'WA' }}</span>
+          <span class="cc-name">{{ name(c) }}</span>
+          <span class="cc-wait" *ngIf="c.needs_human">{{ waitingFor(c) }}</span>
+        </div>
+        <div class="cc-row-mid">
+          <span class="cc-reason" *ngIf="c.needs_human">{{ reason(c) }}</span>
+          <span class="cc-badge" *ngIf="c.needs_human && c.waiting_messages > 0">{{ c.waiting_messages }} new</span>
+          <span class="cc-bot-on" *ngIf="!c.needs_human">AI answering</span>
+        </div>
+        <div class="cc-preview" *ngIf="c.last_message">
+          {{ c.last_message.direction === 'in' ? '' : (c.last_message.author === 'staff' ? 'You: ' : 'AI: ') }}{{ c.last_message.text }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="cc-chat" *ngIf="selected; else pick">
+      <div class="cc-chat-head">
+        <div>
+          <div class="cc-chat-name">{{ name(selected) }}</div>
+          <div class="cc-muted">{{ contact(selected) }}<span *ngIf="selected.current_design"> · design {{ selected.current_design }}</span></div>
+        </div>
+        <div class="cc-actions">
+          <span class="cc-reason big" *ngIf="selected.needs_human">{{ reason(selected) }} · waiting {{ waitingFor(selected) }}</span>
+          <span class="cc-bot-on big" *ngIf="!selected.needs_human">AI is answering this customer</span>
+          <button class="btn btn-secondary btn-sm" *ngIf="!selected.needs_human" (click)="keep()">Take over</button>
+          <button class="btn btn-primary btn-sm" *ngIf="selected.needs_human" (click)="resolve()">✓ Resolve &amp; return to AI</button>
+        </div>
+      </div>
+
+      <div class="cc-body">
+        <div class="cc-messages">
+          <div *ngIf="loadingChat" class="cc-muted cc-pad">Loading...</div>
+          <div class="cc-msg" *ngFor="let m of selected.messages" [class.in]="m.direction === 'in'"
+               [class.staff]="m.author === 'staff'" [class.bot]="m.author === 'bot'">
+            <div class="cc-msg-author">{{ m.author === 'customer' ? name(selected) : (m.author === 'staff' ? 'Team' : 'AI assistant') }}</div>
+            <img *ngIf="m.image_url" [src]="m.image_url" class="cc-img" alt="photo" loading="lazy">
+            <div class="cc-msg-text" *ngIf="m.text && !(m.image_url && m.text.startsWith('[photo]'))">{{ m.text }}</div>
+            <div class="cc-msg-text cc-muted" *ngIf="!m.text && !m.image_url">[{{ m.type }}]</div>
+            <div class="cc-msg-time">{{ m.at | date:'d MMM, h:mm a' }}</div>
+          </div>
+        </div>
+
+        <aside class="cc-side">
+          <h4>Orders</h4>
+          <div *ngIf="selected.orders.length === 0" class="cc-muted">No orders yet.</div>
+          <div class="cc-order" *ngFor="let o of selected.orders">
+            <div class="cc-order-top"><b>{{ o.order_no }}</b> <span class="cc-status">{{ o.status }}</span></div>
+            <div>{{ o.design_code }} · {{ o.design_name }} · size {{ o.size_code }}</div>
+            <div>₹{{ o.total | number:'1.0-2' }} · {{ o.payment_status === 'paid' ? 'Paid' : (o.payment_status || 'not paid') }}</div>
+            <div class="cc-muted" *ngIf="o.paid_at">Paid {{ o.paid_at | date:'d MMM, h:mm a' }}</div>
+            <div class="cc-muted cc-mono" *ngIf="o.razorpay_payment_id">{{ o.razorpay_payment_id }}</div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="cc-reply">
+        <div *ngIf="!selected.reply_window_open" class="cc-window">
+          ⏰ More than 24 hours since her last message. WhatsApp and Instagram only allow a reply after she writes again.
+        </div>
+        <p class="cc-error" *ngIf="actionError">{{ actionError }}</p>
+        <textarea [(ngModel)]="reply" (keydown)="onKey($event)" [disabled]="!selected.reply_window_open || sending"
+                  rows="3" placeholder="Type your reply… (Ctrl/⌘ + Enter to send)"></textarea>
+        <div class="cc-reply-actions">
+          <span class="cc-muted">Sent from the shop's {{ selected.channel === 'instagram' ? 'Instagram' : 'WhatsApp' }} account. The AI stays off for this customer until you resolve.</span>
+          <button class="btn btn-primary" (click)="send()" [disabled]="!reply.trim() || sending || !selected.reply_window_open">
+            {{ sending ? 'Sending…' : 'Send' }}
+          </button>
+        </div>
+      </div>
+    </div>
+    <ng-template #pick>
+      <div class="cc-chat cc-placeholder"><p class="cc-muted">Select a customer to see the conversation.</p></div>
+    </ng-template>
+  </div>
+</div>

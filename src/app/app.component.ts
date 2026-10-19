@@ -16,6 +16,7 @@ import { EcomOrdersComponent } from './ecom-orders/ecom-orders.component';
 import { BoutiqueOrdersComponent } from './boutique-orders/boutique-orders.component';
 import { AdLinksComponent } from './ad-links/ad-links.component';
 import { AdPerformanceComponent } from './ad-performance/ad-performance.component';
+import { CustomerChatsComponent } from './customer-chats/customer-chats.component';
 import { ChatInsightsComponent } from './chat-insights/chat-insights.component';
 import { AiConfigComponent } from './ai-config/ai-config.component';
 import { EcomCoverageComponent } from './ecom-coverage/ecom-coverage.component';
@@ -45,7 +46,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
     GstReportComponent, UserManagementComponent, ReportsComponent, BoutiqueComponent,
     SettingsComponent, ProductCategoryComponent, ProductMediaComponent,
     LoginComponent, RegisterFirmComponent, SuperadminDashboardComponent,
-    EcomOrdersComponent, BoutiqueOrdersComponent, AdLinksComponent, AdPerformanceComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
+    EcomOrdersComponent, BoutiqueOrdersComponent, AdLinksComponent, AdPerformanceComponent, CustomerChatsComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
     EcomCoverageComponent, ExpensesComponent, AiInsightsComponent, WholesaleProductsComponent, WholesaleCustomersComponent, WholesaleSettingsComponent, WholesaleQuotationsComponent, WholesaleSalesDocumentsComponent, WholesaleStockComponent, WholesaleInstagramComponent, WholesaleAssistantComponent, WholesalePurchasesComponent,
     FormsModule, CommonModule
   ],
@@ -61,6 +62,11 @@ export class AppComponent implements OnInit, OnDestroy {
   activeSubMenu: string = 'transactions';
   billingView: 'list' | 'form' = 'list';
   newOrderCount = 0;
+  /** Customers waiting for the team (Customer chats badge). */
+  chatsWaiting = 0;
+  /** Chat to open after login, from a staff alert link (?chat=<id>). */
+  pendingChatId: string | null = new URLSearchParams(window.location.search).get('chat');
+  private chatTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private authService: AuthService,
@@ -84,6 +90,7 @@ export class AppComponent implements OnInit, OnDestroy {
       } else {
         this.currentView = 'app';
         this.loadNewOrderCount();
+        this.startChatPolling();
       }
       if (this.currentView === 'app') this.settingsService.loadFromBackend();
     }
@@ -91,6 +98,25 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.sessionTimer) clearInterval(this.sessionTimer);
+    if (this.chatTimer) clearInterval(this.chatTimer);
+  }
+
+  /** Badge count every minute; opens the chat from an alert link once logged in. */
+  private startChatPolling(): void {
+    this.loadChatCount();
+    if (!this.chatTimer) this.chatTimer = setInterval(() => this.loadChatCount(), 60 * 1000);
+    if (this.pendingChatId) {
+      this.navigate('customer-chats');
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+
+  loadChatCount(): void {
+    const token = localStorage.getItem('mybill_token');
+    if (!token || this.currentView !== 'app') return;
+    this.http.get<{ waiting: number }>('/api/boutique-chats/count',
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) })
+      .subscribe({ next: r => { this.chatsWaiting = r.waiting || 0; }, error: () => {} });
   }
 
   /** Coming back to the tab (e.g. next morning): renew the session before the user starts working. */
@@ -199,6 +225,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.activeSubMenu = 'transactions';
       this.billingView = 'list';
       this.expandedMenus = new Set(['billing']);
+      this.startChatPolling();
     }
   }
 
