@@ -200,6 +200,10 @@ export class BoutiqueOrdersComponent implements OnInit {
     });
   }
 
+  sizeLabel(code: string | null): string {
+    return code === 'CUSTOM' ? 'Custom (tailor calls)' : (code || '');
+  }
+
   measurementSource(m: { [key: string]: any } | null): string {
     if (!m) return '';
     return m['source'] === 'order_request' ? 'given with the order' : 'from saved profile';

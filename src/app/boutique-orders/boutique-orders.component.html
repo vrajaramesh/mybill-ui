@@ -54,7 +54,7 @@
         </div>
         <div class="bo-card-design">
           <span class="bo-design">{{ order.design_code }} · {{ order.design_name }}</span>
-          <span class="bo-size">Size {{ order.size_code }}<span *ngIf="order.qty > 1"> × {{ order.qty }}</span></span>
+          <span class="bo-size">Size {{ sizeLabel(order.size_code) }}<span *ngIf="order.qty > 1"> × {{ order.qty }}</span></span>
         </div>
         <div class="bo-card-right">
           <span class="bo-amount">₹{{ order.total | number:'1.2-2' }}</span>
@@ -121,7 +121,7 @@
             <div class="bo-section" *ngFor="let item of d.items">
               <h4>Design & Options</h4>
               <p class="bo-strong">{{ item.design_code }} · {{ item.design_name }}</p>
-              <p>Size {{ item.size_code }} · Qty {{ item.qty }}</p>
+              <p>Size {{ sizeLabel(item.size_code) }} · Qty {{ item.qty }}</p>
               <table class="bo-items-table">
                 <tr>
                   <td>Base + options (per piece)</td>
