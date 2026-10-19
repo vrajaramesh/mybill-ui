@@ -212,30 +212,39 @@
       <!-- Boutique -->
       <div class="nav-group" *ngIf="!isSales && !isEcom">
         <div class="nav-item parent" [class.active]="activeMenu==='boutique'"
-             (click)="navigate('boutique')">
+             (click)="toggleMenu('boutique'); navigate('boutique', activeMenu==='boutique' ? activeSubMenu : 'stitching')">
           <span class="nav-icon">&#9986;</span>
           <span class="nav-label" *ngIf="!sidebarCollapsed">Boutique</span>
+          <span class="nav-badge" *ngIf="chatsWaiting > 0 && (sidebarCollapsed || !isMenuExpanded('boutique'))">{{ chatsWaiting }}</span>
+          <span class="arrow" *ngIf="!sidebarCollapsed">{{ isMenuExpanded('boutique') ? '▾' : '▸' }}</span>
         </div>
-        <div class="nav-item parent" [class.active]="activeMenu==='boutique-orders'"
-             (click)="navigate('boutique-orders')">
-          <span class="nav-icon">🧵</span>
-          <span class="nav-label" *ngIf="!sidebarCollapsed">Boutique Orders</span>
-        </div>
-        <div class="nav-item parent" [class.active]="activeMenu==='ad-links'"
-             (click)="navigate('ad-links')">
-          <span class="nav-icon">🔗</span>
-          <span class="nav-label" *ngIf="!sidebarCollapsed">Ad &amp; post links</span>
-        </div>
-        <div class="nav-item parent" [class.active]="activeMenu==='ad-performance'"
-             (click)="navigate('ad-performance')">
-          <span class="nav-icon">📈</span>
-          <span class="nav-label" *ngIf="!sidebarCollapsed">Ad performance</span>
-        </div>
-        <div class="nav-item parent" [class.active]="activeMenu==='customer-chats'"
-             (click)="navigate('customer-chats'); loadChatCount()">
-          <span class="nav-icon">💬</span>
-          <span class="nav-label" *ngIf="!sidebarCollapsed">Customer chats</span>
-          <span class="nav-badge" *ngIf="chatsWaiting > 0">{{ chatsWaiting }}</span>
+        <div class="submenu" *ngIf="!sidebarCollapsed && isMenuExpanded('boutique')">
+          <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='stitching'"
+               (click)="navigate('boutique','stitching')">
+            <span class="nav-icon">✂️</span>
+            <span class="nav-label">Stitching &amp; Designs</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='orders'"
+               (click)="navigate('boutique','orders')">
+            <span class="nav-icon">🧵</span>
+            <span class="nav-label">WhatsApp Orders</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='chats'"
+               (click)="navigate('boutique','chats'); loadChatCount()">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">Customer chats</span>
+            <span class="nav-badge" *ngIf="chatsWaiting > 0">{{ chatsWaiting }}</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='ad-links'"
+               (click)="navigate('boutique','ad-links')">
+            <span class="nav-icon">🔗</span>
+            <span class="nav-label">Ad &amp; post links</span>
+          </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='ad-performance'"
+               (click)="navigate('boutique','ad-performance')">
+            <span class="nav-icon">📈</span>
+            <span class="nav-label">Ad performance</span>
+          </div>
         </div>
       </div>
 

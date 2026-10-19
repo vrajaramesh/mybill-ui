@@ -106,7 +106,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loadChatCount();
     if (!this.chatTimer) this.chatTimer = setInterval(() => this.loadChatCount(), 60 * 1000);
     if (this.pendingChatId) {
-      this.navigate('customer-chats');
+      this.navigate('boutique', 'chats');
       history.replaceState(null, '', window.location.pathname);
     }
   }
@@ -201,6 +201,12 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.activeSubMenu === 'gst')   return 'gst-report';
       if (this.activeSubMenu === 'chat')  return 'chat-insights';
       return 'reports';
+    }
+    if (this.activeMenu === 'boutique') {
+      const sections: { [sub: string]: string } = {
+        orders: 'boutique-orders', chats: 'customer-chats', 'ad-links': 'ad-links', 'ad-performance': 'ad-performance'
+      };
+      return sections[this.activeSubMenu] || 'boutique';
     }
     if (this.activeMenu === 'hermes') return 'hermes';
     if (this.activeMenu === 'wholesale') {
