@@ -115,3 +115,12 @@
 .photo-add-btn:hover { border-color: #6366f1; background: #f5f3ff; color: #6366f1; }
 .photo-add-btn.uploading { opacity: .6; cursor: wait; }
 .plus-icon { font-size: 1.2rem; line-height: 1; }
+
+.design-code { display: inline-block; font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem; font-weight: 700;
+  background: #eef2ff; color: #3730a3; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
+.design-exact { display: inline-block; font-size: 0.7rem; background: #fef3c7; color: #92400e; padding: 1px 6px;
+  border-radius: 10px; margin: 4px 0 0; }
+.exact-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border: 1px solid #fde68a;
+  background: #fffbeb; border-radius: 8px; cursor: pointer; }
+.exact-check input { margin-top: 3px; }
+.exact-check small { display: block; color: #92400e; font-size: 0.75rem; margin-top: 2px; }

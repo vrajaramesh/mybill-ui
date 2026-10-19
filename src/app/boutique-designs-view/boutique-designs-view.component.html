@@ -27,6 +27,8 @@
     </div>
     <div class="design-info">
       <span class="design-garment">{{ d.garmentType }}</span>
+      <span class="design-code" *ngIf="d.code" title="Code customers and the AI assistant use">{{ d.code }}</span>
+      <span class="design-exact" *ngIf="d.exactMeasurements" title="Our tailor calls the customer after payment">📏 Exact measurements</span>
       <span class="design-price" *ngIf="d.roughPrice">₹{{ d.roughPrice }}</span>
       <span class="design-delivery" *ngIf="d.deliveryDays">~{{ d.deliveryDays }} days</span>
       <p class="design-desc" *ngIf="d.description">{{ d.description }}</p>
@@ -58,6 +60,15 @@
     <label class="form-label" style="margin-top:8px">Description</label>
     <textarea class="form-control" [(ngModel)]="form.description" rows="2"
               placeholder="Style notes, fabric, etc."></textarea>
+
+    <label class="exact-check">
+      <input type="checkbox" [(ngModel)]="form.exactMeasurements">
+      <span>
+        <b>Exact measurements needed</b>
+        <small>After payment, staff get an alert to call the customer and take her exact measurements
+          (e.g. blouse/choli, lehenga &amp; choli).</small>
+      </span>
+    </label>
 
     <!-- Photo gallery -->
     <label class="form-label" style="margin-top:12px">

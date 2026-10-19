@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -21,6 +21,7 @@ export interface BoutiqueOrderSummary {
   payment_status: string | null;
   paid_at: string | null;
   razorpay_payment_id: string | null;
+  measurement_status: string | null;   // PENDING_CALL | TAKEN | null
   created_at: string;
 }
 
@@ -65,10 +66,13 @@ export interface BoutiqueOrderDetail {
   payment: BoutiqueOrderPayment | null;
   source_type: string | null;
   source_id: string | null;
+  measurement_status: string | null;
+  measurement_taken_at: string | null;
+  measurement_taken_by: string | null;
   created_at: string;
 }
 
-type StatusFilter = 'ALL' | 'DRAFT' | 'PAYMENT_PENDING' | 'PAID' | 'IN_STITCHING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+type StatusFilter = 'ALL' | 'MEASURE' | 'DRAFT' | 'PAYMENT_PENDING' | 'PAID' | 'IN_STITCHING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
 
 @Component({
   selector: 'app-boutique-orders',
@@ -78,6 +82,9 @@ type StatusFilter = 'ALL' | 'DRAFT' | 'PAYMENT_PENDING' | 'PAID' | 'IN_STITCHING
   styleUrl: './boutique-orders.component.css'
 })
 export class BoutiqueOrdersComponent implements OnInit {
+  /** Opened from a staff alert link (?order=SB-1023). */
+  @Input() initialOrderNo: string | null = null;
+  markingTaken = false;
   orders: BoutiqueOrderSummary[] = [];
   loading = false;
   error = '';
@@ -88,8 +95,9 @@ export class BoutiqueOrdersComponent implements OnInit {
   details: { [orderNo: string]: BoutiqueOrderDetail } = {};
   loadingDetail: string | null = null;
 
-  readonly statuses: StatusFilter[] = ['ALL', 'DRAFT', 'PAYMENT_PENDING', 'PAID', 'IN_STITCHING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
+  readonly statuses: StatusFilter[] = ['ALL', 'MEASURE', 'DRAFT', 'PAYMENT_PENDING', 'PAID', 'IN_STITCHING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
   readonly statusLabel: { [s: string]: string } = {
+    'MEASURE':      '📏 Measurements pending',
     'DRAFT':        'Draft',
     'PAYMENT_PENDING': 'Payment Pending',
     'PAID':         'Paid (tailor queue)',
@@ -120,7 +128,10 @@ export class BoutiqueOrdersComponent implements OnInit {
 
   constructor(private http: HttpClient) {}
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    if (this.initialOrderNo) this.toggleExpand(this.initialOrderNo);
+  }
 
   private headers(): HttpHeaders {
     const token = localStorage.getItem('mybill_token');
@@ -131,7 +142,8 @@ export class BoutiqueOrdersComponent implements OnInit {
     this.loading = true;
     this.error = '';
     const params: any = { limit: 100 };
-    if (this.statusFilter !== 'ALL') params['status'] = this.statusFilter;
+    if (this.statusFilter === 'MEASURE') params['measurement'] = 'pending';
+    else if (this.statusFilter !== 'ALL') params['status'] = this.statusFilter;
 
     this.http.get<BoutiqueOrderSummary[]>('/api/boutique-orders', { headers: this.headers(), params }).subscribe({
       next: orders => { this.orders = orders; this.loading = false; },
@@ -170,6 +182,23 @@ export class BoutiqueOrdersComponent implements OnInit {
   readonly paymentLabel: { [s: string]: string } = {
     'created': 'Link sent', 'paid': 'Paid', 'expired': 'Link expired', 'cancelled': 'Link cancelled'
   };
+
+  /** The tailor has called the customer and taken her exact measurements. */
+  markMeasurementsTaken(orderNo: string) {
+    if (!confirm(`Mark exact measurements as taken for ${orderNo}?`)) return;
+    this.markingTaken = true;
+    this.http.post<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/measurements-taken`, {},
+      { headers: this.headers() }).subscribe({
+      next: d => {
+        this.markingTaken = false;
+        this.details[orderNo] = d;
+        const row = this.orders.find(o => o.order_no === orderNo);
+        if (row) row.measurement_status = d.measurement_status;
+        if (this.statusFilter === 'MEASURE') this.orders = this.orders.filter(o => o.order_no !== orderNo);
+      },
+      error: err => { this.markingTaken = false; alert(err?.error?.message || 'Could not update the order'); }
+    });
+  }
 
   measurementSource(m: { [key: string]: any } | null): string {
     if (!m) return '';

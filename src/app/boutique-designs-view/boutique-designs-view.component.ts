@@ -23,8 +23,9 @@ export class BoutiqueDesignsViewComponent implements OnInit {
   uploading = false;
   editingId: number | null = null;
 
-  form: { garmentType: string; description: string; roughPrice: number | null; deliveryDays: number | null } =
-    { garmentType: '', description: '', roughPrice: null, deliveryDays: null };
+  form: { garmentType: string; description: string; roughPrice: number | null; deliveryDays: number | null;
+          exactMeasurements: boolean } =
+    { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
 
   // Images managed in the form
   formImages: { id: number; imageUrl: string; publicId: string; pending?: boolean }[] = [];
@@ -54,7 +55,8 @@ export class BoutiqueDesignsViewComponent implements OnInit {
         garmentType:  d.garmentType,
         description:  d.description || '',
         roughPrice:   d.roughPrice,
-        deliveryDays: d.deliveryDays
+        deliveryDays: d.deliveryDays,
+        exactMeasurements: !!d.exactMeasurements
       };
       // Populate images from design (images array from API)
       this.formImages = (d.images || []).map((img: DesignImage) => ({
@@ -62,7 +64,7 @@ export class BoutiqueDesignsViewComponent implements OnInit {
       }));
     } else {
       this.editingId = null;
-      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null };
+      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
       this.formImages = [];
     }
     this.deletedImageIds = [];

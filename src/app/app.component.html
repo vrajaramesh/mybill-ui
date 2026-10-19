@@ -215,7 +215,7 @@
              (click)="toggleMenu('boutique'); navigate('boutique', activeMenu==='boutique' ? activeSubMenu : 'stitching')">
           <span class="nav-icon">&#9986;</span>
           <span class="nav-label" *ngIf="!sidebarCollapsed">Boutique</span>
-          <span class="nav-badge" *ngIf="chatsWaiting > 0 && (sidebarCollapsed || !isMenuExpanded('boutique'))">{{ chatsWaiting }}</span>
+          <span class="nav-badge" *ngIf="(chatsWaiting + measurementCalls) > 0 && (sidebarCollapsed || !isMenuExpanded('boutique'))">{{ chatsWaiting + measurementCalls }}</span>
           <span class="arrow" *ngIf="!sidebarCollapsed">{{ isMenuExpanded('boutique') ? '▾' : '▸' }}</span>
         </div>
         <div class="submenu" *ngIf="!sidebarCollapsed && isMenuExpanded('boutique')">
@@ -225,9 +225,10 @@
             <span class="nav-label">Stitching &amp; Designs</span>
           </div>
           <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='orders'"
-               (click)="navigate('boutique','orders')">
+               (click)="navigate('boutique','orders'); loadChatCount()">
             <span class="nav-icon">🧵</span>
             <span class="nav-label">WhatsApp Orders</span>
+            <span class="nav-badge" *ngIf="measurementCalls > 0" title="Measurement calls pending">📏 {{ measurementCalls }}</span>
           </div>
           <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='chats'"
                (click)="navigate('boutique','chats'); loadChatCount()">
@@ -353,7 +354,7 @@
     <app-reports         *ngIf="activeSection==='reports'"></app-reports>
     <app-chat-insights   *ngIf="activeSection==='chat-insights'"></app-chat-insights>
     <app-boutique        *ngIf="activeSection==='boutique'"></app-boutique>
-    <app-boutique-orders *ngIf="activeSection==='boutique-orders'"></app-boutique-orders>
+    <app-boutique-orders *ngIf="activeSection==='boutique-orders'" [initialOrderNo]="pendingOrderNo"></app-boutique-orders>
     <app-ad-links        *ngIf="activeSection==='ad-links'"></app-ad-links>
     <app-ad-performance  *ngIf="activeSection==='ad-performance'"></app-ad-performance>
     <app-customer-chats  *ngIf="activeSection==='customer-chats'" [initialChatId]="pendingChatId"></app-customer-chats>

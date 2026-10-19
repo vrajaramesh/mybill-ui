@@ -46,6 +46,7 @@
           <span class="bo-status-badge" [style.background]="statusColor[order.status]">
             {{ statusLabel[order.status] || order.status }}
           </span>
+          <span class="bo-measure" *ngIf="order.measurement_status === 'PENDING_CALL'" title="Call the customer for exact measurements">📏 Call</span>
         </div>
         <div class="bo-card-mid">
           <span class="bo-customer">{{ order.customer_name || 'Customer #' + order.customer_id }}</span>
@@ -74,9 +75,22 @@
           <div class="bo-three-col">
             <!-- Delivery -->
             <div class="bo-section">
+              <div class="bo-measure-box" *ngIf="d.measurement_status">
+                <ng-container *ngIf="d.measurement_status === 'PENDING_CALL'">
+                  <b>📏 Call for exact measurements</b>
+                  <p>Call <a [href]="'tel:' + d.delivery.phone">{{ d.delivery.phone }}</a> and note them in the stitching order.</p>
+                  <button class="btn btn-primary btn-sm" (click)="markMeasurementsTaken(d.order_no)" [disabled]="markingTaken">
+                    ✓ Measurements taken
+                  </button>
+                </ng-container>
+                <ng-container *ngIf="d.measurement_status === 'TAKEN'">
+                  <b>✓ Exact measurements taken</b>
+                  <p class="bo-muted">{{ d.measurement_taken_at | date:'d MMM, h:mm a' }}<span *ngIf="d.measurement_taken_by"> · by {{ d.measurement_taken_by }}</span></p>
+                </ng-container>
+              </div>
               <h4>Delivery Address</h4>
               <p>{{ d.delivery.name }}</p>
-              <p>{{ d.delivery.phone }}</p>
+              <p><a [href]="'tel:' + d.delivery.phone">{{ d.delivery.phone }}</a></p>
               <p>{{ d.delivery.address_line1 }}</p>
               <p *ngIf="d.delivery.address_line2">{{ d.delivery.address_line2 }}</p>
               <p>{{ d.delivery.city }}, {{ d.delivery.state }} – {{ d.delivery.pincode }}</p>

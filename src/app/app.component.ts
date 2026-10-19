@@ -64,6 +64,10 @@ export class AppComponent implements OnInit, OnDestroy {
   newOrderCount = 0;
   /** Customers waiting for the team (Customer chats badge). */
   chatsWaiting = 0;
+  /** Paid orders waiting for the tailor's measurement call (WhatsApp Orders badge). */
+  measurementCalls = 0;
+  /** Order to open after login, from a staff alert link (?order=SB-1023). */
+  pendingOrderNo: string | null = new URLSearchParams(window.location.search).get('order');
   /** Chat to open after login, from a staff alert link (?chat=<id>). */
   pendingChatId: string | null = new URLSearchParams(window.location.search).get('chat');
   private chatTimer: ReturnType<typeof setInterval> | null = null;
@@ -108,6 +112,9 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.pendingChatId) {
       this.navigate('boutique', 'chats');
       history.replaceState(null, '', window.location.pathname);
+    } else if (this.pendingOrderNo) {
+      this.navigate('boutique', 'orders');
+      history.replaceState(null, '', window.location.pathname);
     }
   }
 
@@ -117,6 +124,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.http.get<{ waiting: number }>('/api/boutique-chats/count',
       { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) })
       .subscribe({ next: r => { this.chatsWaiting = r.waiting || 0; }, error: () => {} });
+    this.http.get<{ measurement_pending: number }>('/api/boutique-orders/count',
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) })
+      .subscribe({ next: r => { this.measurementCalls = r.measurement_pending || 0; }, error: () => {} });
   }
 
   /** Coming back to the tab (e.g. next morning): renew the session before the user starts working. */
