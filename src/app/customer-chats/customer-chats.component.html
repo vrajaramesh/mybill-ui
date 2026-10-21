@@ -88,12 +88,24 @@
           ⏰ More than 24 hours since her last message. WhatsApp and Instagram only allow a reply after she writes again.
         </div>
         <p class="cc-error" *ngIf="actionError">{{ actionError }}</p>
+        <div class="cc-photos" *ngIf="photos.length || uploading">
+          <div class="cc-photo" *ngFor="let p of photos; let i = index">
+            <img [src]="p" alt="photo to send">
+            <button type="button" (click)="removePhoto(i)" title="Remove" [disabled]="sending">✕</button>
+          </div>
+          <span class="cc-muted" *ngIf="uploading">Uploading {{ uploading }} photo{{ uploading > 1 ? 's' : '' }}…</span>
+        </div>
         <textarea [(ngModel)]="reply" (keydown)="onKey($event)" [disabled]="!selected.reply_window_open || sending"
-                  rows="3" placeholder="Type your reply… (Ctrl/⌘ + Enter to send)"></textarea>
+                  rows="3" [placeholder]="photos.length ? 'Caption (optional)… (Ctrl/⌘ + Enter to send)' : 'Type your reply… (Ctrl/⌘ + Enter to send)'"></textarea>
         <div class="cc-reply-actions">
+          <label class="btn btn-secondary btn-sm cc-attach" [class.disabled]="!selected.reply_window_open || sending" title="Send photos">
+            📎 Photo
+            <input type="file" accept="image/jpeg,image/png" multiple hidden (change)="onPhotos($event)"
+                   [disabled]="!selected.reply_window_open || sending">
+          </label>
           <span class="cc-muted">Sent from the shop's {{ selected.channel === 'instagram' ? 'Instagram' : 'WhatsApp' }} account. The AI stays off for this customer until you resolve.</span>
-          <button class="btn btn-primary" (click)="send()" [disabled]="!reply.trim() || sending || !selected.reply_window_open">
-            {{ sending ? 'Sending…' : 'Send' }}
+          <button class="btn btn-primary" (click)="send()" [disabled]="!canSend()">
+            {{ sending ? 'Sending…' : (photos.length > 1 ? 'Send ' + photos.length + ' photos' : 'Send') }}
           </button>
         </div>
       </div>

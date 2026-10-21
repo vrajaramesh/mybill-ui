@@ -53,6 +53,13 @@
 .cc-reply { border-top: 1px solid #f3f4f6; padding: 10px 14px; }
 .cc-reply textarea { width: 100%; box-sizing: border-box; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; font-size: 0.9rem; resize: vertical; }
 .cc-reply-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
+.cc-attach { cursor: pointer; white-space: nowrap; margin: 0; }
+.cc-attach.disabled { opacity: 0.5; pointer-events: none; }
+.cc-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+.cc-photo { position: relative; }
+.cc-photo img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; display: block; }
+.cc-photo button { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none;
+  background: #111827; color: #fff; font-size: 0.65rem; line-height: 20px; padding: 0; cursor: pointer; }
 .cc-window { background: #fff7ed; color: #9a3412; font-size: 0.8rem; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; }
 
 .cc-muted { color: #9ca3af; font-size: 0.8rem; }

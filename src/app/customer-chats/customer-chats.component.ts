@@ -2,6 +2,9 @@ import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { concatMap, from, toArray } from 'rxjs';
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 /** A WhatsApp / Instagram conversation from GET /api/boutique-chats (srisa-agent's staff inbox). */
 export interface ChatSummary {
@@ -58,6 +61,8 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
   loadingChat = false;
   reply = '';
   sending = false;
+  photos: string[] = [];
+  uploading = 0;
   actionError = '';
 
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -138,14 +143,45 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
     if (el) el.scrollTop = el.scrollHeight;
   }
 
+  /** Photos picked for the next reply (already uploaded; WhatsApp takes JPEG/PNG up to 5 MB). */
+  onPhotos(event: Event) {
+    const input = event.target as HTMLInputElement;
+    for (const file of Array.from(input.files || [])) {
+      if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > MAX_PHOTO_BYTES) {
+        this.actionError = `${file.name}: only JPG/PNG photos up to 5 MB can be sent`;
+        continue;
+      }
+      const form = new FormData();
+      form.append('file', file);
+      this.uploading++;
+      this.http.post<{ secure_url?: string; url?: string }>('/api/upload/image', form, { headers: this.headers() }).subscribe({
+        next: r => { this.uploading--; const url = r.secure_url || r.url; if (url) this.photos.push(url); },
+        error: () => { this.uploading--; this.actionError = `${file.name}: upload failed`; }
+      });
+    }
+    input.value = '';
+  }
+
+  removePhoto(i: number) { this.photos.splice(i, 1); }
+
+  canSend(): boolean {
+    return !!this.selected && this.selected.reply_window_open && !this.sending && this.uploading === 0
+      && (!!this.reply.trim() || this.photos.length > 0);
+  }
+
+  /** Text, or each photo in turn (the text is the first photo's caption). */
   send() {
+    if (!this.canSend()) return;
     const text = this.reply.trim();
-    if (!this.selected || !text || this.sending) return;
+    const bodies = this.photos.length
+      ? this.photos.map((image_url, i) => ({ image_url, text: i === 0 ? text : '' }))
+      : [{ text }];
     this.sending = true;
     this.actionError = '';
-    this.http.post(`/api/boutique-chats/${this.selected.id}/reply`, { text }, { headers: this.headers() }).subscribe({
-      next: () => { this.sending = false; this.reply = ''; this.open(this.selected!.id, true); this.load(true); },
-      error: err => { this.sending = false; this.actionError = err?.error?.message || 'Message not sent'; }
+    const id = this.selected!.id;
+    from(bodies).pipe(concatMap(b => this.http.post(`/api/boutique-chats/${id}/reply`, b, { headers: this.headers() })), toArray()).subscribe({
+      next: () => { this.sending = false; this.reply = ''; this.photos = []; this.open(id, true); this.load(true); },
+      error: err => { this.sending = false; this.actionError = err?.error?.message || 'Message not sent'; this.open(id, true); }
     });
   }
 
