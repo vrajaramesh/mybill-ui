@@ -2,7 +2,7 @@ import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { concatMap, from, toArray } from 'rxjs';
+import { Subscription, concatMap, from, toArray } from 'rxjs';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
@@ -82,7 +82,7 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
     // Refresh the list and the open chat every 15 s (new customer messages, other staff replies).
     this.timer = setInterval(() => {
       this.load(true);
-      if (this.selected && !this.sending) this.open(this.selected.id, true);
+      if (this.selected && !this.sending && !this.loadingChat) this.open(this.selected.id, true);
     }, 15000);
   }
 
@@ -166,17 +166,38 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** The chat being shown (or loading); responses for any other chat are ignored. */
+  selectedId: string | null = null;
+  private chatRequest: Subscription | null = null;
+
+  /** Click on a customer: the panel switches to loading at once; silent = background refresh of the open chat. */
   open(id: string, silent = false) {
-    if (!silent) { this.loadingChat = true; this.actionError = ''; }
-    this.http.get<ChatDetail>(`/api/boutique-chats/${id}`, { headers: this.headers() }).subscribe({
+    if (silent && id !== this.selectedId) return;
+    if (!silent) {
+      if (id !== this.selectedId) {
+        this.selected = null;          // never show the previous customer while the new one loads
+        this.reply = '';               // a draft or photos belong to the previous customer
+        this.photos = [];
+      }
+      this.selectedId = id;
+      this.loadingChat = true;
+      this.actionError = '';
+    }
+    this.chatRequest?.unsubscribe();
+    this.chatRequest = this.http.get<ChatDetail>(`/api/boutique-chats/${id}`, { headers: this.headers() }).subscribe({
       next: chat => {
+        if (chat.id !== this.selectedId) return;
         const newMessages = !this.selected || this.selected.id !== chat.id || this.selected.messages.length !== chat.messages.length;
         this.selected = chat;
         this.loadMedia(chat);
         this.loadingChat = false;
         if (newMessages) setTimeout(() => this.scrollToEnd(), 0);
       },
-      error: err => { this.loadingChat = false; if (!silent) this.actionError = err?.error?.message || 'Could not open the chat'; }
+      error: err => {
+        if (id !== this.selectedId) return;
+        this.loadingChat = false;
+        if (!silent) this.actionError = err?.error?.message || 'Could not open the chat';
+      }
     });
   }
 

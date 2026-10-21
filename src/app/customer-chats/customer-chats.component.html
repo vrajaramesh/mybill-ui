@@ -20,7 +20,7 @@
         <p>🎉 Nobody is waiting.</p>
         <p class="cc-muted">When the assistant hands a customer to the team, she appears here and you get an alert.</p>
       </div>
-      <div class="cc-row" *ngFor="let c of chats" [class.active]="selected?.id === c.id" (click)="open(c.id)">
+      <div class="cc-row" *ngFor="let c of chats" [class.active]="selectedId === c.id" (click)="open(c.id)">
         <div class="cc-row-top">
           <span class="cc-channel" [class.ig]="c.channel === 'instagram'">{{ c.channel === 'instagram' ? 'IG' : 'WA' }}</span>
           <span class="cc-name">{{ name(c) }}</span>
@@ -40,7 +40,16 @@
     </div>
 
     <!-- Chat -->
-    <div class="cc-chat" *ngIf="selected; else pick">
+    <div class="cc-chat cc-placeholder" *ngIf="loadingChat && !selected">
+      <div class="cc-loading"><span class="cc-spinner"></span><p class="cc-muted">Loading conversation…</p></div>
+    </div>
+    <div class="cc-chat cc-placeholder" *ngIf="!loadingChat && !selected && selectedId && actionError">
+      <p class="cc-error">{{ actionError }}</p>
+    </div>
+    <div class="cc-chat cc-placeholder" *ngIf="!selected && !loadingChat && !(selectedId && actionError)">
+      <p class="cc-muted">Select a customer to see the conversation.</p>
+    </div>
+    <div class="cc-chat" *ngIf="selected">
       <div class="cc-chat-head">
         <div>
           <div class="cc-chat-name">{{ name(selected) }}</div>
@@ -56,7 +65,6 @@
 
       <div class="cc-body">
         <div class="cc-messages">
-          <div *ngIf="loadingChat" class="cc-muted cc-pad">Loading...</div>
           <div class="cc-msg" *ngFor="let m of selected.messages" [class.in]="m.direction === 'in'"
                [class.staff]="m.author === 'staff'" [class.bot]="m.author === 'bot'">
             <div class="cc-msg-author">{{ m.author === 'customer' ? name(selected) : (m.author === 'staff' ? 'Team' : 'AI assistant') }}</div>
@@ -121,8 +129,5 @@
         </div>
       </div>
     </div>
-    <ng-template #pick>
-      <div class="cc-chat cc-placeholder"><p class="cc-muted">Select a customer to see the conversation.</p></div>
-    </ng-template>
   </div>
 </div>
