@@ -70,6 +70,8 @@ export class AppComponent implements OnInit, OnDestroy {
   pendingOrderNo: string | null = new URLSearchParams(window.location.search).get('order');
   /** Chat to open after login, from a staff alert link (?chat=<id>). */
   pendingChatId: string | null = new URLSearchParams(window.location.search).get('chat');
+  /** Open Online Orders after login, from a website-order staff alert (?view=online-orders). */
+  pendingOnlineOrders = new URLSearchParams(window.location.search).get('view') === 'online-orders';
   private chatTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -114,6 +116,10 @@ export class AppComponent implements OnInit, OnDestroy {
       history.replaceState(null, '', window.location.pathname);
     } else if (this.pendingOrderNo) {
       this.navigate('boutique', 'orders');
+      history.replaceState(null, '', window.location.pathname);
+    } else if (this.pendingOnlineOrders) {
+      this.pendingOnlineOrders = false;
+      this.navigate('ecom-orders');
       history.replaceState(null, '', window.location.pathname);
     }
   }
