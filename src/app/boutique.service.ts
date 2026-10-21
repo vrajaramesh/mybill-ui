@@ -3,6 +3,10 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 
+export interface FabricSearchResult {
+  productId: number; name: string; category: string; unit: string; price: number; stock: number; url: string;
+}
+
 export interface StitchingOrderItem {
   itemId?: number;
   garmentType: string;
@@ -202,9 +206,14 @@ export class BoutiqueService {
 
   // ── Boutique Designs ──────────────────────────────────────────────────────
 
-  /** Online fabrics sold by the metre, to link to a design (sold as "fabric only" by the AI assistant). */
-  searchFabrics(q: string): Observable<{ productId: number; name: string; category: string; pricePerMetre: number; stockMetres: number }[]> {
-    return this.http.get<any[]>('/api/boutique-designs/fabric-search', { params: { q } });
+  /** Online products to link to a design as "fabric only" (each with its srisafabrics.com link). */
+  searchFabrics(q: string): Observable<FabricSearchResult[]> {
+    return this.http.get<FabricSearchResult[]>('/api/boutique-designs/fabric-search', { params: { q } });
+  }
+
+  /** Replace a design's fabric links (website product pages the WhatsApp assistant sends). */
+  saveDesignFabrics(designId: number, links: { url: string; label?: string | null }[]): Observable<any[]> {
+    return this.http.put<any[]>(`/api/boutique-designs/${designId}/fabrics`, { links });
   }
 
   getDesigns(): Observable<any[]> {

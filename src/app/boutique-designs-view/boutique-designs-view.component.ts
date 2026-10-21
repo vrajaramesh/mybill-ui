@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { BoutiqueService } from '../boutique.service';
+import { BoutiqueService, FabricSearchResult } from '../boutique.service';
 import { forkJoin, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
@@ -24,14 +24,18 @@ export class BoutiqueDesignsViewComponent implements OnInit {
   editingId: number | null = null;
 
   form: { garmentType: string; description: string; roughPrice: number | null; deliveryDays: number | null;
-          exactMeasurements: boolean; fabricProductId: number | null } =
-    { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false, fabricProductId: null };
+          exactMeasurements: boolean } =
+    { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
 
-  // Fabric sold by the metre for this design ("fabric only" orders on WhatsApp)
-  fabricLabel = '';
+  // Fabrics sold separately: srisafabrics.com product links the WhatsApp assistant sends ("fabric only")
+  fabricLinks: { url: string; label: string | null; name?: string | null; price?: number | null; unit?: string | null }[] = [];
+  fabricsChanged = false;
+  fabricUrl = '';
   fabricQuery = '';
-  fabricResults: { productId: number; name: string; category: string; pricePerMetre: number; stockMetres: number }[] = [];
+  fabricResults: FabricSearchResult[] = [];
   fabricSearching = false;
+  fabricError = '';
+  readonly shopHost = 'srisafabrics.com';
 
   // Images managed in the form
   formImages: { id: number; imageUrl: string; publicId: string; pending?: boolean }[] = [];
@@ -62,23 +66,25 @@ export class BoutiqueDesignsViewComponent implements OnInit {
         description:  d.description || '',
         roughPrice:   d.roughPrice,
         deliveryDays: d.deliveryDays,
-        exactMeasurements: !!d.exactMeasurements,
-        fabricProductId: d.fabricProductId ?? null
+        exactMeasurements: !!d.exactMeasurements
       };
-      this.fabricLabel = d.fabricProductId ? `${d.fabricName || 'Product'} (FAB-${d.fabricProductId})` : '';
+      this.fabricLinks = (d.fabrics || []).map((f: any) => ({ url: f.url, label: f.label, name: f.name, price: f.price, unit: f.unit }));
       // Populate images from design (images array from API)
       this.formImages = (d.images || []).map((img: DesignImage) => ({
         id: img.id, imageUrl: img.imageUrl, publicId: img.publicId || ''
       }));
     } else {
       this.editingId = null;
-      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false, fabricProductId: null };
-      this.fabricLabel = '';
+      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
+      this.fabricLinks = [];
       this.formImages = [];
     }
     this.deletedImageIds = [];
     this.fabricQuery = '';
+    this.fabricUrl = '';
     this.fabricResults = [];
+    this.fabricError = '';
+    this.fabricsChanged = false;
     this.showForm = true;
   }
 
@@ -94,14 +100,34 @@ export class BoutiqueDesignsViewComponent implements OnInit {
     });
   }
 
-  pickFabric(f: { productId: number; name: string }) {
-    this.form.fabricProductId = f.productId;
-    this.fabricLabel = `${f.name} (FAB-${f.productId})`;
+  pickFabric(f: FabricSearchResult) {
+    this.addFabricLink(f.url, { name: f.name, price: f.price, unit: f.unit });
     this.fabricResults = [];
     this.fabricQuery = '';
   }
 
-  clearFabric() { this.form.fabricProductId = null; this.fabricLabel = ''; }
+  /** Add a pasted srisafabrics.com product link. */
+  addPastedLink() {
+    if (this.addFabricLink(this.fabricUrl.trim())) this.fabricUrl = '';
+  }
+
+  private addFabricLink(url: string, info: { name?: string; price?: number; unit?: string } = {}): boolean {
+    this.fabricError = '';
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { this.fabricError = 'Paste a full link, e.g. https://srisafabrics.com/?product=6223'; return false; }
+    if (parsed.protocol !== 'https:' || parsed.hostname.replace(/^www\./, '') !== this.shopHost) {
+      this.fabricError = `Only product links from ${this.shopHost} can be added`; return false;
+    }
+    if (this.fabricLinks.some(l => l.url === url)) { this.fabricError = 'This link is already added'; return false; }
+    if (this.fabricLinks.length >= 10) { this.fabricError = 'At most 10 fabric links per design'; return false; }
+    this.fabricLinks.push({ url, label: null, ...info });
+    this.fabricsChanged = true;
+    return true;
+  }
+
+  removeFabricLink(i: number) { this.fabricLinks.splice(i, 1); this.fabricsChanged = true; }
+
+  private fabricPayload() { return this.fabricLinks.map(l => ({ url: l.url, label: l.label || null })); }
 
   onImagePick(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
@@ -139,7 +165,8 @@ export class BoutiqueDesignsViewComponent implements OnInit {
           const adds = this.formImages
             .filter(img => img.pending)
             .map(img => this.svc.addDesignImage(designId, img.imageUrl, img.publicId));
-          const all = [...deletes, ...adds];
+          const fabrics = this.fabricsChanged ? [this.svc.saveDesignFabrics(designId, this.fabricPayload())] : [];
+          const all = [...deletes, ...adds, ...fabrics];
           return all.length ? forkJoin(all) : of([]);
         })
       ).subscribe({
@@ -152,7 +179,10 @@ export class BoutiqueDesignsViewComponent implements OnInit {
         ...this.form,
         images: this.formImages.map(img => ({ imageUrl: img.imageUrl, publicId: img.publicId }))
       };
-      this.svc.createDesign(payload).subscribe({
+      this.svc.createDesign(payload).pipe(
+        switchMap((res: any) => this.fabricLinks.length && res?.designId
+          ? this.svc.saveDesignFabrics(res.designId, this.fabricPayload()) : of([]))
+      ).subscribe({
         next: () => { this.showForm = false; this.saving = false; this.load(); },
         error: () => { this.saving = false; }
       });

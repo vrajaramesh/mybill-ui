@@ -29,7 +29,7 @@
       <span class="design-garment">{{ d.garmentType }}</span>
       <span class="design-code" *ngIf="d.code" title="Code customers and the AI assistant use">{{ d.code }}</span>
       <span class="design-exact" *ngIf="d.exactMeasurements" title="Our tailor calls the customer after payment">📏 Exact measurements</span>
-      <span class="design-fabric" *ngIf="d.fabricProductId" title="Also sold as fabric only (per metre) by the WhatsApp assistant">🧵 {{ d.fabricName }} · ₹{{ d.fabricPrice }}/m</span>
+      <span class="design-fabric" *ngIf="d.fabrics?.length" title="Fabric links the WhatsApp assistant sends for 'fabric only'">🧵 {{ d.fabrics.length }} fabric link{{ d.fabrics.length > 1 ? 's' : '' }}</span>
       <span class="design-price" *ngIf="d.roughPrice">₹{{ d.roughPrice }}</span>
       <span class="design-delivery" *ngIf="d.deliveryDays">~{{ d.deliveryDays }} days</span>
       <p class="design-desc" *ngIf="d.description">{{ d.description }}</p>
@@ -71,24 +71,31 @@
       </span>
     </label>
 
-    <label class="form-label" style="margin-top:12px">Fabric sold separately (per metre)</label>
+    <label class="form-label" style="margin-top:12px">Fabric sold separately (website links)</label>
     <div class="fabric-link">
-      <div *ngIf="form.fabricProductId; else pickFab" class="fabric-picked">
-        <span>🧵 {{ fabricLabel }}</span>
-        <button type="button" class="btn-sm btn-danger" (click)="clearFabric()">Remove</button>
+      <div class="fabric-picked" *ngFor="let l of fabricLinks; let i = index">
+        <span>
+          🧵 {{ l.label || l.name || 'Fabric' }}<small *ngIf="l.price"> · ₹{{ l.price }}{{ l.unit ? '/' + l.unit : '' }}</small>
+          <a [href]="l.url" target="_blank" rel="noopener" class="fabric-url">{{ l.url }}</a>
+        </span>
+        <button type="button" class="btn-sm btn-danger" (click)="removeFabricLink(i)">Remove</button>
       </div>
-      <ng-template #pickFab>
-        <input class="form-control" [(ngModel)]="fabricQuery" (ngModelChange)="searchFabrics()"
-               placeholder="Search Products, e.g. madras check">
-        <div class="fabric-results" *ngIf="fabricResults.length">
-          <button type="button" *ngFor="let f of fabricResults" (click)="pickFabric(f)">
-            {{ f.name }} <small>FAB-{{ f.productId }} · ₹{{ f.pricePerMetre }}/m · {{ f.stockMetres || 0 }} m in stock</small>
-          </button>
-        </div>
-        <small class="fabric-hint" *ngIf="fabricSearching">Searching…</small>
-        <small class="fabric-hint" *ngIf="!fabricSearching && fabricQuery.trim().length >= 2 && !fabricResults.length">No online fabric sold per metre matches.</small>
-      </ng-template>
-      <small class="fabric-hint">Customers who want only this fabric can order it on WhatsApp. Price and stock come from Products.</small>
+      <div class="fabric-add">
+        <input class="form-control" [(ngModel)]="fabricUrl" (keydown.enter)="addPastedLink()"
+               placeholder="Paste link, e.g. https://srisafabrics.com/?product=6223">
+        <button type="button" class="btn-sm btn-edit" (click)="addPastedLink()" [disabled]="!fabricUrl.trim()">Add</button>
+      </div>
+      <input class="form-control" [(ngModel)]="fabricQuery" (ngModelChange)="searchFabrics()"
+             placeholder="…or search Products to add, e.g. madras check">
+      <div class="fabric-results" *ngIf="fabricResults.length">
+        <button type="button" *ngFor="let f of fabricResults" (click)="pickFabric(f)">
+          {{ f.name }} <small>#{{ f.productId }} · ₹{{ f.price }}{{ f.unit ? '/' + f.unit : '' }} · {{ f.stock || 0 }} in stock</small>
+        </button>
+      </div>
+      <small class="fabric-hint" *ngIf="fabricSearching">Searching…</small>
+      <p class="fabric-error" *ngIf="fabricError">{{ fabricError }}</p>
+      <small class="fabric-hint">When a customer wants only the fabric, the WhatsApp assistant sends these with a
+        "Buy on srisafabrics.com" button; she buys on the website.</small>
     </div>
 
     <!-- Photo gallery -->

@@ -133,3 +133,8 @@
 .fabric-results button { text-align: left; background: #fff; border: none; border-bottom: 1px solid #f3f4f6; padding: 6px 8px; cursor: pointer; font-size: 0.85rem; }
 .fabric-results button:hover { background: #f9fafb; }
 .fabric-results small, .fabric-hint { color: #6b7280; font-size: 0.75rem; }
+
+.fabric-add { display: flex; gap: 6px; }
+.fabric-add input { flex: 1; }
+.fabric-url { display: block; font-size: 0.72rem; color: #2563eb; word-break: break-all; }
+.fabric-error { color: #dc2626; font-size: 0.8rem; margin: 0; }
