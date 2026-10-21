@@ -67,7 +67,8 @@
         <div class="cc-messages">
           <div class="cc-msg" *ngFor="let m of selected.messages" [class.in]="m.direction === 'in'"
                [class.staff]="m.author === 'staff'" [class.bot]="m.author === 'bot'">
-            <div class="cc-msg-author">{{ m.author === 'customer' ? name(selected) : (m.author === 'staff' ? 'Team' : 'AI assistant') }}</div>
+            <div class="cc-msg-author">{{ m.author === 'customer' ? name(selected) : (m.author === 'staff' ? 'Team' : 'AI assistant') }}
+              <span class="cc-reminder" *ngIf="m.followup" title="Sent automatically because the customer went quiet">🔔 Reminder</span></div>
             <img *ngIf="m.image_url" [src]="m.image_url" class="cc-img" alt="photo" loading="lazy">
             <ng-container *ngIf="m.media === 'image' || m.media === 'sticker'">
               <img *ngIf="mediaUrls[m.id]" [src]="mediaUrls[m.id]" class="cc-img cc-clickable" alt="customer photo"

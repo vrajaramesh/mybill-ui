@@ -32,7 +32,8 @@ export interface ChatMessage {
   status: string;
   at: string;
   image_url: string | null;
-  media?: string | null;   // customer's WhatsApp image/sticker/video/document/audio (fetch via /media)
+  media?: string | null;
+  followup?: string | null;   // automatic reminder: enquiry | enquiry_last | payment   // customer's WhatsApp image/sticker/video/document/audio (fetch via /media)
 }
 
 export interface ChatDetail extends ChatSummary {
