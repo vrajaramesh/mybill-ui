@@ -29,6 +29,7 @@
       <span class="design-garment">{{ d.garmentType }}</span>
       <span class="design-code" *ngIf="d.code" title="Code customers and the AI assistant use">{{ d.code }}</span>
       <span class="design-exact" *ngIf="d.exactMeasurements" title="Our tailor calls the customer after payment">📏 Exact measurements</span>
+      <span class="design-fabric" *ngIf="d.fabricProductId" title="Also sold as fabric only (per metre) by the WhatsApp assistant">🧵 {{ d.fabricName }} · ₹{{ d.fabricPrice }}/m</span>
       <span class="design-price" *ngIf="d.roughPrice">₹{{ d.roughPrice }}</span>
       <span class="design-delivery" *ngIf="d.deliveryDays">~{{ d.deliveryDays }} days</span>
       <p class="design-desc" *ngIf="d.description">{{ d.description }}</p>
@@ -69,6 +70,26 @@
           (e.g. blouse/choli, lehenga &amp; choli).</small>
       </span>
     </label>
+
+    <label class="form-label" style="margin-top:12px">Fabric sold separately (per metre)</label>
+    <div class="fabric-link">
+      <div *ngIf="form.fabricProductId; else pickFab" class="fabric-picked">
+        <span>🧵 {{ fabricLabel }}</span>
+        <button type="button" class="btn-sm btn-danger" (click)="clearFabric()">Remove</button>
+      </div>
+      <ng-template #pickFab>
+        <input class="form-control" [(ngModel)]="fabricQuery" (ngModelChange)="searchFabrics()"
+               placeholder="Search Products, e.g. madras check">
+        <div class="fabric-results" *ngIf="fabricResults.length">
+          <button type="button" *ngFor="let f of fabricResults" (click)="pickFabric(f)">
+            {{ f.name }} <small>FAB-{{ f.productId }} · ₹{{ f.pricePerMetre }}/m · {{ f.stockMetres || 0 }} m in stock</small>
+          </button>
+        </div>
+        <small class="fabric-hint" *ngIf="fabricSearching">Searching…</small>
+        <small class="fabric-hint" *ngIf="!fabricSearching && fabricQuery.trim().length >= 2 && !fabricResults.length">No online fabric sold per metre matches.</small>
+      </ng-template>
+      <small class="fabric-hint">Customers who want only this fabric can order it on WhatsApp. Price and stock come from Products.</small>
+    </div>
 
     <!-- Photo gallery -->
     <label class="form-label" style="margin-top:12px">

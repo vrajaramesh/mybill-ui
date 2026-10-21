@@ -24,8 +24,14 @@ export class BoutiqueDesignsViewComponent implements OnInit {
   editingId: number | null = null;
 
   form: { garmentType: string; description: string; roughPrice: number | null; deliveryDays: number | null;
-          exactMeasurements: boolean } =
-    { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
+          exactMeasurements: boolean; fabricProductId: number | null } =
+    { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false, fabricProductId: null };
+
+  // Fabric sold by the metre for this design ("fabric only" orders on WhatsApp)
+  fabricLabel = '';
+  fabricQuery = '';
+  fabricResults: { productId: number; name: string; category: string; pricePerMetre: number; stockMetres: number }[] = [];
+  fabricSearching = false;
 
   // Images managed in the form
   formImages: { id: number; imageUrl: string; publicId: string; pending?: boolean }[] = [];
@@ -56,22 +62,46 @@ export class BoutiqueDesignsViewComponent implements OnInit {
         description:  d.description || '',
         roughPrice:   d.roughPrice,
         deliveryDays: d.deliveryDays,
-        exactMeasurements: !!d.exactMeasurements
+        exactMeasurements: !!d.exactMeasurements,
+        fabricProductId: d.fabricProductId ?? null
       };
+      this.fabricLabel = d.fabricProductId ? `${d.fabricName || 'Product'} (FAB-${d.fabricProductId})` : '';
       // Populate images from design (images array from API)
       this.formImages = (d.images || []).map((img: DesignImage) => ({
         id: img.id, imageUrl: img.imageUrl, publicId: img.publicId || ''
       }));
     } else {
       this.editingId = null;
-      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
+      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false, fabricProductId: null };
+      this.fabricLabel = '';
       this.formImages = [];
     }
     this.deletedImageIds = [];
+    this.fabricQuery = '';
+    this.fabricResults = [];
     this.showForm = true;
   }
 
   closeForm() { this.showForm = false; }
+
+  searchFabrics() {
+    const q = this.fabricQuery.trim();
+    if (q.length < 2) { this.fabricResults = []; return; }
+    this.fabricSearching = true;
+    this.svc.searchFabrics(q).subscribe({
+      next: r => { this.fabricResults = r; this.fabricSearching = false; },
+      error: () => { this.fabricResults = []; this.fabricSearching = false; }
+    });
+  }
+
+  pickFabric(f: { productId: number; name: string }) {
+    this.form.fabricProductId = f.productId;
+    this.fabricLabel = `${f.name} (FAB-${f.productId})`;
+    this.fabricResults = [];
+    this.fabricQuery = '';
+  }
+
+  clearFabric() { this.form.fabricProductId = null; this.fabricLabel = ''; }
 
   onImagePick(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];

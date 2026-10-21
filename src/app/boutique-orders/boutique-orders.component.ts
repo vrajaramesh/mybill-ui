@@ -23,6 +23,8 @@ export interface BoutiqueOrderSummary {
   razorpay_payment_id: string | null;
   measurement_status: string | null;   // PENDING_CALL | TAKEN | null
   created_at: string;
+  order_type?: string;                 // GARMENT | FABRIC
+  fabric_metres?: number | null;
 }
 
 export interface BoutiqueOrderPayment {
@@ -56,6 +58,7 @@ export interface BoutiqueOrderDetail {
     options: BoutiqueOrderOption[];
     measurements: { [key: string]: any } | null;
     unit_price: number; qty: number; line_total: number;
+    fabric_metres?: number | null; fabric_price_per_metre?: number | null;
   }[];
   subtotal: number;
   delivery_charge: number;

@@ -202,6 +202,11 @@ export class BoutiqueService {
 
   // ── Boutique Designs ──────────────────────────────────────────────────────
 
+  /** Online fabrics sold by the metre, to link to a design (sold as "fabric only" by the AI assistant). */
+  searchFabrics(q: string): Observable<{ productId: number; name: string; category: string; pricePerMetre: number; stockMetres: number }[]> {
+    return this.http.get<any[]>('/api/boutique-designs/fabric-search', { params: { q } });
+  }
+
   getDesigns(): Observable<any[]> {
     return this.http.get<any[]>('/api/boutique-designs');
   }

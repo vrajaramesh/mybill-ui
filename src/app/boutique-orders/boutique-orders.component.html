@@ -54,7 +54,10 @@
         </div>
         <div class="bo-card-design">
           <span class="bo-design">{{ order.design_code }} · {{ order.design_name }}</span>
-          <span class="bo-size">Size {{ sizeLabel(order.size_code) }}<span *ngIf="order.qty > 1"> × {{ order.qty }}</span></span>
+          <span class="bo-size" *ngIf="order.order_type === 'FABRIC'; else garmentSize">🧵 Fabric only · {{ order.fabric_metres }} m</span>
+          <ng-template #garmentSize>
+            <span class="bo-size">Size {{ sizeLabel(order.size_code) }}<span *ngIf="order.qty > 1"> × {{ order.qty }}</span></span>
+          </ng-template>
         </div>
         <div class="bo-card-right">
           <span class="bo-amount">₹{{ order.total | number:'1.2-2' }}</span>
@@ -119,6 +122,13 @@
 
             <!-- Design & options -->
             <div class="bo-section" *ngFor="let item of d.items">
+              <ng-container *ngIf="item.fabric_metres; else garmentItem">
+                <h4>Fabric only (no stitching)</h4>
+                <p class="bo-strong">{{ item.design_code }} · {{ item.design_name }}</p>
+                <p>{{ item.fabric_metres }} m × ₹{{ item.fabric_price_per_metre | number:'1.2-2' }}/m = ₹{{ item.line_total | number:'1.2-2' }}</p>
+                <p class="bo-muted">Cut {{ item.fabric_metres }} m from Products {{ item.design_code }} and ship it.</p>
+              </ng-container>
+              <ng-template #garmentItem>
               <h4>Design & Options</h4>
               <p class="bo-strong">{{ item.design_code }} · {{ item.design_name }}</p>
               <p>Size {{ sizeLabel(item.size_code) }} · Qty {{ item.qty }}</p>
@@ -141,10 +151,20 @@
                 </tr>
                 <tr class="bo-total-row"><td>Total</td><td class="bo-num">₹{{ d.total | number:'1.2-2' }}</td></tr>
               </table>
+              </ng-template>
+              <table class="bo-items-table" *ngIf="item.fabric_metres">
+                <tr><td>Subtotal</td><td class="bo-num">₹{{ d.subtotal | number:'1.2-2' }}</td></tr>
+                <tr>
+                  <td>Delivery</td>
+                  <td class="bo-num">{{ d.delivery_charge > 0 ? '₹' + (d.delivery_charge | number:'1.2-2') : 'Free' }}</td>
+                </tr>
+                <tr class="bo-total-row"><td>Total</td><td class="bo-num">₹{{ d.total | number:'1.2-2' }}</td></tr>
+              </table>
             </div>
 
             <!-- Measurements -->
-            <div class="bo-section" *ngFor="let item of d.items">
+            <ng-container *ngFor="let item of d.items">
+            <div class="bo-section" *ngIf="!item.fabric_metres">
               <h4>Measurements</h4>
               <ng-container *ngIf="item.measurements; else noMeasurements">
                 <table class="bo-items-table">
@@ -159,6 +179,7 @@
                 <p class="bo-muted">No measurements recorded for this order.</p>
               </ng-template>
             </div>
+            </ng-container>
           </div>
         </ng-container>
       </div>

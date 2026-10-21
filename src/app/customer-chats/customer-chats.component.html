@@ -75,7 +75,7 @@
           <div *ngIf="selected.orders.length === 0" class="cc-muted">No orders yet.</div>
           <div class="cc-order" *ngFor="let o of selected.orders">
             <div class="cc-order-top"><b>{{ o.order_no }}</b> <span class="cc-status">{{ o.status }}</span></div>
-            <div>{{ o.design_code }} · {{ o.design_name }} · size {{ o.size_code }}</div>
+            <div>{{ o.design_code }} · {{ o.design_name }} · {{ o.size_code === 'FABRIC' ? 'fabric only' : 'size ' + o.size_code }}</div>
             <div>₹{{ o.total | number:'1.0-2' }} · {{ o.payment_status === 'paid' ? 'Paid' : (o.payment_status || 'not paid') }}</div>
             <div class="cc-muted" *ngIf="o.paid_at">Paid {{ o.paid_at | date:'d MMM, h:mm a' }}</div>
             <div class="cc-muted cc-mono" *ngIf="o.razorpay_payment_id">{{ o.razorpay_payment_id }}</div>

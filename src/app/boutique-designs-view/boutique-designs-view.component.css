@@ -124,3 +124,12 @@
   background: #fffbeb; border-radius: 8px; cursor: pointer; }
 .exact-check input { margin-top: 3px; }
 .exact-check small { display: block; color: #92400e; font-size: 0.75rem; margin-top: 2px; }
+
+.design-fabric { font-size: 0.75rem; color: #7c3aed; background: #f5f3ff; border-radius: 10px; padding: 1px 8px; }
+.fabric-link { display: flex; flex-direction: column; gap: 4px; }
+.fabric-picked { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px;
+  border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.9rem; }
+.fabric-results { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; max-height: 180px; overflow-y: auto; }
+.fabric-results button { text-align: left; background: #fff; border: none; border-bottom: 1px solid #f3f4f6; padding: 6px 8px; cursor: pointer; font-size: 0.85rem; }
+.fabric-results button:hover { background: #f9fafb; }
+.fabric-results small, .fabric-hint { color: #6b7280; font-size: 0.75rem; }
