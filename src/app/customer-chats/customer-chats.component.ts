@@ -105,6 +105,13 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
 
   setFilter(f: 'waiting' | 'all') { this.filter = f; this.load(); }
 
+  /** Caption of a photo we sent ("[photo] Frock – ₹3,400 …"), or '' when the text is just the photo URL. */
+  photoCaption(text: string | null): string {
+    if (!text || !text.startsWith('[photo]')) return '';
+    const caption = text.slice('[photo]'.length).trim();
+    return /^https?:\/\/\S+$/.test(caption) ? '' : caption;
+  }
+
   /** WhatsApp-style ticks for our messages: ✓ sent, ✓✓ delivered, blue ✓✓ read, ⚠ not delivered. */
   tick(status?: string): string {
     switch (status) {

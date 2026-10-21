@@ -62,6 +62,7 @@
             <div class="cc-msg-author">{{ m.author === 'customer' ? name(selected) : (m.author === 'staff' ? 'Team' : 'AI assistant') }}</div>
             <img *ngIf="m.image_url" [src]="m.image_url" class="cc-img" alt="photo" loading="lazy">
             <div class="cc-msg-text" *ngIf="m.text && !(m.image_url && m.text.startsWith('[photo]'))">{{ m.text }}</div>
+            <div class="cc-msg-text" *ngIf="m.image_url && photoCaption(m.text)">{{ photoCaption(m.text) }}</div>
             <div class="cc-msg-text cc-muted" *ngIf="!m.text && !m.image_url">[{{ m.type }}]</div>
             <div class="cc-msg-time">{{ m.at | date:'d MMM, h:mm a' }}
               <span *ngIf="m.direction === 'out'" class="cc-tick" [class.read]="m.status === 'read'"
