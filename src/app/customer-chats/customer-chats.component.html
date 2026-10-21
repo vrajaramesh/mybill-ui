@@ -32,6 +32,8 @@
           <span class="cc-bot-on" *ngIf="!c.needs_human">AI answering</span>
         </div>
         <div class="cc-preview" *ngIf="c.last_message">
+          <span *ngIf="c.last_message.direction !== 'in'" class="cc-tick" [class.read]="c.last_message.status === 'read'"
+                [class.failed]="c.last_message.status === 'failed'" [title]="tickTitle(c.last_message.status)">{{ tick(c.last_message.status) }}</span>
           {{ c.last_message.direction === 'in' ? '' : (c.last_message.author === 'staff' ? 'You: ' : 'AI: ') }}{{ c.last_message.text }}
         </div>
       </div>
@@ -61,7 +63,10 @@
             <img *ngIf="m.image_url" [src]="m.image_url" class="cc-img" alt="photo" loading="lazy">
             <div class="cc-msg-text" *ngIf="m.text && !(m.image_url && m.text.startsWith('[photo]'))">{{ m.text }}</div>
             <div class="cc-msg-text cc-muted" *ngIf="!m.text && !m.image_url">[{{ m.type }}]</div>
-            <div class="cc-msg-time">{{ m.at | date:'d MMM, h:mm a' }}</div>
+            <div class="cc-msg-time">{{ m.at | date:'d MMM, h:mm a' }}
+              <span *ngIf="m.direction === 'out'" class="cc-tick" [class.read]="m.status === 'read'"
+                    [class.failed]="m.status === 'failed'" [title]="tickTitle(m.status)">{{ tick(m.status) }}</span>
+            </div>
           </div>
         </div>
 

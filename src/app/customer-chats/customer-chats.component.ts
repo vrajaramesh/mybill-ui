@@ -17,7 +17,7 @@ export interface ChatSummary {
   last_customer_message_at: string | null;
   reply_window_open: boolean;
   waiting_messages: number;
-  last_message: { direction: string; author: string | null; text: string; at: string } | null;
+  last_message: { direction: string; author: string | null; text: string; status?: string; at: string } | null;
 }
 
 export interface ChatMessage {
@@ -99,6 +99,26 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
   }
 
   setFilter(f: 'waiting' | 'all') { this.filter = f; this.load(); }
+
+  /** WhatsApp-style ticks for our messages: ✓ sent, ✓✓ delivered, blue ✓✓ read, ⚠ not delivered. */
+  tick(status?: string): string {
+    switch (status) {
+      case 'sent': return '✓';
+      case 'delivered': case 'read': return '✓✓';
+      case 'failed': return '⚠';
+      default: return '🕓';
+    }
+  }
+
+  tickTitle(status?: string): string {
+    switch (status) {
+      case 'sent': return 'Sent';
+      case 'delivered': return 'Delivered';
+      case 'read': return 'Seen';
+      case 'failed': return 'Not delivered';
+      default: return 'Sending';
+    }
+  }
 
   open(id: string, silent = false) {
     if (!silent) { this.loadingChat = true; this.actionError = ''; }
