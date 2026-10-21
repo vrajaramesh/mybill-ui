@@ -1,0 +1,93 @@
+<div class="dr-container">
+  <div class="dr-header">
+    <div>
+      <h2 class="dr-title">Daily report</h2>
+      <p class="dr-sub">AI analysis of the day's WhatsApp &amp; Instagram chats and sales – made every evening at 9:30 PM.</p>
+    </div>
+    <div class="dr-controls">
+      <input type="date" [ngModel]="date" (ngModelChange)="open($event)" >
+      <button class="btn btn-primary btn-sm" (click)="generate()" [disabled]="generating">
+        {{ generating ? 'Analysing… (1–3 min)' : (report ? '↻ Regenerate' : 'Generate now') }}
+      </button>
+    </div>
+  </div>
+
+  <div class="dr-days" *ngIf="days.length">
+    <button *ngFor="let d of days.slice(0, 14)" class="dr-day" [class.active]="d.date === date" (click)="open(d.date)"
+            [title]="d.headline || ''">{{ d.date | date:'EEE d MMM' }}</button>
+  </div>
+
+  <p class="dr-error" *ngIf="error">{{ error }}</p>
+  <div class="dr-loading" *ngIf="loading || generating">
+    <span class="dr-spinner"></span>
+    {{ generating ? 'The AI is reading the day\'s chats and sales – this takes 1 to 3 minutes…' : 'Loading…' }}
+  </div>
+  <div class="dr-empty" *ngIf="notFound && !generating">
+    No report for {{ date | date:'EEE d MMM y' }} yet. Reports are made at 9:30 PM – or click <b>Generate now</b>.
+  </div>
+
+  <ng-container *ngIf="report && !generating">
+    <!-- Numbers -->
+    <div class="dr-cards">
+      <div class="dr-card"><span>Chats</span><b>{{ m.chats?.active || 0 }}</b><small>{{ m.chats?.new || 0 }} new · {{ m.chats?.from_ads || 0 }} from ads</small></div>
+      <div class="dr-card"><span>WhatsApp orders</span><b>{{ sales.whatsapp_orders?.orders_created || 0 }}</b><small>{{ sales.whatsapp_orders?.orders_paid || 0 }} paid · {{ rupees(sales.whatsapp_orders?.revenue_paid) }}</small></div>
+      <div class="dr-card"><span>Website orders</span><b>{{ sales.website_orders?.orders_paid || 0 }}</b><small>{{ rupees(sales.website_orders?.revenue_paid) }} · {{ sales.website_orders?.checkouts_started_not_paid || 0 }} unpaid checkouts</small></div>
+      <div class="dr-card"><span>Handed to team</span><b>{{ m.chats?.handed_to_team || 0 }}</b><small>{{ m.chats?.team_replies || 0 }} team replies · {{ m.chats?.ai_errors || 0 }} AI errors</small></div>
+      <div class="dr-card"><span>Reminders</span><b>{{ m.chats?.reminders_sent || 0 }}</b><small>{{ m.chats?.replied_after_reminder || 0 }} replied</small></div>
+      <div class="dr-card" *ngIf="report.analysis"><span>Mood</span><b>😊 {{ report.analysis.sentiment.positive }}</b>
+        <small>😐 {{ report.analysis.sentiment.neutral }} · 🙁 {{ report.analysis.sentiment.negative }}</small></div>
+    </div>
+
+    <p class="dr-error" *ngIf="report.error">The AI analysis failed ({{ report.error }}). The numbers above are correct – click Regenerate to try again.</p>
+
+    <ng-container *ngIf="report.analysis as a">
+      <div class="dr-headline">
+        <h3>{{ a.headline }}</h3>
+        <p>{{ a.summary }}</p>
+        <small class="dr-muted">{{ report.chats_analysed }} chats analysed · made {{ report.created_at | date:'d MMM, h:mm a' }}</small>
+      </div>
+
+      <section class="dr-section" *ngIf="a.recommendations.length">
+        <h4>✅ What to do next</h4>
+        <div class="dr-reco" *ngFor="let r of a.recommendations" [class.high]="r.priority === 'high'">
+          <span class="dr-area">{{ areaIcons[r.area] || '•' }} {{ r.area }}</span>
+          <span class="dr-prio" [class]="'dr-prio ' + r.priority">{{ r.priority }}</span>
+          <div class="dr-reco-body"><b>{{ r.action }}</b><p>{{ r.why }}</p></div>
+        </div>
+      </section>
+
+      <div class="dr-grid">
+        <section class="dr-section" *ngIf="a.top_questions.length">
+          <h4>❓ What customers asked</h4>
+          <div class="dr-item" *ngFor="let q of a.top_questions">
+            <b>{{ q.topic }}</b> <span class="dr-count">{{ q.count }}</span><p>“{{ q.example }}”</p>
+          </div>
+        </section>
+        <section class="dr-section" *ngIf="a.objections.length">
+          <h4>🚧 Why they didn't buy</h4>
+          <div class="dr-item" *ngFor="let o of a.objections">
+            <b>{{ o.reason }}</b> <span class="dr-count">{{ o.count }}</span><p>“{{ o.example }}”</p>
+          </div>
+        </section>
+        <section class="dr-section" *ngIf="a.design_feedback.length">
+          <h4>👗 Design feedback</h4>
+          <div class="dr-item" *ngFor="let d of a.design_feedback"><b>{{ d.design }}</b><p>{{ d.feedback }}</p></div>
+        </section>
+        <section class="dr-section" *ngIf="a.unmet_demand.length">
+          <h4>🛍️ Asked for, but we don't offer</h4>
+          <div class="dr-item" *ngFor="let u of a.unmet_demand"><b>{{ u.request }}</b> <span class="dr-count">{{ u.count }}</span></div>
+        </section>
+        <section class="dr-section" *ngIf="a.ai_issues.length">
+          <h4>🤖 Where the AI assistant can do better</h4>
+          <div class="dr-item" *ngFor="let i of a.ai_issues"><b>{{ i.issue }}</b><p>“{{ i.example }}”</p><p class="dr-fix">Fix: {{ i.fix }}</p></div>
+        </section>
+        <section class="dr-section" *ngIf="a.follow_up.length">
+          <h4>📞 Worth a personal follow-up</h4>
+          <div class="dr-item" *ngFor="let f of a.follow_up">
+            <a [href]="chatLink(f.chat_id)" target="_blank"><b>{{ f.customer }}</b> ↗</a><p>{{ f.reason }}</p>
+          </div>
+        </section>
+      </div>
+    </ng-container>
+  </ng-container>
+</div>

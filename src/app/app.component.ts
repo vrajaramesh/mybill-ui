@@ -16,6 +16,7 @@ import { EcomOrdersComponent } from './ecom-orders/ecom-orders.component';
 import { BoutiqueOrdersComponent } from './boutique-orders/boutique-orders.component';
 import { AdLinksComponent } from './ad-links/ad-links.component';
 import { AdPerformanceComponent } from './ad-performance/ad-performance.component';
+import { DailyReportComponent } from './daily-report/daily-report.component';
 import { CustomerChatsComponent } from './customer-chats/customer-chats.component';
 import { ChatInsightsComponent } from './chat-insights/chat-insights.component';
 import { AiConfigComponent } from './ai-config/ai-config.component';
@@ -46,7 +47,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
     GstReportComponent, UserManagementComponent, ReportsComponent, BoutiqueComponent,
     SettingsComponent, ProductCategoryComponent, ProductMediaComponent,
     LoginComponent, RegisterFirmComponent, SuperadminDashboardComponent,
-    EcomOrdersComponent, BoutiqueOrdersComponent, AdLinksComponent, AdPerformanceComponent, CustomerChatsComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
+    EcomOrdersComponent, BoutiqueOrdersComponent, AdLinksComponent, AdPerformanceComponent, DailyReportComponent, CustomerChatsComponent, ChatInsightsComponent, AiConfigComponent, HermesComponent,
     EcomCoverageComponent, ExpensesComponent, AiInsightsComponent, WholesaleProductsComponent, WholesaleCustomersComponent, WholesaleSettingsComponent, WholesaleQuotationsComponent, WholesaleSalesDocumentsComponent, WholesaleStockComponent, WholesaleInstagramComponent, WholesaleAssistantComponent, WholesalePurchasesComponent,
     FormsModule, CommonModule
   ],
@@ -220,7 +221,8 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     if (this.activeMenu === 'boutique') {
       const sections: { [sub: string]: string } = {
-        orders: 'boutique-orders', chats: 'customer-chats', 'ad-links': 'ad-links', 'ad-performance': 'ad-performance'
+        orders: 'boutique-orders', chats: 'customer-chats', 'ad-links': 'ad-links', 'ad-performance': 'ad-performance',
+        'daily-report': 'daily-report'
       };
       return sections[this.activeSubMenu] || 'boutique';
     }
