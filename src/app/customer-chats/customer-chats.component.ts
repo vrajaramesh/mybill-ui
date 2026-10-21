@@ -32,6 +32,7 @@ export interface ChatMessage {
   status: string;
   at: string;
   image_url: string | null;
+  media?: string | null;   // customer's WhatsApp image/sticker/video/document/audio (fetch via /media)
 }
 
 export interface ChatDetail extends ChatSummary {
@@ -85,7 +86,40 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
     }, 15000);
   }
 
+  /** Customer photos: blob URLs by message id ('' = not available any more). */
+  mediaUrls: { [messageId: string]: string } = {};
+  private mediaLoading = new Set<string>();
+
+  private loadMedia(chat: ChatDetail) {
+    for (const m of chat.messages) {
+      if ((m.media === 'image' || m.media === 'sticker') && !(m.id in this.mediaUrls) && !this.mediaLoading.has(m.id)) {
+        this.fetchMedia(chat.id, m.id).subscribe({
+          next: blob => { this.mediaLoading.delete(m.id); this.mediaUrls[m.id] = URL.createObjectURL(blob); },
+          error: () => { this.mediaLoading.delete(m.id); this.mediaUrls[m.id] = ''; }
+        });
+        this.mediaLoading.add(m.id);
+      }
+    }
+  }
+
+  private fetchMedia(chatId: string, messageId: string) {
+    return this.http.get(`/api/boutique-chats/${chatId}/media/${messageId}`, { headers: this.headers(), responseType: 'blob' });
+  }
+
+  /** Videos / documents / voice notes: open in a new tab. */
+  openMedia(m: ChatMessage) {
+    if (!this.selected) return;
+    const tab = window.open('', '_blank');
+    this.fetchMedia(this.selected.id, m.id).subscribe({
+      next: blob => { const url = URL.createObjectURL(blob); if (tab) tab.location.href = url; else window.open(url, '_blank'); },
+      error: () => { tab?.close(); this.actionError = 'This file is no longer available on WhatsApp (kept about 30 days).'; }
+    });
+  }
+
+  viewPhoto(url: string) { if (url) window.open(url, '_blank'); }
+
   ngOnDestroy() {
+    Object.values(this.mediaUrls).forEach(u => u && URL.revokeObjectURL(u));
     if (this.timer) clearInterval(this.timer);
   }
 
@@ -138,6 +172,7 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
       next: chat => {
         const newMessages = !this.selected || this.selected.id !== chat.id || this.selected.messages.length !== chat.messages.length;
         this.selected = chat;
+        this.loadMedia(chat);
         this.loadingChat = false;
         if (newMessages) setTimeout(() => this.scrollToEnd(), 0);
       },

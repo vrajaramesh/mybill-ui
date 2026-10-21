@@ -61,9 +61,19 @@
                [class.staff]="m.author === 'staff'" [class.bot]="m.author === 'bot'">
             <div class="cc-msg-author">{{ m.author === 'customer' ? name(selected) : (m.author === 'staff' ? 'Team' : 'AI assistant') }}</div>
             <img *ngIf="m.image_url" [src]="m.image_url" class="cc-img" alt="photo" loading="lazy">
+            <ng-container *ngIf="m.media === 'image' || m.media === 'sticker'">
+              <img *ngIf="mediaUrls[m.id]" [src]="mediaUrls[m.id]" class="cc-img cc-clickable" alt="customer photo"
+                   title="Click to open full size" (click)="viewPhoto(mediaUrls[m.id])">
+              <div class="cc-msg-text cc-muted" *ngIf="mediaUrls[m.id] === ''">📷 Photo no longer available on WhatsApp</div>
+              <div class="cc-msg-text cc-muted" *ngIf="mediaUrls[m.id] === undefined">📷 Loading photo…</div>
+            </ng-container>
+            <button *ngIf="m.media && m.media !== 'image' && m.media !== 'sticker'" type="button"
+                    class="btn btn-secondary btn-sm" (click)="openMedia(m)">
+              {{ m.media === 'video' ? '🎬 Open video' : m.media === 'audio' ? '🎤 Play voice note' : '📄 Open file' }}
+            </button>
             <div class="cc-msg-text" *ngIf="m.text && !(m.image_url && m.text.startsWith('[photo]'))">{{ m.text }}</div>
             <div class="cc-msg-text" *ngIf="m.image_url && photoCaption(m.text)">{{ photoCaption(m.text) }}</div>
-            <div class="cc-msg-text cc-muted" *ngIf="!m.text && !m.image_url">[{{ m.type }}]</div>
+            <div class="cc-msg-text cc-muted" *ngIf="!m.text && !m.image_url && !m.media">[{{ m.type }}]</div>
             <div class="cc-msg-time">{{ m.at | date:'d MMM, h:mm a' }}
               <span *ngIf="m.direction === 'out'" class="cc-tick" [class.read]="m.status === 'read'"
                     [class.failed]="m.status === 'failed'" [title]="tickTitle(m.status)">{{ tick(m.status) }}</span>

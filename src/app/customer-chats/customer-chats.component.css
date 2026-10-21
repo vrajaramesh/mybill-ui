@@ -76,3 +76,5 @@
   .cc-messages { max-height: 55vh; }
   .cc-side { border-left: none; border-top: 1px solid #f3f4f6; }
 }
+
+.cc-clickable { cursor: zoom-in; }
