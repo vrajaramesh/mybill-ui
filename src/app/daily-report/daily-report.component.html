@@ -31,6 +31,9 @@
     <div class="dr-cards">
       <div class="dr-card"><span>Chats</span><b>{{ m.chats?.active || 0 }}</b><small>{{ m.chats?.new || 0 }} new · {{ m.chats?.from_ads || 0 }} from ads</small></div>
       <div class="dr-card"><span>WhatsApp orders</span><b>{{ sales.whatsapp_orders?.orders_created || 0 }}</b><small>{{ sales.whatsapp_orders?.orders_paid || 0 }} paid · {{ rupees(sales.whatsapp_orders?.revenue_paid) }}</small></div>
+      <div class="dr-card" *ngIf="sales.whatsapp_orders?.orders_by_type as t"><span>By type</span>
+        <b>{{ (t.fabric?.orders || 0) + (t.readymade?.orders || 0) + (t.mixed?.orders || 0) }}</b>
+        <small>goods · {{ t.garment?.orders || 0 }} stitched · {{ sales.whatsapp_orders?.goods_waiting_dispatch_now || 0 }} to dispatch now</small></div>
       <div class="dr-card"><span>Website orders</span><b>{{ sales.website_orders?.orders_paid || 0 }}</b><small>{{ rupees(sales.website_orders?.revenue_paid) }} · {{ sales.website_orders?.checkouts_started_not_paid || 0 }} unpaid checkouts</small></div>
       <div class="dr-card"><span>Handed to team</span><b>{{ m.chats?.handed_to_team || 0 }}</b><small>{{ m.chats?.team_replies || 0 }} team replies · {{ m.chats?.ai_errors || 0 }} AI errors</small></div>
       <div class="dr-card"><span>Reminders</span><b>{{ m.chats?.reminders_sent || 0 }}</b><small>{{ m.chats?.replied_after_reminder || 0 }} replied</small></div>

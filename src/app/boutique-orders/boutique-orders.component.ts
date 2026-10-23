@@ -23,8 +23,9 @@ export interface BoutiqueOrderSummary {
   razorpay_payment_id: string | null;
   measurement_status: string | null;   // PENDING_CALL | TAKEN | null
   created_at: string;
-  order_type?: string;                 // GARMENT | FABRIC
+  order_type?: string;                 // GARMENT | FABRIC | READYMADE | MIXED
   fabric_metres?: number | null;
+  item_count?: number;
 }
 
 export interface BoutiqueOrderPayment {
@@ -47,6 +48,7 @@ export interface BoutiqueOrderOption {
 export interface BoutiqueOrderDetail {
   order_no: string;
   status: string;
+  order_type?: string;
   customer_id: number;
   channel: string;
   delivery: {
@@ -59,6 +61,7 @@ export interface BoutiqueOrderDetail {
     measurements: { [key: string]: any } | null;
     unit_price: number; qty: number; line_total: number;
     fabric_metres?: number | null; fabric_price_per_metre?: number | null;
+    item_kind?: string | null; item_code?: string | null;
   }[];
   subtotal: number;
   delivery_charge: number;
@@ -75,7 +78,7 @@ export interface BoutiqueOrderDetail {
   created_at: string;
 }
 
-type StatusFilter = 'ALL' | 'MEASURE' | 'DRAFT' | 'PAYMENT_PENDING' | 'PAID' | 'IN_STITCHING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+type StatusFilter = 'ALL' | 'MEASURE' | 'DISPATCH' | 'DRAFT' | 'PAYMENT_PENDING' | 'PAID' | 'IN_STITCHING' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
 
 @Component({
   selector: 'app-boutique-orders',
@@ -98,9 +101,10 @@ export class BoutiqueOrdersComponent implements OnInit {
   details: { [orderNo: string]: BoutiqueOrderDetail } = {};
   loadingDetail: string | null = null;
 
-  readonly statuses: StatusFilter[] = ['ALL', 'MEASURE', 'DRAFT', 'PAYMENT_PENDING', 'PAID', 'IN_STITCHING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
+  readonly statuses: StatusFilter[] = ['ALL', 'MEASURE', 'DISPATCH', 'DRAFT', 'PAYMENT_PENDING', 'PAID', 'IN_STITCHING', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
   readonly statusLabel: { [s: string]: string } = {
     'MEASURE':      '📏 Measurements pending',
+    'DISPATCH':     '📦 To dispatch',
     'DRAFT':        'Draft',
     'PAYMENT_PENDING': 'Payment Pending',
     'PAID':         'Paid (tailor queue)',
@@ -146,6 +150,7 @@ export class BoutiqueOrdersComponent implements OnInit {
     this.error = '';
     const params: any = { limit: 100 };
     if (this.statusFilter === 'MEASURE') params['measurement'] = 'pending';
+    else if (this.statusFilter === 'DISPATCH') params['dispatch'] = 'pending';
     else if (this.statusFilter !== 'ALL') params['status'] = this.statusFilter;
 
     this.http.get<BoutiqueOrderSummary[]>('/api/boutique-orders', { headers: this.headers(), params }).subscribe({
@@ -200,6 +205,32 @@ export class BoutiqueOrdersComponent implements OnInit {
         if (this.statusFilter === 'MEASURE') this.orders = this.orders.filter(o => o.order_no !== orderNo);
       },
       error: err => { this.markingTaken = false; alert(err?.error?.message || 'Could not update the order'); }
+    });
+  }
+
+  /** Fabric / readymade orders: packed and dispatched from stock (no stitching). */
+  isGoods(o: { order_type?: string }): boolean {
+    return !!o.order_type && o.order_type !== 'GARMENT';
+  }
+
+  readonly goodsLabel: { [t: string]: string } = { FABRIC: '🧵 Fabric', READYMADE: '👗 Readymade', MIXED: '📦 Fabric + readymade' };
+
+  marking = false;
+
+  /** Staff packed and sent the order. */
+  markDispatched(orderNo: string) {
+    if (!confirm(`Mark ${orderNo} as dispatched?`)) return;
+    this.marking = true;
+    this.http.post<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/dispatched`, {},
+      { headers: this.headers() }).subscribe({
+      next: d => {
+        this.marking = false;
+        this.details[orderNo] = d;
+        const row = this.orders.find(o => o.order_no === orderNo);
+        if (row) row.status = d.status;
+        if (this.statusFilter === 'DISPATCH') this.orders = this.orders.filter(o => o.order_no !== orderNo);
+      },
+      error: err => { this.marking = false; alert(err?.error?.message || 'Could not update the order'); }
     });
   }
 
