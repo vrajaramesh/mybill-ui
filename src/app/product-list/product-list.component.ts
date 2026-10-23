@@ -182,8 +182,52 @@ export class ProductListComponent implements OnInit {
 
   // ── CRUD ────────────────────────────────────────────────────────────────
 
+  // ── WhatsApp assistant fields (AI instructions, stock per size) ─────────────
+
+  aiInstructions = '';
+  sizeRows: { size: string; stock: number | null }[] = [];
+
+  isPiecesUnit(unit?: string): boolean {
+    return ['pcs', 'pc', 'piece', 'pieces', 'nos'].includes((unit || '').trim().toLowerCase());
+  }
+
+  addSizeRow(): void { this.sizeRows.push({ size: '', stock: 0 }); }
+
+  removeSizeRow(i: number): void { this.sizeRows.splice(i, 1); this.syncStockFromSizes(); }
+
+  /** With sizes entered, the product's stock is their total. */
+  syncStockFromSizes(): void {
+    if (!this.selectedProduct || !this.sizeRows.some(r => r.size.trim())) return;
+    this.selectedProduct.stockQuantity = this.sizeRows.reduce((t, r) => t + (Number(r.stock) || 0), 0);
+  }
+
+  private resetExtras(): void { this.aiInstructions = ''; this.sizeRows = []; }
+
+  private loadExtras(productId: number): void {
+    this.resetExtras();
+    this.productService.getProductExtras(productId).subscribe({
+      next: x => {
+        this.aiInstructions = x.aiInstructions || '';
+        this.sizeRows = (x.sizeStock || []).map(r => ({ size: r.size, stock: Number(r.stock) }));
+      },
+      error: () => {}
+    });
+  }
+
+  /** Saved after the product itself; sizes only for pieces products. */
+  private saveExtras(productId: number, done: () => void): void {
+    const rows = this.sizeRows.filter(r => r.size.trim()).map(r => ({ size: r.size.trim(), stock: Number(r.stock) || 0 }));
+    const body: any = { aiInstructions: this.aiInstructions.trim() || null };
+    if (this.isPiecesUnit(this.selectedProduct?.unit)) body.sizeStock = rows;
+    this.productService.saveProductExtras(productId, body).subscribe({
+      next: () => done(),
+      error: (err) => { alert('Product saved, but AI instructions / sizes were not: ' + (err.error?.error || err.message)); done(); }
+    });
+  }
+
   selectProduct(product: Product): void {
     this.selectedProduct = { ...product };
+    if (product.productId) this.loadExtras(product.productId); else this.resetExtras();
     this.filteredSubCategories = [];
     this.productImages = [];
     const catName = product.category?.categoryName;
@@ -214,6 +258,7 @@ export class ProductListComponent implements OnInit {
       isActive: true,
       subCategory: undefined
     };
+    this.resetExtras();
     this.filteredSubCategories = [];
     this.productImages = [];
   }
@@ -235,6 +280,16 @@ export class ProductListComponent implements OnInit {
       suitableFor: product.suitableFor,
       sizes: product.sizes
     };
+    // The copy gets the original's sizes (stock 0) and AI instructions
+    this.resetExtras();
+    if (product.productId) {
+      this.productService.getProductExtras(product.productId).subscribe({
+        next: x => {
+          this.aiInstructions = x.aiInstructions || '';
+          this.sizeRows = (x.sizeStock || []).map(r => ({ size: r.size, stock: 0 }));
+        }, error: () => {}
+      });
+    }
     this.filteredSubCategories = [];
     this.productImages = [];
     const catName = product.category?.categoryName;
@@ -248,23 +303,26 @@ export class ProductListComponent implements OnInit {
   saveProduct(): void {
     if (!this.selectedProduct) return;
     if (this.selectedProduct.productId) {
-      this.productService.updateProduct(this.selectedProduct.productId, this.selectedProduct).subscribe({
-        next: () => {
+      const id = this.selectedProduct.productId;
+      this.syncStockFromSizes();
+      this.productService.updateProduct(id, this.selectedProduct).subscribe({
+        next: () => this.saveExtras(id, () => {
           this.loadProducts();
           this.selectedProduct = null;
           this.productImages = [];
-        },
+        }),
         error: (err) => alert('Error updating product: ' + (err.error?.message || err.message))
       });
     } else {
+      this.syncStockFromSizes();
       this.productService.createProduct(this.selectedProduct).subscribe({
-        next: (created) => {
+        next: (created) => this.saveExtras(created.productId!, () => {
           this.loadProducts();
           this.selectedProduct = created;
           this.productImages = [];
           this.newProductId = created.productId ?? null;
           this.createdProductName = created.productName;
-        },
+        }),
         error: (err) => alert('Error creating product: ' + (err.error?.message || err.message))
       });
     }

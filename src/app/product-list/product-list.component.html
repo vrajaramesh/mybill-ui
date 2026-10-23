@@ -130,14 +130,17 @@
           </select>
         </div>
 
-        <!-- Available Sizes (only for PCS) -->
-        <div class="form-group span-2" *ngIf="selectedProduct.unit === 'PCS'">
-          <label>Available Sizes</label>
-          <div class="sizes-grid">
-            <label *ngFor="let s of standardSizes" class="size-checkbox">
-              <input type="checkbox" [checked]="isSizeSelected(s)" (change)="toggleSize(s)">
-              {{ s }}
-            </label>
+        <!-- Sizes with stock (readymade, unit PCS) - each product has its own sizes -->
+        <div class="form-group span-2" *ngIf="isPiecesUnit(selectedProduct.unit)">
+          <label>Sizes &amp; stock <span class="subcat-hint">any sizes, e.g. S, M, 38, Free size, 2-3 yrs – stock is their total</span></label>
+          <div class="size-stock">
+            <div class="size-stock-row" *ngFor="let r of sizeRows; let i = index">
+              <input type="text" [(ngModel)]="r.size" [name]="'size' + i" class="form-input" placeholder="Size">
+              <input type="number" min="0" step="1" [(ngModel)]="r.stock" [name]="'sizeStock' + i" class="form-input"
+                     placeholder="Stock" (ngModelChange)="syncStockFromSizes()">
+              <button type="button" class="size-remove" (click)="removeSizeRow(i)" title="Remove size">✕</button>
+            </div>
+            <button type="button" class="size-add" (click)="addSizeRow()">+ Add size</button>
           </div>
         </div>
 
@@ -168,7 +171,9 @@
         <!-- Row: Stock Quantity | Min Stock Level -->
         <div class="form-group">
           <label for="stockQuantity">Stock Quantity</label>
-          <input id="stockQuantity" type="number" step="0.01" [(ngModel)]="selectedProduct.stockQuantity" name="stockQuantity" class="form-input" placeholder="0">
+          <input id="stockQuantity" type="number" step="0.01" [(ngModel)]="selectedProduct.stockQuantity" name="stockQuantity" class="form-input" placeholder="0"
+                 [readonly]="isPiecesUnit(selectedProduct.unit) && sizeRows.length > 0"
+                 [title]="isPiecesUnit(selectedProduct.unit) && sizeRows.length > 0 ? 'Total of the sizes below' : ''">
         </div>
         <div class="form-group">
           <label for="minStockLevel">Min Stock Level</label>
@@ -179,6 +184,13 @@
         <div class="form-group span-2">
           <label for="description">Description</label>
           <textarea id="description" [(ngModel)]="selectedProduct.description" name="description" class="form-textarea" placeholder="Product description"></textarea>
+        </div>
+
+        <!-- Instructions for the WhatsApp AI assistant -->
+        <div class="form-group span-2">
+          <label for="aiInstructions">AI instructions <span class="subcat-hint">what the WhatsApp assistant should know / suggest for this product</span></label>
+          <textarea id="aiInstructions" [(ngModel)]="aiInstructions" name="aiInstructions" class="form-textarea" maxlength="2000"
+                    placeholder="e.g. Minimum 1 m. Suggest 2.5 m for a kurti, 5.5 m for a saree. Soft slub cotton, hand wash cold."></textarea>
         </div>
 
         <!-- Suitable For (full width) -->

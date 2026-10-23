@@ -5,6 +5,11 @@ import { Product, ProductImage } from './product.model';
 import { ProductCategory, ProductSubCategory } from './product-category.model';
 
 
+export interface ProductExtras {
+  aiInstructions: string | null;
+  sizeStock: { size: string; stock: number }[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -23,6 +28,15 @@ export class ProductService {
 
   createProduct(product: Product): Observable<Product> {
     return this.http.post<Product>(this.apiUrl, product);
+  }
+
+  /** WhatsApp assistant fields: AI instructions and (readymade) stock per size. */
+  getProductExtras(id: number): Observable<ProductExtras> {
+    return this.http.get<ProductExtras>(`${this.apiUrl}/${id}/extras`);
+  }
+
+  saveProductExtras(id: number, extras: Partial<ProductExtras>): Observable<ProductExtras> {
+    return this.http.put<ProductExtras>(`${this.apiUrl}/${id}/extras`, extras);
   }
 
   updateProduct(id: number, product: Product): Observable<Product> {

@@ -1,0 +1,94 @@
+<div class="co-container">
+  <div class="co-header">
+    <div>
+      <h2 class="co-title">Collections</h2>
+      <p class="co-sub">Fabrics or readymade garments posted together on Instagram. Each item has the code printed on its
+        photo (e.g. MCS-1A); the WhatsApp assistant sells them – price, stock and sizes come from Products.</p>
+    </div>
+    <button class="btn btn-primary btn-sm" (click)="newCollection()">+ New collection</button>
+  </div>
+
+  <div class="co-layout">
+    <div class="co-list">
+      <div *ngIf="loading" class="co-muted">Loading…</div>
+      <div *ngIf="!loading && !list.length" class="co-muted">No collections yet.</div>
+      <div class="co-row" *ngFor="let c of list" [class.active]="edit?.collection_id === c.collection_id" (click)="open(c)">
+        <img *ngIf="c.cover_image_url" [src]="c.cover_image_url" alt="">
+        <div>
+          <b>{{ c.code }}</b> <span class="co-type" [class.ready]="c.type === 'READYMADE'">{{ c.type === 'FABRIC' ? '🧵 Fabric' : '👗 Readymade' }}</span>
+          <span *ngIf="!c.active" class="co-off">inactive</span>
+          <div class="co-muted">{{ c.name }} · {{ c.item_count }} items</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="co-edit" *ngIf="edit">
+      <div class="co-grid">
+        <label>Code *<input class="form-control" [(ngModel)]="edit.code" placeholder="MCS-1"></label>
+        <label>Type *
+          <select class="form-control" [(ngModel)]="edit.type">
+            <option value="FABRIC">🧵 Fabric (sold by the metre)</option>
+            <option value="READYMADE">👗 Readymade garment (sizes, pieces)</option>
+          </select>
+        </label>
+        <label class="wide">Name *<input class="form-control" [(ngModel)]="edit.name" placeholder="Madras check slub cotton – 8 colours"></label>
+        <label class="wide">Description<textarea class="form-control" rows="2" [(ngModel)]="edit.description"
+          placeholder="What the customer should know (fabric, feel, width, wash care)"></textarea></label>
+        <label class="wide">AI instructions for this collection<textarea class="form-control" rows="2" [(ngModel)]="edit.ai_instructions"
+          placeholder="e.g. Suggest 2.5 m for a kurti. All colours are the same price. Ask which colour by code (1A, 1B…)"></textarea></label>
+        <div class="wide co-cover">
+          <img *ngIf="edit.cover_image_url" [src]="edit.cover_image_url" alt="cover">
+          <label class="btn btn-secondary btn-sm">{{ uploading ? 'Uploading…' : 'Cover photo' }}
+            <input type="file" accept="image/*" hidden (change)="onCover($event)"></label>
+          <label class="co-check"><input type="checkbox" [(ngModel)]="edit.active"> Active (the assistant sells it)</label>
+        </div>
+      </div>
+
+      <h4>Items <span class="co-muted">– one per photo in the post</span></h4>
+      <table class="co-items" *ngIf="items.length">
+        <tr><th>Code</th><th>Product (from Products)</th><th>Colour</th><th>Price · stock</th><th></th></tr>
+        <tr *ngFor="let it of items; let i = index">
+          <td><input class="form-control code" [(ngModel)]="it.item_code" (ngModelChange)="markChanged()" placeholder="MCS-1A"></td>
+          <td>
+            <div class="co-prod">
+              <img *ngIf="it.image_url" [src]="it.image_url" alt="">
+              <span *ngIf="it.product_id; else noProd">{{ it.product_name }} <small class="co-muted">#{{ it.product_id }}</small></span>
+              <ng-template #noProd><span class="co-muted">choose a product</span></ng-template>
+              <button class="btn btn-secondary btn-sm" (click)="startPick(i)">{{ it.product_id ? 'Change' : 'Choose' }}</button>
+            </div>
+            <div class="co-picker" *ngIf="pickFor === i">
+              <input class="form-control" [(ngModel)]="query" (ngModelChange)="search()" placeholder="Search Products…" autofocus>
+              <button *ngFor="let p of results" (click)="pick(p)">{{ p.name }}
+                <small>#{{ p.productId }} · ₹{{ p.price }}/{{ p.unit }} · {{ p.stock || 0 }} in stock</small></button>
+            </div>
+          </td>
+          <td><input class="form-control" [(ngModel)]="it.colour" (ngModelChange)="markChanged()" placeholder="Blue check"></td>
+          <td class="co-muted">
+            <span *ngIf="it.price != null">₹{{ it.price }}/{{ it.unit }}</span>
+            <span *ngIf="it.stock != null"> · {{ +it.stock }}</span>
+            <div *ngIf="it.sizes?.length" class="co-sizes">{{ sizesText(it) }}</div>
+          </td>
+          <td class="co-actions">
+            <button (click)="move(i, -1)" title="Up">↑</button><button (click)="move(i, 1)" title="Down">↓</button>
+            <button (click)="removeItem(i)" title="Remove" class="del">✕</button>
+          </td>
+        </tr>
+      </table>
+      <button class="btn btn-secondary btn-sm" (click)="addItem()">+ Add item</button>
+
+      <ul class="co-warnings" *ngIf="edit.warnings?.length">
+        <li *ngFor="let w of edit.warnings">⚠️ {{ w }}</li>
+      </ul>
+      <p class="co-error" *ngIf="error">{{ error }}</p>
+      <div class="co-buttons">
+        <button class="btn btn-primary" (click)="save()" [disabled]="saving">{{ saving ? 'Saving…' : 'Save' }}</button>
+        <button class="btn btn-secondary" (click)="close()">Close</button>
+        <span class="co-saved" *ngIf="saved">{{ saved }}</span>
+        <button class="btn btn-danger btn-sm co-delete" *ngIf="edit.collection_id" (click)="remove()">Delete</button>
+      </div>
+      <p class="co-muted co-hint">Link the Instagram post or ad to this collection in <b>Ad &amp; post links</b>, or write
+        <b>Code: {{ edit.code || 'MCS-1' }}</b> in the caption. For readymade items, enter sizes &amp; stock in Products.</p>
+    </div>
+    <div class="co-edit co-placeholder" *ngIf="!edit"><p class="co-muted">Select a collection, or create a new one.</p></div>
+  </div>
+</div>

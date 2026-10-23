@@ -851,3 +851,8 @@ input, textarea {
 .sizes-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .size-checkbox { display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 13px; padding: 4px 10px; border: 1px solid #d1d5db; border-radius: 6px; }
 .size-checkbox input[type=checkbox] { cursor: pointer; }
+
+.size-stock { display: flex; flex-direction: column; gap: 6px; }
+.size-stock-row { display: grid; grid-template-columns: 1fr 110px 32px; gap: 6px; align-items: center; }
+.size-remove { border: none; background: #fee2e2; color: #991b1b; border-radius: 6px; height: 32px; cursor: pointer; }
+.size-add { align-self: flex-start; border: 1px dashed #9ca3af; background: #fff; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 0.85rem; }

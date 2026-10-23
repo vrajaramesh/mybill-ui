@@ -246,6 +246,11 @@
             <span class="nav-icon">📈</span>
             <span class="nav-label">Ad performance</span>
           </div>
+          <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='collections'"
+               (click)="navigate('boutique','collections')">
+            <span class="nav-icon">🧵</span>
+            <span class="nav-label">Collections</span>
+          </div>
           <div class="nav-item sub" [class.active]="activeMenu==='boutique' && activeSubMenu==='daily-report'"
                (click)="navigate('boutique','daily-report')">
             <span class="nav-icon">🧠</span>
@@ -363,6 +368,7 @@
     <app-ad-links        *ngIf="activeSection==='ad-links'"></app-ad-links>
     <app-ad-performance  *ngIf="activeSection==='ad-performance'"></app-ad-performance>
     <app-daily-report    *ngIf="activeSection==='daily-report'"></app-daily-report>
+    <app-collections     *ngIf="activeSection==='collections'"></app-collections>
     <app-customer-chats  *ngIf="activeSection==='customer-chats'" [initialChatId]="pendingChatId"></app-customer-chats>
     <app-user-management *ngIf="activeSection==='users'"></app-user-management>
     <app-ecom-orders     *ngIf="activeSection==='ecom-orders'" (click)="loadNewOrderCount()"></app-ecom-orders>

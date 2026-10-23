@@ -24,9 +24,14 @@
       <label>{{ form.source_type === 'AD' ? 'Ad ID' : 'Media ID' }}
         <input type="text" inputmode="numeric" [(ngModel)]="form.source_id" placeholder="e.g. 120210000000000001">
       </label>
-      <label>Design
+      <label>Design or collection
         <select [(ngModel)]="form.design_code">
-          <option *ngFor="let d of designs" [value]="d.code">{{ d.code }} · {{ d.name }}{{ d.active ? '' : ' (inactive)' }}</option>
+          <optgroup label="Designs (stitched to size)">
+            <option *ngFor="let d of designs" [value]="d.code">{{ d.code }} · {{ d.name }}{{ d.active ? '' : ' (inactive)' }}</option>
+          </optgroup>
+          <optgroup label="Collections (fabric / readymade)" *ngIf="collections.length">
+            <option *ngFor="let c of collections" [value]="'COL:' + c.code">{{ c.code }} · {{ c.name }}{{ c.active ? '' : ' (inactive)' }}</option>
+          </optgroup>
         </select>
       </label>
       <label class="mk-wide">Label
@@ -57,7 +62,7 @@
         <td class="mk-strong">{{ l.label }}</td>
         <td>{{ typeLabel[l.source_type] }}</td>
         <td class="mk-mono">{{ l.source_id }}</td>
-        <td>{{ l.design_code }}<span class="mk-muted" *ngIf="l.design_name"> · {{ l.design_name }}</span></td>
+        <td>{{ l.design_code || ('🧵 ' + l.collection_code) }}<span class="mk-muted" *ngIf="l.design_name"> · {{ l.design_name }}</span></td>
         <td><span class="mk-badge" [class.on]="l.active">{{ l.active ? 'Active' : 'Inactive' }}</span></td>
         <td class="mk-row-actions">
           <button class="btn btn-secondary btn-sm" (click)="edit(l)">Edit</button>

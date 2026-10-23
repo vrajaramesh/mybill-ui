@@ -8,8 +8,9 @@ export interface MarketingLink {
   link_id: number;
   source_type: 'AD' | 'IG_MEDIA';
   source_id: string;
-  design_code: string;
-  design_name: string | null;
+  design_code: string | null;
+  design_name: string | null;     // or the collection's name
+  collection_code?: string | null;
   label: string;
   active: boolean;
   created_at: string;
@@ -30,6 +31,7 @@ interface LinkForm { source_type: 'AD' | 'IG_MEDIA'; source_id: string; design_c
 export class AdLinksComponent implements OnInit {
   links: MarketingLink[] = [];
   designs: DesignOption[] = [];
+  collections: { code: string; name: string; type: string; active: boolean }[] = [];
   loading = false;
   error = '';
 
@@ -47,7 +49,12 @@ export class AdLinksComponent implements OnInit {
     this.load();
     this.http.get<DesignOption[]>('/api/boutique-marketing/designs', { headers: this.headers() })
       .subscribe({ next: d => this.designs = d, error: () => this.designs = [] });
+    this.http.get<any[]>('/api/boutique-collections', { headers: this.headers() })
+      .subscribe({ next: c => this.collections = c, error: () => this.collections = [] });
   }
+
+  /** The select holds a design code, or "COL:<code>" for a collection. */
+  private static readonly COL = 'COL:';
 
   private headers(): HttpHeaders {
     const token = localStorage.getItem('mybill_token');
@@ -72,7 +79,8 @@ export class AdLinksComponent implements OnInit {
   edit(link: MarketingLink) {
     this.editingId = link.link_id;
     this.formError = '';
-    this.form = { source_type: link.source_type, source_id: link.source_id, design_code: link.design_code, label: link.label };
+    this.form = { source_type: link.source_type, source_id: link.source_id,
+                  design_code: link.collection_code ? AdLinksComponent.COL + link.collection_code : (link.design_code || ''), label: link.label };
   }
 
   cancel() { this.form = null; this.editingId = null; this.formError = ''; }
@@ -80,8 +88,10 @@ export class AdLinksComponent implements OnInit {
   /** Client-side checks mirror the server (which re-validates). */
   private validate(f: LinkForm): string {
     if (!/^[0-9]{1,40}$/.test(f.source_id.trim())) return 'The ID must be numeric (copy it from Meta Ads Manager / Instagram).';
-    if (!f.design_code) return 'Pick a design.';
-    if (!this.designs.some(d => d.code === f.design_code)) return 'That design does not exist.';
+    if (!f.design_code) return 'Pick a design or collection.';
+    if (f.design_code.startsWith(AdLinksComponent.COL)) {
+      if (!this.collections.some(c => AdLinksComponent.COL + c.code === f.design_code)) return 'That collection does not exist.';
+    } else if (!this.designs.some(d => d.code === f.design_code)) return 'That design does not exist.';
     if (!f.label.trim()) return 'Give the link a label, e.g. "Mustard kurti reel – Diwali boost".';
     if (f.label.trim().length > 150) return 'The label can be at most 150 characters.';
     return '';
@@ -93,9 +103,12 @@ export class AdLinksComponent implements OnInit {
     this.formError = this.validate(f);
     if (this.formError) return;
     this.saving = true;
+    const isCollection = f.design_code.startsWith(AdLinksComponent.COL);
+    const body = { ...f, design_code: isCollection ? null : f.design_code,
+                   collection_code: isCollection ? f.design_code.slice(AdLinksComponent.COL.length) : null };
     const req = this.editingId == null
-      ? this.http.post<MarketingLink>('/api/boutique-marketing/links', f, { headers: this.headers() })
-      : this.http.put<MarketingLink>(`/api/boutique-marketing/links/${this.editingId}`, f, { headers: this.headers() });
+      ? this.http.post<MarketingLink>('/api/boutique-marketing/links', body, { headers: this.headers() })
+      : this.http.put<MarketingLink>(`/api/boutique-marketing/links/${this.editingId}`, body, { headers: this.headers() });
     req.subscribe({
       next: () => { this.saving = false; this.cancel(); this.load(); },
       error: err => { this.saving = false; this.formError = err?.error?.message || 'Could not save the link'; }
