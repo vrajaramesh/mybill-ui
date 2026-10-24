@@ -105,7 +105,12 @@
 
       <div class="cc-reply">
         <div *ngIf="!selected.reply_window_open" class="cc-window">
-          ⏰ More than 24 hours since her last message. WhatsApp and Instagram only allow a reply after she writes again.
+          <ng-container *ngIf="selected.last_customer_message_at; else neverWrote">
+            ⏰ More than 24 hours since her last message. WhatsApp and Instagram only allow a reply after she writes again.
+          </ng-container>
+          <ng-template #neverWrote>
+            💬 She hasn't messaged us yet – we sent her one DM about her Instagram comment. You can reply once she writes to us.
+          </ng-template>
         </div>
         <p class="cc-error" *ngIf="actionError">{{ actionError }}</p>
         <div class="cc-photos" *ngIf="photos.length || uploading">
