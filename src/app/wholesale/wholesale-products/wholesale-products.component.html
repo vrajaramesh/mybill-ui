@@ -142,6 +142,10 @@
             <input id="wpDesigns" class="form-input" [(ngModel)]="draft.availableDesigns" maxlength="1000" placeholder="e.g. Small check, Big check"></div>
           <div class="form-group full"><label for="wpSpecs">Specifications</label>
             <textarea id="wpSpecs" class="form-textarea" [(ngModel)]="draft.specifications" maxlength="4000" placeholder="One per line, e.g.&#10;Width: 58 inch&#10;GSM: 110"></textarea></div>
+          <div class="form-group full"><label for="wpAi">AI instructions for this product</label>
+            <textarea id="wpAi" class="form-textarea" rows="6" [(ngModel)]="draft.aiInstructions" maxlength="4000"
+                      placeholder="How the AI should answer about this product, e.g.&#10;Minimum order 50 metres, sold in 10-metre thaans.&#10;Samples: 1 metre at ₹150, adjusted in the first order.&#10;Transport: we book to your local transport office; charges extra.&#10;For more than 1000 metres, the team gives a special rate."></textarea>
+            <span class="hint">The WhatsApp / Instagram AI follows these when customers ask about this product (prices still come from the price slabs).</span></div>
           <div class="form-group"><label class="checkbox"><input type="checkbox" [(ngModel)]="draft.isActive"> Active</label>
             <span class="hint">Inactive products can't be purchased or priced.</span></div>
           <div class="form-group" *ngIf="selected">

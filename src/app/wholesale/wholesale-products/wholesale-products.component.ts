@@ -89,7 +89,7 @@ export class WholesaleProductsComponent implements OnInit {
       productCode: product.productCode, productName: product.productName, productType: product.productType,
       hsnCode: product.hsnCode, description: product.description, material: product.material, unit: product.unit,
       gstPct: product.gstPct, supplierId: product.supplierId, isActive: product.isActive,
-      fabricType: product.fabricType, availableColors: product.availableColors, availableDesigns: product.availableDesigns, specifications: product.specifications,
+      fabricType: product.fabricType, availableColors: product.availableColors, availableDesigns: product.availableDesigns, specifications: product.specifications, aiInstructions: product.aiInstructions,
     };
   }
 
@@ -140,7 +140,7 @@ export class WholesaleProductsComponent implements OnInit {
       productCode: product.productCode, productName: product.productName, productType: product.productType,
       hsnCode: product.hsnCode, description: product.description, material: product.material, unit: product.unit,
       gstPct: product.gstPct, isActive: !product.isActive,
-      fabricType: product.fabricType, availableColors: product.availableColors, availableDesigns: product.availableDesigns, specifications: product.specifications,
+      fabricType: product.fabricType, availableColors: product.availableColors, availableDesigns: product.availableDesigns, specifications: product.specifications, aiInstructions: product.aiInstructions,
     };
     this.wholesaleService.updateProduct(product.wholesaleProductId, request).subscribe({
       next: updated => {

@@ -35,6 +35,7 @@ export interface WholesaleProduct {
   availableColors?: string | null;
   availableDesigns?: string | null;
   specifications?: string | null;
+  aiInstructions?: string | null;
 }
 
 export interface WholesaleProductRequest {
@@ -54,6 +55,7 @@ export interface WholesaleProductRequest {
   availableColors?: string | null;
   availableDesigns?: string | null;
   specifications?: string | null;
+  aiInstructions?: string | null;
 }
 
 export interface WholesalePurchaseItemRequest {
