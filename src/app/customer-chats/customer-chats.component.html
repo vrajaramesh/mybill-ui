@@ -23,6 +23,7 @@
       <div class="cc-row" *ngFor="let c of chats" [class.active]="selectedId === c.id" (click)="open(c.id)">
         <div class="cc-row-top">
           <span class="cc-channel" [class.ig]="c.channel === 'instagram'">{{ c.channel === 'instagram' ? 'IG' : 'WA' }}</span>
+          <span class="cc-channel cc-wholesale" *ngIf="c.wholesale" title="Srihitha Looms World – wholesale">Wholesale</span>
           <span class="cc-name">{{ name(c) }}</span>
           <span class="cc-wait" *ngIf="c.needs_human">{{ waitingFor(c) }}</span>
         </div>
@@ -52,7 +53,7 @@
     <div class="cc-chat" *ngIf="selected">
       <div class="cc-chat-head">
         <div>
-          <div class="cc-chat-name">{{ name(selected) }}</div>
+          <div class="cc-chat-name">{{ name(selected) }} <span class="cc-channel cc-wholesale" *ngIf="selected.wholesale">Srihitha · Wholesale</span></div>
           <div class="cc-muted">{{ contact(selected) }}<span *ngIf="selected.current_design"> · design {{ selected.current_design }}</span></div>
         </div>
         <div class="cc-actions">

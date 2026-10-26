@@ -19,6 +19,8 @@ export interface ChatSummary {
   current_design: string | null;
   last_customer_message_at: string | null;
   reply_window_open: boolean;
+  firm?: string;          // srisa (retail) / srihitha (wholesale)
+  wholesale?: boolean;
   waiting_messages: number;
   last_message: { direction: string; author: string | null; text: string; status?: string; at: string } | null;
 }
