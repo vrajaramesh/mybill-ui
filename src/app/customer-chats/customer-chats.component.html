@@ -25,10 +25,11 @@
           <span class="cc-channel" [class.ig]="c.channel === 'instagram'">{{ c.channel === 'instagram' ? 'IG' : 'WA' }}</span>
           <span class="cc-channel cc-wholesale" *ngIf="c.wholesale" title="Srihitha Looms World – wholesale">Wholesale</span>
           <span class="cc-name">{{ name(c) }}</span>
-          <span class="cc-wait" *ngIf="c.needs_human">{{ waitingFor(c) }}</span>
+          <span class="cc-ago" *ngIf="c.last_message" [title]="c.last_message.at | date:'d MMM y, h:mm a'">{{ ago(c.last_message.at) }}</span>
         </div>
         <div class="cc-row-mid">
           <span class="cc-reason" *ngIf="c.needs_human">{{ reason(c) }}</span>
+          <span class="cc-wait" *ngIf="c.needs_human">waiting {{ waitingFor(c) }}</span>
           <span class="cc-badge" *ngIf="c.needs_human && c.waiting_messages > 0">{{ c.waiting_messages }} new</span>
           <span class="cc-bot-on" *ngIf="!c.needs_human">AI answering</span>
         </div>

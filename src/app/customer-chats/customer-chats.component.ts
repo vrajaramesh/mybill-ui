@@ -292,4 +292,18 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
     if (minutes < 48 * 60) return `${Math.round(minutes / 60)} h`;
     return `${Math.round(minutes / 1440)} days`;
   }
+
+  /** How long ago the chat's latest message was: "just now", "5 min ago", "3 h ago", "yesterday", "4 days ago", "12 Oct". */
+  ago(at: string | null | undefined): string {
+    if (!at) return '';
+    const then = new Date(at);
+    const minutes = Math.max(0, Math.floor((Date.now() - then.getTime()) / 60000));
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`;
+    const days = Math.floor(minutes / 1440);
+    if (days === 1) return 'yesterday';
+    if (days < 7) return `${days} days ago`;
+    return then.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  }
 }
