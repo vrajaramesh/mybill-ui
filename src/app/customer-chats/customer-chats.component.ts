@@ -262,6 +262,21 @@ export class CustomerChatsComponent implements OnInit, OnDestroy {
 
   keep() { this.action('keep'); }
 
+  /** Remove the chat from both lists until the customer writes again; the AI sends her no reminders meanwhile. */
+  dismiss(c: ChatSummary, event?: Event) {
+    event?.stopPropagation();
+    if (!confirm(`Remove the chat with ${this.name(c)}?\n\nIt disappears from Customer chats and the AI won't reply to `
+        + `her earlier messages or send reminders. If she messages again, the chat comes back and the AI answers her.`)) return;
+    this.http.post(`/api/boutique-chats/${c.id}/dismiss`, {}, { headers: this.headers() }).subscribe({
+      next: () => {
+        this.chats = this.chats.filter(x => x.id !== c.id);
+        if (this.selectedId === c.id) { this.selected = null; this.selectedId = null; }
+        this.load(true);
+      },
+      error: err => { this.actionError = err?.error?.message || 'Could not remove the chat'; }
+    });
+  }
+
   private action(kind: 'resolve' | 'keep') {
     if (!this.selected) return;
     this.http.post(`/api/boutique-chats/${this.selected.id}/${kind}`, {}, { headers: this.headers() }).subscribe({

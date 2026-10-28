@@ -87,3 +87,7 @@
 @keyframes cc-spin { to { transform: rotate(360deg); } }
 
 .cc-reminder { margin-left: 6px; font-size: 0.65rem; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 0 6px; }
+.cc-remove { border: none; background: none; cursor: pointer; font-size: 0.8rem; padding: 0 2px; opacity: 0; transition: opacity .15s; }
+.cc-row:hover .cc-remove, .cc-row.active .cc-remove { opacity: 0.6; }
+.cc-remove:hover { opacity: 1 !important; }
+@media (hover: none) { .cc-remove { opacity: 0.6; } }

@@ -26,6 +26,7 @@
           <span class="cc-channel cc-wholesale" *ngIf="c.wholesale" title="Srihitha Looms World – wholesale">Wholesale</span>
           <span class="cc-name">{{ name(c) }}</span>
           <span class="cc-ago" *ngIf="c.last_message" [title]="c.last_message.at | date:'d MMM y, h:mm a'">{{ ago(c.last_message.at) }}</span>
+          <button type="button" class="cc-remove" title="Remove this chat" (click)="dismiss(c, $event)">🗑</button>
         </div>
         <div class="cc-row-mid">
           <span class="cc-reason" *ngIf="c.needs_human">{{ reason(c) }}</span>
@@ -62,6 +63,7 @@
           <span class="cc-bot-on big" *ngIf="!selected.needs_human">AI is answering this customer</span>
           <button class="btn btn-secondary btn-sm" *ngIf="!selected.needs_human" (click)="keep()">Take over</button>
           <button class="btn btn-primary btn-sm" *ngIf="selected.needs_human" (click)="resolve()">✓ Resolve &amp; return to AI</button>
+          <button class="btn btn-secondary btn-sm" (click)="dismiss(selected)" title="Hide this chat until the customer writes again">🗑 Remove</button>
         </div>
       </div>
 
