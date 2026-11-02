@@ -58,6 +58,9 @@
     <label class="form-label" style="margin-top:8px">Rough Delivery (days)</label>
     <input type="number" class="form-control" [(ngModel)]="form.deliveryDays" placeholder="e.g. 7" min="1">
 
+    <label class="form-label" style="margin-top:8px">Shipping weight per piece (grams) <small>for the courier charge</small></label>
+    <input type="number" class="form-control" [(ngModel)]="form.shipWeightGrams" placeholder="e.g. 350" min="1" step="1">
+
     <label class="form-label" style="margin-top:8px">Description</label>
     <textarea class="form-control" [(ngModel)]="form.description" rows="2"
               placeholder="Style notes, fabric, etc."></textarea>

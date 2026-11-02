@@ -278,7 +278,8 @@ export class ProductListComponent implements OnInit {
       isOnline: product.isOnline,
       tags: product.tags,
       suitableFor: product.suitableFor,
-      sizes: product.sizes
+      sizes: product.sizes,
+      shipWeightGrams: product.shipWeightGrams
     };
     // The copy gets the original's sizes (stock 0) and AI instructions
     this.resetExtras();

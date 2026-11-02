@@ -17,6 +17,8 @@ export interface Product {
   tags?: string;
   suitableFor?: string;
   sizes?: string;
+  /** Shipping weight in grams per metre (fabric) or per piece (readymade): courier delivery charge. */
+  shipWeightGrams?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }

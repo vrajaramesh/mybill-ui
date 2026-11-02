@@ -24,8 +24,8 @@ export class BoutiqueDesignsViewComponent implements OnInit {
   editingId: number | null = null;
 
   form: { garmentType: string; description: string; roughPrice: number | null; deliveryDays: number | null;
-          exactMeasurements: boolean } =
-    { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
+          exactMeasurements: boolean; shipWeightGrams: number | null } =
+    { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false, shipWeightGrams: null };
 
   // Fabrics sold separately: srisafabrics.com product links the WhatsApp assistant sends ("fabric only")
   fabricLinks: { url: string; label: string | null; name?: string | null; price?: number | null; unit?: string | null }[] = [];
@@ -66,7 +66,8 @@ export class BoutiqueDesignsViewComponent implements OnInit {
         description:  d.description || '',
         roughPrice:   d.roughPrice,
         deliveryDays: d.deliveryDays,
-        exactMeasurements: !!d.exactMeasurements
+        exactMeasurements: !!d.exactMeasurements,
+        shipWeightGrams: d.shipWeightGrams ?? null
       };
       this.fabricLinks = (d.fabrics || []).map((f: any) => ({ url: f.url, label: f.label, name: f.name, price: f.price, unit: f.unit }));
       // Populate images from design (images array from API)
@@ -75,7 +76,7 @@ export class BoutiqueDesignsViewComponent implements OnInit {
       }));
     } else {
       this.editingId = null;
-      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false };
+      this.form = { garmentType: '', description: '', roughPrice: null, deliveryDays: null, exactMeasurements: false, shipWeightGrams: null };
       this.fabricLinks = [];
       this.formImages = [];
     }

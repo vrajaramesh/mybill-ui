@@ -82,10 +82,46 @@
           <div class="bo-three-col">
             <!-- Delivery -->
             <div class="bo-section">
-              <div class="bo-measure-box" *ngIf="d.status === 'PAID' || d.status === 'IN_STITCHING'">
+              <div class="bo-measure-box" *ngIf="(d.status === 'PAID' || d.status === 'IN_STITCHING') && !d.awb">
                 <b>{{ isGoods(d) ? '📦 Pack & dispatch' : '🧵 When stitched, dispatch' }}</b>
                 <p class="bo-muted" *ngIf="isGoods(d)">Ready goods – stock was reduced when it was paid.</p>
-                <button class="btn btn-primary btn-sm" (click)="markDispatched(d.order_no)" [disabled]="marking">✓ Mark dispatched</button>
+                <ng-container *ngIf="courierFor !== d.order_no">
+                  <button class="btn btn-primary btn-sm" (click)="openCourier(d.order_no)">🚚 Book Delhivery</button>
+                  <button class="btn btn-secondary btn-sm" (click)="markDispatched(d.order_no)" [disabled]="marking"
+                          title="Sent another way (hand delivery / other courier)">✓ Mark dispatched</button>
+                </ng-container>
+                <div class="bo-courier" *ngIf="courierFor === d.order_no">
+                  <p class="bo-error" *ngIf="courierPlan && !courierPlan.enabled">Delhivery is not set up yet (API token, pickup location, origin pincode).</p>
+                  <p class="bo-muted" *ngIf="courierPlan?.missing">{{ courierPlan?.missing }}</p>
+                  <label>Contents weight (g)
+                    <input type="number" min="1" step="1" [(ngModel)]="courierWeight" (change)="refreshCourierPlan()" class="form-input">
+                  </label>
+                  <label>Cover
+                    <select [(ngModel)]="courierCover" (change)="refreshCourierPlan()" class="form-input">
+                      <option *ngFor="let c of courierPlan?.covers || []" [value]="c">{{ c }}</option>
+                    </select>
+                  </label>
+                  <p *ngIf="courierPlan?.parcel_grams">
+                    Parcel {{ courierPlan?.parcel_grams }} g · charged on {{ courierPlan?.chargeable_grams }} g
+                    <span *ngIf="courierPlan?.estimated_cost != null"> · Delhivery ≈ ₹{{ courierPlan?.estimated_cost | number:'1.0-0' }}</span>
+                    <span class="bo-muted"> (customer paid ₹{{ d.delivery_charge | number:'1.0-0' }})</span>
+                  </p>
+                  <p class="bo-error" *ngIf="courierError">{{ courierError }}</p>
+                  <button class="btn btn-primary btn-sm" (click)="bookCourier()"
+                          [disabled]="courierBusy || !courierWeight || (courierPlan && !courierPlan.enabled)">
+                    {{ courierBusy ? 'Please wait…' : 'Book pickup' }}</button>
+                  <button class="btn btn-secondary btn-sm" (click)="courierFor = null" [disabled]="courierBusy">Close</button>
+                </div>
+              </div>
+              <div class="bo-measure-box" *ngIf="d.awb">
+                <b>🚚 {{ d.courier || 'Courier' }} · AWB {{ d.awb }}</b>
+                <p>{{ d.courier_status || 'Booked' }}<span *ngIf="d.courier_location"> · {{ d.courier_location }}</span>
+                  <span class="bo-muted" *ngIf="d.courier_status_at"> ({{ d.courier_status_at | date:'d MMM, h:mm a' }})</span></p>
+                <p class="bo-muted" *ngIf="d.ship_weight_grams">Parcel {{ d.ship_weight_grams }} g · shipped {{ d.shipped_at | date:'d MMM, h:mm a' }}</p>
+                <a class="btn btn-secondary btn-sm" [href]="d.tracking_url" target="_blank" rel="noopener">Track</a>
+                <button class="btn btn-secondary btn-sm" (click)="printLabel(d.order_no)">🖨 Label</button>
+                <button class="btn btn-secondary btn-sm" *ngIf="d.status === 'DISPATCHED' && (!d.courier_status || d.courier_status === 'Manifested')"
+                        (click)="cancelCourier(d.order_no)">Cancel shipment</button>
               </div>
               <div class="bo-measure-box" *ngIf="d.measurement_status">
                 <ng-container *ngIf="d.measurement_status === 'PENDING_CALL'">

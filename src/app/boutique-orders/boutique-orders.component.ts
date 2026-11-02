@@ -45,6 +45,17 @@ export interface BoutiqueOrderOption {
   price_delta: number;
 }
 
+export interface CourierPlan {
+  enabled: boolean;
+  contents_grams: number | null;
+  cover: string | null;
+  covers: string[];
+  parcel_grams: number | null;
+  chargeable_grams: number | null;
+  estimated_cost: number | null;
+  missing: string | null;
+}
+
 export interface BoutiqueOrderDetail {
   order_no: string;
   status: string;
@@ -68,6 +79,15 @@ export interface BoutiqueOrderDetail {
   total: number;
   currency: string;
   estimated_delivery_date: string | null;
+  courier?: string | null;
+  awb?: string | null;
+  tracking_url?: string | null;
+  courier_status?: string | null;
+  courier_location?: string | null;
+  courier_status_at?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  ship_weight_grams?: number | null;
   paid_at: string | null;
   payment: BoutiqueOrderPayment | null;
   source_type: string | null;
@@ -232,6 +252,83 @@ export class BoutiqueOrdersComponent implements OnInit {
       },
       error: err => { this.marking = false; alert(err?.error?.message || 'Could not update the order'); }
     });
+  }
+
+  // ── Courier (Delhivery) ──────────────────────────────────────────────────
+
+  courierFor: string | null = null;            // order whose booking form is open
+  courierPlan: CourierPlan | null = null;
+  courierWeight: number | null = null;         // contents grams typed by staff (overrides the items' weight)
+  courierCover = '';
+  courierBusy = false;
+  courierError = '';
+
+  openCourier(orderNo: string) {
+    this.courierFor = orderNo;
+    this.courierPlan = null;
+    this.courierWeight = null;
+    this.courierCover = '';
+    this.courierError = '';
+    this.refreshCourierPlan();
+  }
+
+  refreshCourierPlan() {
+    if (!this.courierFor) return;
+    const params: { [k: string]: string } = {};
+    if (this.courierWeight) params['weight'] = String(this.courierWeight);
+    if (this.courierCover) params['cover'] = this.courierCover;
+    this.courierBusy = true;
+    this.http.get<CourierPlan>(`/api/boutique-orders/${encodeURIComponent(this.courierFor)}/courier/plan`,
+      { headers: this.headers(), params }).subscribe({
+      next: p => {
+        this.courierBusy = false;
+        this.courierPlan = p;
+        if (!this.courierCover && p.cover) this.courierCover = p.cover;
+        if (this.courierWeight == null && p.contents_grams) this.courierWeight = p.contents_grams;
+      },
+      error: err => { this.courierBusy = false; this.courierError = err?.error?.message || 'Could not get the parcel details'; }
+    });
+  }
+
+  bookCourier() {
+    if (!this.courierFor) return;
+    const orderNo = this.courierFor;
+    if (!confirm(`Book Delhivery pickup for ${orderNo}? The customer gets the tracking link on WhatsApp.`)) return;
+    this.courierBusy = true;
+    this.courierError = '';
+    this.http.post<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/courier`,
+      { weight_grams: this.courierWeight, cover: this.courierCover || null }, { headers: this.headers() }).subscribe({
+      next: d => {
+        this.courierBusy = false;
+        this.courierFor = null;
+        this.updateRow(orderNo, d);
+      },
+      error: err => { this.courierBusy = false; this.courierError = err?.error?.message || 'Could not book the courier'; }
+    });
+  }
+
+  printLabel(orderNo: string) {
+    this.http.get<{ url: string }>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/courier/label`,
+      { headers: this.headers() }).subscribe({
+      next: r => window.open(r.url, '_blank'),
+      error: err => alert(err?.error?.message || 'Label not available yet - try again in a minute')
+    });
+  }
+
+  cancelCourier(orderNo: string) {
+    if (!confirm(`Cancel the Delhivery shipment for ${orderNo}? Only possible before pickup.`)) return;
+    this.http.post<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/courier/cancel`, {},
+      { headers: this.headers() }).subscribe({
+      next: d => this.updateRow(orderNo, d),
+      error: err => alert(err?.error?.message || 'Could not cancel the shipment')
+    });
+  }
+
+  private updateRow(orderNo: string, d: BoutiqueOrderDetail) {
+    this.details[orderNo] = d;
+    const row = this.orders.find(o => o.order_no === orderNo);
+    if (row) row.status = d.status;
+    if (this.statusFilter === 'DISPATCH' && d.status !== 'PAID') this.orders = this.orders.filter(o => o.order_no !== orderNo);
   }
 
   sizeLabel(code: string | null): string {
