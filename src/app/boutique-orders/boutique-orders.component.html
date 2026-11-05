@@ -82,14 +82,45 @@
           <div class="bo-three-col">
             <!-- Delivery -->
             <div class="bo-section">
-              <div class="bo-measure-box" *ngIf="(d.status === 'PAID' || d.status === 'IN_STITCHING') && !d.awb">
-                <b>{{ isGoods(d) ? '📦 Pack & dispatch' : '🧵 When stitched, dispatch' }}</b>
-                <p class="bo-muted" *ngIf="isGoods(d)">Ready goods – stock was reduced when it was paid.</p>
-                <ng-container *ngIf="courierFor !== d.order_no">
-                  <button class="btn btn-primary btn-sm" (click)="openCourier(d.order_no)">🚚 Book Delhivery</button>
-                  <button class="btn btn-secondary btn-sm" (click)="markDispatched(d.order_no)" [disabled]="marking"
-                          title="Sent another way (hand delivery / other courier)">✓ Mark dispatched</button>
+              <div class="bo-measure-box bo-dropship" *ngIf="d.order_type === 'DROPSHIP' && supplier[d.order_no] as v">
+                <b>🛒 Dropship · {{ v.supplier_name || 'supplier' }}</b>
+                <p>Pay supplier <b>₹{{ v.payable | number:'1.0-0' }}</b>
+                  <span class="bo-muted">(cost ₹{{ v.cost | number:'1.0-0' }} + courier ₹{{ v.courier | number:'1.0-0' }}{{ v.zone ? ', ' + v.zone.toLowerCase() : '' }})</span>
+                  · margin <b [class.bo-error]="v.margin < 0">₹{{ v.margin | number:'1.0-0' }}</b></p>
+                <p class="bo-muted" *ngIf="v.supplier_payment_details">Pay to: {{ v.supplier_payment_details }}</p>
+                <ng-container *ngIf="d.status !== 'DRAFT' && d.status !== 'CANCELLED'">
+                  <p>1️⃣ <button class="btn btn-primary btn-sm" (click)="sendToSupplier(d.order_no)" [disabled]="!v.whatsapp_url"
+                        [title]="v.whatsapp_url ? '' : 'Add the supplier WhatsApp number in Collections → Suppliers'">Send order to supplier (WhatsApp)</button>
+                    <button class="btn btn-secondary btn-sm" (click)="copySupplierMessage(d.order_no)">Copy</button>
+                    <span class="bo-muted" *ngIf="v.sent_at"> ✓ sent {{ v.sent_at | date:'d MMM, h:mm a' }}</span></p>
+                  <p *ngIf="!v.paid_at">2️⃣ <input class="form-input bo-ref" [(ngModel)]="payRef" placeholder="UPI / bank ref (optional)">
+                    <button class="btn btn-primary btn-sm" (click)="markSupplierPaid(d.order_no)" [disabled]="supplierBusy">✓ Supplier paid</button></p>
+                  <p *ngIf="v.paid_at">2️⃣ ✓ Supplier paid {{ v.paid_at | date:'d MMM, h:mm a' }}<span *ngIf="v.paid_ref"> · ref {{ v.paid_ref }}</span></p>
+                  <p *ngIf="!d.awb">3️⃣ When the supplier sends the tracking number:
+                    <button class="btn btn-primary btn-sm" (click)="openShip(d.order_no)">Enter tracking</button></p>
                 </ng-container>
+                <p class="bo-muted" *ngIf="d.status === 'DRAFT' || d.status === 'CANCELLED'">Not paid – nothing to send to the supplier.</p>
+              </div>
+              <div class="bo-measure-box" *ngIf="(d.status === 'PAID' || d.status === 'IN_STITCHING') && !d.awb && (d.order_type !== 'DROPSHIP' || shipFor === d.order_no)">
+                <b>{{ d.order_type === 'DROPSHIP' ? '🚚 Tracking from the supplier' : isGoods(d) ? '📦 Pack & dispatch' : '🧵 When stitched, dispatch' }}</b>
+                <p class="bo-muted" *ngIf="isGoods(d) && d.order_type !== 'DROPSHIP'">Ready goods – stock was reduced when it was paid.</p>
+                <ng-container *ngIf="courierFor !== d.order_no && shipFor !== d.order_no">
+                  <button class="btn btn-primary btn-sm" (click)="openCourier(d.order_no)">🚚 Book Delhivery</button>
+                  <button class="btn btn-secondary btn-sm" (click)="openShip(d.order_no)"
+                          title="Sent with another courier: type its tracking number">✍ Other courier</button>
+                  <button class="btn btn-secondary btn-sm" (click)="markDispatched(d.order_no)" [disabled]="marking"
+                          title="Sent another way (hand delivery), no tracking">✓ Mark dispatched</button>
+                </ng-container>
+                <div class="bo-courier" *ngIf="shipFor === d.order_no">
+                  <label>Courier *<input class="form-input" [(ngModel)]="ship.courier" placeholder="DTDC / Delhivery / India Post"></label>
+                  <label>Tracking number (AWB) *<input class="form-input" [(ngModel)]="ship.awb"></label>
+                  <label>Tracking link<input class="form-input" [(ngModel)]="ship.tracking_url" placeholder="https://… (optional)"></label>
+                  <p class="bo-muted">The customer gets this on WhatsApp. A Delhivery number is then tracked automatically.</p>
+                  <p class="bo-error" *ngIf="shipError">{{ shipError }}</p>
+                  <button class="btn btn-primary btn-sm" (click)="saveShipment()" [disabled]="courierBusy || !ship.courier.trim() || !ship.awb.trim()">
+                    {{ courierBusy ? 'Please wait…' : 'Send tracking to customer' }}</button>
+                  <button class="btn btn-secondary btn-sm" (click)="shipFor = null" [disabled]="courierBusy">Close</button>
+                </div>
                 <div class="bo-courier" *ngIf="courierFor === d.order_no">
                   <p class="bo-error" *ngIf="courierPlan && !courierPlan.enabled">Delhivery is not set up yet (API token, pickup location, origin pincode).</p>
                   <p class="bo-muted" *ngIf="courierPlan?.missing">{{ courierPlan?.missing }}</p>
@@ -118,10 +149,12 @@
                 <p>{{ d.courier_status || 'Booked' }}<span *ngIf="d.courier_location"> · {{ d.courier_location }}</span>
                   <span class="bo-muted" *ngIf="d.courier_status_at"> ({{ d.courier_status_at | date:'d MMM, h:mm a' }})</span></p>
                 <p class="bo-muted" *ngIf="d.ship_weight_grams">Parcel {{ d.ship_weight_grams }} g · shipped {{ d.shipped_at | date:'d MMM, h:mm a' }}</p>
-                <a class="btn btn-secondary btn-sm" [href]="d.tracking_url" target="_blank" rel="noopener">Track</a>
-                <button class="btn btn-secondary btn-sm" (click)="printLabel(d.order_no)">🖨 Label</button>
-                <button class="btn btn-secondary btn-sm" *ngIf="d.status === 'DISPATCHED' && (!d.courier_status || d.courier_status === 'Manifested')"
-                        (click)="cancelCourier(d.order_no)">Cancel shipment</button>
+                <a class="btn btn-secondary btn-sm" *ngIf="d.tracking_url" [href]="d.tracking_url" target="_blank" rel="noopener">Track</a>
+                <button class="btn btn-secondary btn-sm" *ngIf="isDelhivery(d) && d.courier_status !== 'Shipped'" (click)="printLabel(d.order_no)">🖨 Label</button>
+                <button class="btn btn-secondary btn-sm" *ngIf="d.status === 'DISPATCHED' && (!d.courier_status || d.courier_status === 'Manifested' || d.courier_status === 'Shipped')"
+                        (click)="cancelCourier(d.order_no)">{{ d.courier_status === 'Shipped' ? 'Clear tracking' : 'Cancel shipment' }}</button>
+                <button class="btn btn-secondary btn-sm" *ngIf="d.status === 'DISPATCHED' && !isDelhivery(d)"
+                        (click)="markDelivered(d.order_no)">✓ Delivered</button>
               </div>
               <div class="bo-measure-box" *ngIf="d.measurement_status">
                 <ng-container *ngIf="d.measurement_status === 'PENDING_CALL'">

@@ -56,6 +56,25 @@ export interface CourierPlan {
   missing: string | null;
 }
 
+/** GET /api/boutique-orders/{no}/supplier: the supplier side of a dropship order. */
+export interface SupplierView {
+  supplier_name: string | null;
+  supplier_phone: string | null;
+  supplier_payment_details: string | null;
+  zone: string | null;
+  cost: number;
+  courier: number;
+  payable: number;
+  customer_paid: number;
+  margin: number;
+  sent_at: string | null;
+  paid_at: string | null;
+  paid_ref: string | null;
+  paid_by: string | null;
+  message: string;
+  whatsapp_url: string | null;
+}
+
 export interface BoutiqueOrderDetail {
   order_no: string;
   status: string;
@@ -194,7 +213,7 @@ export class BoutiqueOrdersComponent implements OnInit {
     this.loadingDetail = orderNo;
     this.http.get<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}`,
       { headers: this.headers() }).subscribe({
-      next: d => { this.details[orderNo] = d; this.loadingDetail = null; },
+      next: d => { this.details[orderNo] = d; this.loadingDetail = null; if (d.order_type === 'DROPSHIP') this.loadSupplier(orderNo); },
       error: () => { this.loadingDetail = null; }
     });
   }
@@ -233,7 +252,81 @@ export class BoutiqueOrdersComponent implements OnInit {
     return !!o.order_type && o.order_type !== 'GARMENT';
   }
 
-  readonly goodsLabel: { [t: string]: string } = { FABRIC: '🧵 Fabric', READYMADE: '👗 Readymade', MIXED: '📦 Fabric + readymade' };
+  readonly goodsLabel: { [t: string]: string } = { FABRIC: '🧵 Fabric', READYMADE: '👗 Readymade', MIXED: '📦 Fabric + readymade',
+                                                   DROPSHIP: '🛒 Dropship' };
+
+  // ── Dropship: the supplier ships it ──────────────────────────────────────
+
+  supplier: { [orderNo: string]: SupplierView } = {};
+  supplierBusy = false;
+  payRef = '';
+  shipFor: string | null = null;               // order whose "enter tracking" form is open
+  ship = { courier: '', awb: '', tracking_url: '' };
+  shipError = '';
+
+  loadSupplier(orderNo: string) {
+    this.http.get<SupplierView>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/supplier`, { headers: this.headers() })
+      .subscribe({ next: v => this.supplier[orderNo] = v, error: () => {} });
+  }
+
+  /** Opens WhatsApp with the order for the supplier, and notes that it was sent. */
+  sendToSupplier(orderNo: string) {
+    const v = this.supplier[orderNo];
+    if (!v?.whatsapp_url) return;
+    window.open(v.whatsapp_url, '_blank');
+    this.http.post<SupplierView>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/supplier/sent`, {}, { headers: this.headers() })
+      .subscribe({ next: r => this.supplier[orderNo] = r, error: () => {} });
+  }
+
+  copySupplierMessage(orderNo: string) {
+    const v = this.supplier[orderNo];
+    if (v) navigator.clipboard?.writeText(v.message).then(() => alert('Order copied – paste it in the supplier chat'));
+  }
+
+  markSupplierPaid(orderNo: string) {
+    const v = this.supplier[orderNo];
+    if (!v || !confirm(`Paid ₹${v.payable} to ${v.supplier_name || 'the supplier'} for ${orderNo}?`)) return;
+    this.supplierBusy = true;
+    this.http.post<SupplierView>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/supplier/paid`,
+      { reference: this.payRef.trim() || null }, { headers: this.headers() }).subscribe({
+      next: r => { this.supplierBusy = false; this.supplier[orderNo] = r; this.payRef = ''; },
+      error: err => { this.supplierBusy = false; alert(err?.error?.message || 'Could not save'); }
+    });
+  }
+
+  openShip(orderNo: string) {
+    this.shipFor = orderNo;
+    this.ship = { courier: '', awb: '', tracking_url: '' };
+    this.shipError = '';
+  }
+
+  /** Tracking number from the supplier (or another courier): the customer gets it on WhatsApp. */
+  saveShipment() {
+    if (!this.shipFor) return;
+    const orderNo = this.shipFor;
+    if (!confirm(`Send ${this.ship.courier} tracking ${this.ship.awb} to the customer of ${orderNo}?`)) return;
+    this.courierBusy = true;
+    this.shipError = '';
+    this.http.post<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/shipment`, this.ship,
+      { headers: this.headers() }).subscribe({
+      next: d => { this.courierBusy = false; this.shipFor = null; this.updateRow(orderNo, d); },
+      error: err => { this.courierBusy = false; this.shipError = err?.error?.message || 'Could not save the tracking number'; }
+    });
+  }
+
+  markDelivered(orderNo: string) {
+    if (!confirm(`Mark ${orderNo} as delivered? The customer gets a "delivered" message.`)) return;
+    this.http.post<BoutiqueOrderDetail>(`/api/boutique-orders/${encodeURIComponent(orderNo)}/delivered`, {},
+      { headers: this.headers() }).subscribe({
+      next: d => this.updateRow(orderNo, d),
+      error: err => alert(err?.error?.message || 'Could not update the order')
+    });
+  }
+
+  /** Delhivery parcels are tracked automatically; other couriers are marked delivered by staff. */
+  isDelhivery(d: BoutiqueOrderDetail): boolean {
+    return !d.courier || d.courier.toUpperCase() === 'DELHIVERY';
+  }
 
   marking = false;
 

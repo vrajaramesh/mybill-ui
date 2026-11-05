@@ -140,3 +140,6 @@
 .bo-courier label { display: flex; flex-direction: column; font-size: 0.8rem; color: #555; gap: 2px; }
 .bo-courier .form-input { max-width: 180px; }
 .bo-measure-box .btn { margin-right: 6px; margin-top: 4px; }
+.bo-dropship { background: #eff6ff; border-color: #bfdbfe; }
+.bo-dropship p { margin: 4px 0; }
+.bo-ref { width: 170px; display: inline-block; margin-right: 6px; }

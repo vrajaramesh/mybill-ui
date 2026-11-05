@@ -5,7 +5,47 @@
       <p class="co-sub">Fabrics or readymade garments posted together on Instagram. Each item has the code printed on its
         photo (e.g. MCS-1A); the WhatsApp assistant sells them – price, stock and sizes come from Products.</p>
     </div>
-    <button class="btn btn-primary btn-sm" (click)="newCollection()">+ New collection</button>
+    <div class="co-head-btns">
+      <button class="btn btn-secondary btn-sm" (click)="showSuppliers = !showSuppliers">🏭 Suppliers ({{ suppliers.length }})</button>
+      <button class="btn btn-primary btn-sm" (click)="newCollection()">+ New collection</button>
+    </div>
+  </div>
+
+  <div class="co-suppliers" *ngIf="showSuppliers">
+    <div class="co-sup-head">
+      <h4>Dropship suppliers <span class="co-muted">– they keep the stock and ship to your customer; you pay them per order</span></h4>
+      <button class="btn btn-primary btn-sm" (click)="newSupplier()">+ New supplier</button>
+    </div>
+    <table class="co-items" *ngIf="suppliers.length">
+      <tr><th>Name</th><th>WhatsApp</th><th>Ships from</th><th>Dispatch</th><th>Pay to</th><th></th></tr>
+      <tr *ngFor="let s of suppliers" [class.co-inactive]="!s.active">
+        <td><b>{{ s.name }}</b> <span *ngIf="!s.active" class="co-off">inactive</span>
+          <div class="co-muted" *ngIf="s.contactPerson">{{ s.contactPerson }}</div></td>
+        <td>{{ s.phone || '–' }}</td>
+        <td>{{ s.pincode || '⚠️ no pincode' }}</td>
+        <td>{{ s.dispatchDays }} day(s)</td>
+        <td class="co-muted">{{ s.paymentDetails || '–' }}</td>
+        <td><button class="btn btn-secondary btn-sm" (click)="editSupplier(s)">Edit</button></td>
+      </tr>
+    </table>
+    <p class="co-muted" *ngIf="!suppliers.length">No suppliers yet.</p>
+    <div class="co-grid co-sup-form" *ngIf="supplierEdit">
+      <label>Supplier name *<input class="form-control" [(ngModel)]="supplierEdit.name" placeholder="Sri Lakshmi Sarees, Surat"></label>
+      <label>Contact person<input class="form-control" [(ngModel)]="supplierEdit.contactPerson"></label>
+      <label>WhatsApp number *<input class="form-control" [(ngModel)]="supplierEdit.phone" placeholder="98xxxxxxxx"></label>
+      <label>Pincode they ship from *<input class="form-control" [(ngModel)]="supplierEdit.pincode" maxlength="6" placeholder="395002"></label>
+      <label>Dispatch time (days)<input class="form-control" type="number" min="0" max="30" [(ngModel)]="supplierEdit.dispatchDays"></label>
+      <label>Payment details (UPI / bank)<input class="form-control" [(ngModel)]="supplierEdit.paymentDetails" placeholder="name@upi"></label>
+      <label class="wide">Address<textarea class="form-control" rows="2" [(ngModel)]="supplierEdit.address"></textarea></label>
+      <label class="wide">Notes<textarea class="form-control" rows="2" [(ngModel)]="supplierEdit.notes"></textarea></label>
+      <div class="wide co-buttons">
+        <label class="co-check"><input type="checkbox" [(ngModel)]="supplierEdit.active"> Active</label>
+        <button class="btn btn-primary btn-sm" (click)="saveSupplier()">Save supplier</button>
+        <button class="btn btn-secondary btn-sm" (click)="supplierEdit = null">Cancel</button>
+        <button class="btn btn-danger btn-sm co-delete" *ngIf="supplierEdit.id" (click)="deleteSupplier(supplierEdit)">Delete</button>
+      </div>
+      <p class="co-error wide" *ngIf="supplierError">{{ supplierError }}</p>
+    </div>
   </div>
 
   <div class="co-layout">
@@ -15,7 +55,7 @@
       <div class="co-row" *ngFor="let c of list" [class.active]="edit?.collection_id === c.collection_id" (click)="open(c)">
         <img *ngIf="c.cover_image_url" [src]="c.cover_image_url" alt="">
         <div>
-          <b>{{ c.code }}</b> <span class="co-type" [class.ready]="c.type === 'READYMADE'">{{ c.type === 'FABRIC' ? '🧵 Fabric' : '👗 Readymade' }}</span>
+          <b>{{ c.code }}</b> <span class="co-type" [class.ready]="c.type === 'READYMADE'" [class.drop]="c.type === 'DROPSHIP'">{{ typeLabel(c.type) }}</span>
           <span *ngIf="!c.active" class="co-off">inactive</span>
           <div class="co-muted">{{ c.name }} · {{ c.item_count }} items</div>
         </div>
@@ -26,11 +66,29 @@
       <div class="co-grid">
         <label>Code *<input class="form-control" [(ngModel)]="edit.code" placeholder="MCS-1"></label>
         <label>Type *
-          <select class="form-control" [(ngModel)]="edit.type">
+          <select class="form-control" [(ngModel)]="edit.type" (ngModelChange)="onTypeChange()">
             <option value="FABRIC">🧵 Fabric (sold by the metre)</option>
             <option value="READYMADE">👗 Readymade garment (sizes, pieces)</option>
+            <option value="DROPSHIP">🛒 Dropship (supplier keeps stock &amp; ships)</option>
           </select>
         </label>
+        <ng-container *ngIf="edit.type === 'DROPSHIP' && edit.courier_slabs">
+          <label class="wide">Supplier *
+            <select class="form-control" [(ngModel)]="edit.supplier_id">
+              <option [ngValue]="null">– choose –</option>
+              <option *ngFor="let s of activeSuppliers" [ngValue]="s.id">{{ s.name }}{{ s.pincode ? ' · ' + s.pincode : '' }} · {{ s.dispatchDays }}d dispatch</option>
+            </select>
+          </label>
+          <div class="wide co-slabs">
+            <div class="co-muted">Supplier's courier charge (₹, added as the delivery charge) by distance from their pincode:</div>
+            <div class="co-slab-grid">
+              <label *ngFor="let z of zones">{{ z.label }}<input class="form-control" type="number" min="0"
+                [(ngModel)]="edit.courier_slabs[z.key]" placeholder="₹"><small class="co-muted">{{ z.hint }}</small></label>
+              <label>Each extra piece<input class="form-control" type="number" min="0" [(ngModel)]="edit.courier_extra_per_piece"
+                placeholder="₹ 0"><small class="co-muted">added per piece after the first</small></label>
+            </div>
+          </div>
+        </ng-container>
         <label class="wide">Name *<input class="form-control" [(ngModel)]="edit.name" placeholder="Madras check slub cotton – 8 colours"></label>
         <label class="wide">Description<textarea class="form-control" rows="2" [(ngModel)]="edit.description"
           placeholder="What the customer should know (fabric, feel, width, wash care)"></textarea></label>
@@ -46,7 +104,7 @@
 
       <h4>Items <span class="co-muted">– one per photo in the post</span></h4>
       <table class="co-items" *ngIf="items.length">
-        <tr><th>Code</th><th>Product (from Products)</th><th>Colour</th><th>Price · stock</th><th></th></tr>
+        <tr><th>Code</th><th>Product (from Products)</th><th>Colour</th><th>{{ edit.type === 'DROPSHIP' ? 'Price · cost · margin' : 'Price · stock' }}</th><th></th></tr>
         <tr *ngFor="let it of items; let i = index">
           <td><input class="form-control code" [(ngModel)]="it.item_code" (ngModelChange)="markChanged()" placeholder="MCS-1A"></td>
           <td>
@@ -65,7 +123,11 @@
           <td><input class="form-control" [(ngModel)]="it.colour" (ngModelChange)="markChanged()" placeholder="Blue check"></td>
           <td class="co-muted">
             <span *ngIf="it.price != null">₹{{ it.price }}/{{ it.unit }}</span>
-            <span *ngIf="it.stock != null"> · {{ +it.stock }}</span>
+            <ng-container *ngIf="edit.type === 'DROPSHIP'; else stockCell">
+              <span *ngIf="it.cost_price != null"> · cost ₹{{ it.cost_price }}</span>
+              <b *ngIf="margin(it) != null" [class.co-neg]="margin(it)! < 0"> · ₹{{ margin(it) }}</b>
+            </ng-container>
+            <ng-template #stockCell><span *ngIf="it.stock != null"> · {{ +it.stock }}</span></ng-template>
             <div *ngIf="it.sizes?.length" class="co-sizes">{{ sizesText(it) }}</div>
           </td>
           <td class="co-actions">
@@ -87,7 +149,9 @@
         <button class="btn btn-danger btn-sm co-delete" *ngIf="edit.collection_id" (click)="remove()">Delete</button>
       </div>
       <p class="co-muted co-hint">Link the Instagram post or ad to this collection in <b>Ad &amp; post links</b>, or write
-        <b>Code: {{ edit.code || 'MCS-1' }}</b> in the caption. For readymade items, enter sizes &amp; stock in Products.</p>
+        <b>Code: {{ edit.code || 'MCS-1' }}</b> in the caption. For readymade items, enter sizes &amp; stock in Products.
+        <span *ngIf="edit.type === 'DROPSHIP'">For dropship items: in Products enter the selling price, the <b>cost price</b>
+        (what the supplier charges you), unit <b>pcs</b> and the sizes (stock can stay 0 – the supplier keeps it).</span></p>
     </div>
     <div class="co-edit co-placeholder" *ngIf="!edit"><p class="co-muted">Select a collection, or create a new one.</p></div>
   </div>

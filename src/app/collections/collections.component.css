@@ -41,3 +41,15 @@
 .co-delete { margin-left: auto; }
 .co-hint { margin-top: 10px; }
 @media (max-width: 900px) { .co-layout { grid-template-columns: 1fr; } .co-grid { grid-template-columns: 1fr; } }
+.co-head-btns { display: flex; gap: 8px; }
+.co-type.drop { background: #eff6ff; color: #1d4ed8; }
+.co-suppliers { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; padding: 12px 16px; margin-bottom: 14px; }
+.co-sup-head { display: flex; justify-content: space-between; align-items: center; }
+.co-sup-head h4 { margin: 0 0 8px; font-size: 0.95rem; }
+.co-sup-form { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
+.co-inactive { opacity: 0.6; }
+.co-slabs { background: #f9fafb; border-radius: 8px; padding: 8px 10px; }
+.co-slab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 6px; }
+.co-slab-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 0.78rem; }
+.co-slab-grid small { font-size: 0.68rem; }
+.co-neg { color: #b91c1c; }
