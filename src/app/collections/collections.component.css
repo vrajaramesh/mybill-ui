@@ -53,3 +53,4 @@
 .co-slab-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 0.78rem; }
 .co-slab-grid small { font-size: 0.68rem; }
 .co-neg { color: #b91c1c; }
+.co-wslabs { margin-top: 6px; font-size: 13px; }

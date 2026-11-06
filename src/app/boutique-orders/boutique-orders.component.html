@@ -82,6 +82,12 @@
           <div class="bo-three-col">
             <!-- Delivery -->
             <div class="bo-section">
+              <div class="bo-measure-box bo-dropship" *ngIf="d.order_type === 'WHOLESALE'">
+                <b>🏭 Wholesale order</b>
+                <p>Quotation draft <b>{{ d.wholesale_quotation_id ? '#' + d.wholesale_quotation_id : '' }}</b> is in
+                  <b>Wholesale → Quotations</b>: add transport, issue it and send it to the buyer with your bank / PhonePe QR.</p>
+                <p class="bo-muted">No payment link – the buyer pays against the final quotation.</p>
+              </div>
               <div class="bo-measure-box bo-dropship" *ngIf="d.order_type === 'DROPSHIP' && supplier[d.order_no] as v">
                 <b>🛒 Dropship · {{ v.supplier_name || 'supplier' }}</b>
                 <p>Pay supplier <b>₹{{ v.payable | number:'1.0-0' }}</b>
@@ -212,6 +218,7 @@
                   <td class="bo-num">₹{{ item.line_total | number:'1.2-2' }}</td>
                 </tr>
                 <tr><td>Subtotal</td><td class="bo-num">₹{{ d.subtotal | number:'1.2-2' }}</td></tr>
+                <tr *ngIf="d.gst_amount"><td>GST (estimate)</td><td class="bo-num">₹{{ d.gst_amount | number:'1.2-2' }}</td></tr>
                 <tr><td>Delivery</td><td class="bo-num">{{ d.delivery_charge > 0 ? '₹' + (d.delivery_charge | number:'1.2-2') : 'Free' }}</td></tr>
                 <tr class="bo-total-row"><td>Total</td><td class="bo-num">₹{{ d.total | number:'1.2-2' }}</td></tr>
               </table>

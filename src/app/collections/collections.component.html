@@ -2,8 +2,9 @@
   <div class="co-header">
     <div>
       <h2 class="co-title">Collections</h2>
-      <p class="co-sub">Fabrics or readymade garments posted together on Instagram. Each item has the code printed on its
-        photo (e.g. MCS-1A); the WhatsApp assistant sells them – price, stock and sizes come from Products.</p>
+      <p class="co-sub">Fabrics, readymade garments or wholesale designs posted together on Instagram. Each item has the code
+        printed on its photo (e.g. MCS-1A); the WhatsApp assistant sells them – price, stock and sizes come from Products
+        (wholesale: slabs, minimum order and stock from the Wholesale module).</p>
     </div>
     <div class="co-head-btns">
       <button class="btn btn-secondary btn-sm" (click)="showSuppliers = !showSuppliers">🏭 Suppliers ({{ suppliers.length }})</button>
@@ -55,7 +56,7 @@
       <div class="co-row" *ngFor="let c of list" [class.active]="edit?.collection_id === c.collection_id" (click)="open(c)">
         <img *ngIf="c.cover_image_url" [src]="c.cover_image_url" alt="">
         <div>
-          <b>{{ c.code }}</b> <span class="co-type" [class.ready]="c.type === 'READYMADE'" [class.drop]="c.type === 'DROPSHIP'">{{ typeLabel(c.type) }}</span>
+          <b>{{ c.code }}</b> <span class="co-type" [class.ready]="c.type === 'READYMADE'" [class.drop]="c.type === 'DROPSHIP' || c.type === 'WHOLESALE'">{{ typeLabel(c.type) }}</span>
           <span *ngIf="!c.active" class="co-off">inactive</span>
           <div class="co-muted">{{ c.name }} · {{ c.item_count }} items</div>
         </div>
@@ -70,6 +71,7 @@
             <option value="FABRIC">🧵 Fabric (sold by the metre)</option>
             <option value="READYMADE">👗 Readymade garment (sizes, pieces)</option>
             <option value="DROPSHIP">🛒 Dropship (supplier keeps stock &amp; ships)</option>
+            <option value="WHOLESALE">🏭 Wholesale (slab prices + GST, quotation)</option>
           </select>
         </label>
         <ng-container *ngIf="edit.type === 'DROPSHIP' && edit.courier_slabs">
@@ -89,6 +91,17 @@
             </div>
           </div>
         </ng-container>
+        <div class="wide co-slabs" *ngIf="isWholesale">
+          <div class="co-muted">Prices, minimum order, GST and stock come from the linked product in
+            <b>Wholesale → Products / Pricing</b>. The slab and the minimum apply to the <b>total</b> of all codes below.
+            Buyers confirm in WhatsApp → a quotation draft appears in <b>Wholesale → Quotations</b>.</div>
+          <div *ngFor="let p of pricingList" class="co-wslabs">
+            <b *ngIf="p.product_name">{{ p.product_name }}</b>
+            <span *ngIf="p.minimum_order != null"> · min {{ +p.minimum_order }} {{ p.unit }}</span>
+            <span *ngIf="p.gst_pct != null"> · GST {{ p.gst_pct }}%</span>
+            <div><span *ngFor="let s of p.price_slabs; let last = last">{{ slabText(s, p.unit) }}{{ last ? '' : ' · ' }}</span></div>
+          </div>
+        </div>
         <label class="wide">Name *<input class="form-control" [(ngModel)]="edit.name" placeholder="Madras check slub cotton – 8 colours"></label>
         <label class="wide">Description<textarea class="form-control" rows="2" [(ngModel)]="edit.description"
           placeholder="What the customer should know (fabric, feel, width, wash care)"></textarea></label>
@@ -104,17 +117,27 @@
 
       <h4>Items <span class="co-muted">– one per photo in the post</span></h4>
       <table class="co-items" *ngIf="items.length">
-        <tr><th>Code</th><th>Product (from Products)</th><th>Colour</th><th>{{ edit.type === 'DROPSHIP' ? 'Price · cost · margin' : 'Price · stock' }}</th><th></th></tr>
+        <tr><th>Code</th><th>{{ isWholesale ? 'Wholesale product' : 'Product (from Products)' }}</th><th>{{ isWholesale ? 'Design / colour' : 'Colour' }}</th>
+          <th>{{ edit.type === 'DROPSHIP' ? 'Price · cost · margin' : isWholesale ? 'Stock' : 'Price · stock' }}</th><th></th></tr>
         <tr *ngFor="let it of items; let i = index">
           <td><input class="form-control code" [(ngModel)]="it.item_code" (ngModelChange)="markChanged()" placeholder="MCS-1A"></td>
           <td>
             <div class="co-prod">
               <img *ngIf="it.image_url" [src]="it.image_url" alt="">
-              <span *ngIf="it.product_id; else noProd">{{ it.product_name }} <small class="co-muted">#{{ it.product_id }}</small></span>
+              <span *ngIf="it.product_id || it.wholesale_product_id; else noProd">{{ it.product_name }}
+                <small class="co-muted">{{ it.wholesale_product_id ? (it.product_code ? 'code ' + it.product_code : '#' + it.wholesale_product_id) : '#' + it.product_id }}</small></span>
               <ng-template #noProd><span class="co-muted">choose a product</span></ng-template>
-              <button class="btn btn-secondary btn-sm" (click)="startPick(i)">{{ it.product_id ? 'Change' : 'Choose' }}</button>
+              <button class="btn btn-secondary btn-sm" (click)="startPick(i)">{{ it.product_id || it.wholesale_product_id ? 'Change' : 'Choose' }}</button>
+              <label class="btn btn-secondary btn-sm" *ngIf="isWholesale" title="This design's photo (else the product photo)">📷
+                <input type="file" accept="image/*" hidden (change)="onItemPhoto($event, it)"></label>
             </div>
-            <div class="co-picker" *ngIf="pickFor === i">
+            <div class="co-picker" *ngIf="pickFor === i && isWholesale">
+              <input class="form-control" [(ngModel)]="query" (ngModelChange)="search()" placeholder="Search Wholesale products…" autofocus>
+              <button *ngFor="let p of wholesaleResults" (click)="pickWholesale(p)">{{ p.name }}
+                <small>{{ p.code ? 'code ' + p.code + ' · ' : '' }}{{ p.unit }}</small></button>
+              <small class="co-muted" *ngIf="!wholesaleProducts.length">No active products in Wholesale → Products yet.</small>
+            </div>
+            <div class="co-picker" *ngIf="pickFor === i && !isWholesale">
               <input class="form-control" [(ngModel)]="query" (ngModelChange)="search()" placeholder="Search Products…" autofocus>
               <button *ngFor="let p of results" (click)="pick(p)">{{ p.name }}
                 <small>#{{ p.productId }} · ₹{{ p.price }}/{{ p.unit }} · {{ p.stock || 0 }} in stock</small></button>
@@ -127,7 +150,12 @@
               <span *ngIf="it.cost_price != null"> · cost ₹{{ it.cost_price }}</span>
               <b *ngIf="margin(it) != null" [class.co-neg]="margin(it)! < 0"> · ₹{{ margin(it) }}</b>
             </ng-container>
-            <ng-template #stockCell><span *ngIf="it.stock != null"> · {{ +it.stock }}</span></ng-template>
+            <ng-template #stockCell>
+              <span *ngIf="isWholesale; else retailStock">
+                <span *ngIf="it.stock != null">{{ +it.stock }} {{ it.unit }}</span>
+                <span *ngIf="it.in_stock === false" class="co-neg"> out of stock</span></span>
+              <ng-template #retailStock><span *ngIf="it.stock != null"> · {{ +it.stock }}</span></ng-template>
+            </ng-template>
             <div *ngIf="it.sizes?.length" class="co-sizes">{{ sizesText(it) }}</div>
           </td>
           <td class="co-actions">
@@ -151,7 +179,9 @@
       <p class="co-muted co-hint">Link the Instagram post or ad to this collection in <b>Ad &amp; post links</b>, or write
         <b>Code: {{ edit.code || 'MCS-1' }}</b> in the caption. For readymade items, enter sizes &amp; stock in Products.
         <span *ngIf="edit.type === 'DROPSHIP'">For dropship items: in Products enter the selling price, the <b>cost price</b>
-        (what the supplier charges you), unit <b>pcs</b> and the sizes (stock can stay 0 – the supplier keeps it).</span></p>
+        (what the supplier charges you), unit <b>pcs</b> and the sizes (stock can stay 0 – the supplier keeps it).</span>
+        <span *ngIf="isWholesale">For wholesale: give each design its code (e.g. MCS-1, MCS-2), link it to the product in
+        Wholesale → Products and upload the design's photo (📷). Codes must not be used by your other firm's collections.</span></p>
     </div>
     <div class="co-edit co-placeholder" *ngIf="!edit"><p class="co-muted">Select a collection, or create a new one.</p></div>
   </div>

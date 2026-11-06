@@ -18,6 +18,27 @@ interface CollectionItem {
   available?: boolean;
   sizes?: { size: string; stock: number }[];
   cost_price?: number | null;
+  wholesale_product_id?: number | null;   // WHOLESALE collections: the Wholesale-module product
+  product_code?: string | null;
+  in_stock?: boolean;
+}
+
+/** An active product of the Wholesale module (items of a WHOLESALE collection). */
+interface WholesaleProduct {
+  wholesale_product_id: number;
+  code: string | null;
+  name: string;
+  unit: string;
+}
+
+/** Slabs and minimum order of a wholesale collection (they apply to the collection's total quantity). */
+interface WholesalePricing {
+  product_name?: string;
+  unit?: string;
+  gst_pct?: number;
+  minimum_order?: number | null;
+  price_slabs?: { from: number; to: number | null; price_per_unit: number }[];
+  products?: WholesalePricing[];
 }
 
 /** A dropship supplier (stocks and ships a DROPSHIP collection; paid per order). */
@@ -47,7 +68,7 @@ interface Collection {
   collection_id?: number;
   code: string;
   name: string;
-  type: 'FABRIC' | 'READYMADE' | 'DROPSHIP';
+  type: 'FABRIC' | 'READYMADE' | 'DROPSHIP' | 'WHOLESALE';
   description: string;
   cover_image_url: string | null;
   ai_instructions: string;
@@ -59,6 +80,7 @@ interface Collection {
   supplier_name?: string | null;
   courier_slabs?: Record<string, number | null>;
   courier_extra_per_piece?: number | null;
+  wholesale?: WholesalePricing;
 }
 
 /**
@@ -88,6 +110,10 @@ export class CollectionsComponent implements OnInit {
   query = '';
   results: FabricSearchResult[] = [];
 
+  // wholesale products (picker for WHOLESALE collections)
+  wholesaleProducts: WholesaleProduct[] = [];
+  wholesaleResults: WholesaleProduct[] = [];
+
   // dropship suppliers
   readonly zones = ZONES;
   suppliers: Supplier[] = [];
@@ -97,7 +123,24 @@ export class CollectionsComponent implements OnInit {
 
   constructor(private http: HttpClient, private boutique: BoutiqueService) {}
 
-  ngOnInit() { this.load(); this.loadSuppliers(); }
+  ngOnInit() { this.load(); this.loadSuppliers(); this.loadWholesaleProducts(); }
+
+  loadWholesaleProducts() {
+    this.http.get<WholesaleProduct[]>('/api/boutique-collections/wholesale-products')
+      .subscribe({ next: l => this.wholesaleProducts = l, error: () => {} });
+  }
+
+  get isWholesale(): boolean { return this.edit?.type === 'WHOLESALE'; }
+
+  /** One product's slabs, or each product's when the items use several. */
+  get pricingList(): WholesalePricing[] {
+    const w = this.edit?.wholesale;
+    return !w ? [] : w.products?.length ? w.products : (w.price_slabs ? [w] : []);
+  }
+
+  slabText(s: { from: number; to: number | null; price_per_unit: number }, unit?: string): string {
+    return `${+s.from}${s.to != null ? '–' + (+s.to) : '+'} ${unit || ''}: ₹${s.price_per_unit}`;
+  }
 
   loadSuppliers() {
     this.http.get<Supplier[]>('/api/boutique-suppliers').subscribe({ next: l => this.suppliers = l, error: () => {} });
@@ -135,7 +178,7 @@ export class CollectionsComponent implements OnInit {
   }
 
   typeLabel(t: string): string {
-    return t === 'FABRIC' ? '🧵 Fabric' : t === 'DROPSHIP' ? '🛒 Dropship' : '👗 Readymade';
+    return t === 'FABRIC' ? '🧵 Fabric' : t === 'DROPSHIP' ? '🛒 Dropship' : t === 'WHOLESALE' ? '🏭 Wholesale' : '👗 Readymade';
   }
 
   onTypeChange() {
@@ -162,6 +205,18 @@ export class CollectionsComponent implements OnInit {
     this.error = this.saved = '';
   }
 
+  /** Item photos are their own for wholesale designs (the product photo is the fallback). */
+  onItemPhoto(event: Event, it: CollectionItem) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.uploading = true;
+    this.boutique.uploadToCloudinary(file).subscribe({
+      next: (r: any) => { this.uploading = false; it.image_url = r.secure_url || r.url; this.itemsChanged = true; },
+      error: () => { this.uploading = false; this.error = 'Photo upload failed'; }
+    });
+    (event.target as HTMLInputElement).value = '';
+  }
+
   open(c: Collection) {
     this.error = this.saved = '';
     this.http.get<Collection>(`/api/boutique-collections/${c.collection_id}`).subscribe({
@@ -182,7 +237,11 @@ export class CollectionsComponent implements OnInit {
   addItem() {
     const prefix = this.edit?.code ? this.edit.code.toUpperCase() : '';
     const letter = String.fromCharCode(65 + this.items.length);   // A, B, C ...
-    this.items.push({ item_code: prefix ? `${prefix}${letter}` : '', product_id: null, colour: '', image_url: null });
+    const code = !prefix ? '' : this.isWholesale ? `${prefix}-${this.items.length + 1}` : `${prefix}${letter}`;  // wholesale: MCS-1, MCS-2
+    const last = this.items[this.items.length - 1];
+    this.items.push({ item_code: code, product_id: null, colour: '', image_url: null,
+                      ...(this.isWholesale && last?.wholesale_product_id
+                          ? { wholesale_product_id: last.wholesale_product_id, product_name: last.product_name, unit: last.unit } : {}) });
     this.itemsChanged = true;
     this.pickFor = this.items.length - 1;
     this.query = '';
@@ -198,10 +257,32 @@ export class CollectionsComponent implements OnInit {
     this.itemsChanged = true;
   }
 
-  startPick(i: number) { this.pickFor = i; this.query = ''; this.results = []; }
+  startPick(i: number) {
+    this.pickFor = i; this.query = ''; this.results = [];
+    this.wholesaleResults = this.isWholesale ? this.wholesaleProducts.slice(0, 20) : [];
+  }
+
+  pickWholesale(p: WholesaleProduct) {
+    if (this.pickFor === null) return;
+    const item = this.items[this.pickFor];
+    item.wholesale_product_id = p.wholesale_product_id;
+    item.product_name = p.name;
+    item.product_code = p.code;
+    item.unit = p.unit;
+    item.in_stock = undefined;   // shown after saving
+    this.itemsChanged = true;
+    this.pickFor = null;
+    this.wholesaleResults = [];
+  }
 
   search() {
     const q = this.query.trim();
+    if (this.isWholesale) {
+      const t = q.toLowerCase();
+      this.wholesaleResults = this.wholesaleProducts
+        .filter(p => !t || p.name.toLowerCase().includes(t) || (p.code || '').toLowerCase().includes(t)).slice(0, 20);
+      return;
+    }
     if (q.length < 2) { this.results = []; return; }
     this.boutique.searchFabrics(q).subscribe({ next: r => this.results = r, error: () => this.results = [] });
   }
@@ -248,6 +329,7 @@ export class CollectionsComponent implements OnInit {
       next: c => {
         if (!this.itemsChanged) { this.done(c); return; }
         const items = this.items.map(i => ({ item_code: i.item_code.trim().toUpperCase(), product_id: i.product_id,
+                                             wholesale_product_id: i.wholesale_product_id ?? null,
                                              colour: i.colour?.trim() || null, image_url: i.image_url || null }));
         this.http.put<Collection>(`/api/boutique-collections/${c.collection_id}/items`, { items }).subscribe({
           next: full => this.done(full),

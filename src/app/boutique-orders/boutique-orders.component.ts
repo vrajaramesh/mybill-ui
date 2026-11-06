@@ -98,6 +98,8 @@ export interface BoutiqueOrderDetail {
   total: number;
   currency: string;
   estimated_delivery_date: string | null;
+  gst_amount?: number | null;              // WHOLESALE: GST estimate (total includes it)
+  wholesale_quotation_id?: number | null;  // WHOLESALE: the quotation draft in Wholesale → Quotations
   courier?: string | null;
   awb?: string | null;
   tracking_url?: string | null;
@@ -253,7 +255,7 @@ export class BoutiqueOrdersComponent implements OnInit {
   }
 
   readonly goodsLabel: { [t: string]: string } = { FABRIC: '🧵 Fabric', READYMADE: '👗 Readymade', MIXED: '📦 Fabric + readymade',
-                                                   DROPSHIP: '🛒 Dropship' };
+                                                   DROPSHIP: '🛒 Dropship', WHOLESALE: '🏭 Wholesale' };
 
   // ── Dropship: the supplier ships it ──────────────────────────────────────
 
