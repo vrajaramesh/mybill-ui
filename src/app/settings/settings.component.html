@@ -130,7 +130,8 @@
         </div>
 
         <p class="field-hint" *ngIf="!printer.receiptConnected">
-          Turn on your 80 mm Bluetooth thermal printer, put it in pairing mode, then click Pair.
+          Turn on your 80 mm Bluetooth thermal printer, put it in pairing mode, then click Pair. Only printers are listed.
+          <a href="javascript:void(0)" (click)="pairReceiptPrinter(true)">Printer not listed? Show all Bluetooth devices</a>
         </p>
       </ng-container>
     </div>
@@ -168,7 +169,8 @@
         </div>
 
         <p class="field-hint" *ngIf="!printer.labelConnected">
-          Turn on your 58 mm Bluetooth label printer, put it in pairing mode, then click Pair.
+          Turn on your 58 mm Bluetooth label printer, put it in pairing mode, then click Pair. Only printers are listed.
+          <a href="javascript:void(0)" (click)="pairLabelPrinter(true)">Printer not listed? Show all Bluetooth devices</a>
         </p>
       </ng-container>
     </div>

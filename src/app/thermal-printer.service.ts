@@ -29,6 +29,32 @@ const PROFILES = [
     write:   '0000ae01-0000-1000-8000-00805f9b34fb' },
 ];
 
+// Names thermal receipt / label printers usually advertise (Web Bluetooth namePrefix is case-sensitive).
+const PRINTER_NAME_PREFIXES = [
+  'Printer', 'printer', 'PRINTER', 'Thermal', 'THERMAL', 'BlueTooth Printer', 'Bluetooth Printer', 'BT Printer',
+  'POS', 'Pos', 'pos', 'MTP', 'MPT', 'RPP', 'RP', 'PT-', 'PT2', 'XP-', 'Xprinter', 'XPrinter', 'GP-', 'Gprinter',
+  'Inner', 'IposPrinter', 'HM-', 'JK-', 'P58', 'P80', 'M58', 'T58', 'T80', 'ZJ', 'Rongta', 'RONGTA', 'iDPRT', 'HPRT',
+  'Goojprt', 'GOOJPRT', 'PeriPage', 'Paperang', 'PAPERANG', 'EPSON', 'TM-', 'SPP-', 'LPQ', 'SEZNIK', 'Seznik', 'DP',
+  'NIIMBOT', 'Niimbot', 'B21', 'B3S', 'B1', 'B18', 'B203', 'D11', 'D110', 'D101', 'Q1', 'Q2', 'MX', 'MP', 'TP',
+  '58', '80',
+];
+
+/**
+ * Picker filter: only devices that advertise a supported print service or a printer-like name.
+ * showAll = every Bluetooth device (for a printer that advertises neither).
+ */
+function printerRequest(showAll: boolean): any {
+  const optionalServices = PROFILES.map(p => p.service);
+  if (showAll) return { acceptAllDevices: true, optionalServices };
+  return {
+    filters: [
+      ...PROFILES.map(p => ({ services: [p.service] })),
+      ...PRINTER_NAME_PREFIXES.map(namePrefix => ({ namePrefix })),
+    ],
+    optionalServices,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ThermalPrinterService {
 
@@ -189,14 +215,12 @@ export class ThermalPrinterService {
     return this.receiptDevice?.name || '';
   }
 
-  async pairReceipt(): Promise<string | null> {
+  /** showAll: list every Bluetooth device instead of printers only. */
+  async pairReceipt(showAll = false): Promise<string | null> {
     if (!this.supported) return null;
     try {
       const bt = (navigator as any).bluetooth;
-      this.receiptDevice = await bt.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: PROFILES.map(p => p.service),
-      });
+      this.receiptDevice = await bt.requestDevice(printerRequest(showAll));
     } catch {
       return null; // user dismissed the picker — not an error
     }
@@ -252,14 +276,12 @@ export class ThermalPrinterService {
     return this.labelDevice?.name || '';
   }
 
-  async pairLabel(): Promise<string | null> {
+  /** showAll: list every Bluetooth device instead of printers only. */
+  async pairLabel(showAll = false): Promise<string | null> {
     if (!this.supported) return null;
     try {
       const bt = (navigator as any).bluetooth;
-      this.labelDevice = await bt.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: PROFILES.map(p => p.service),
-      });
+      this.labelDevice = await bt.requestDevice(printerRequest(showAll));
     } catch {
       return null; // user dismissed the picker — not an error
     }

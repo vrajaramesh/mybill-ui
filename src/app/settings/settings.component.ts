@@ -142,10 +142,10 @@ export class SettingsComponent implements OnInit {
     return true;
   }
 
-  async pairReceiptPrinter(): Promise<void> {
+  async pairReceiptPrinter(showAll = false): Promise<void> {
     if (!this._checkBt()) return;
     this.receiptPrinterPairing = true;
-    const err = await this.printer.pairReceipt();
+    const err = await this.printer.pairReceipt(showAll);
     this.receiptPrinterPairing = false;
     if (err) alert(err);
   }
@@ -154,10 +154,10 @@ export class SettingsComponent implements OnInit {
     this.printer.disconnectReceipt();
   }
 
-  async pairLabelPrinter(): Promise<void> {
+  async pairLabelPrinter(showAll = false): Promise<void> {
     if (!this._checkBt()) return;
     this.labelPrinterPairing = true;
-    const err = await this.printer.pairLabel();
+    const err = await this.printer.pairLabel(showAll);
     this.labelPrinterPairing = false;
     if (err) alert(err);
   }
