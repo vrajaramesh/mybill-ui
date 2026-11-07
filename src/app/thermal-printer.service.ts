@@ -411,63 +411,92 @@ export class ThermalPrinterService {
   /** Last send problem, for the Settings test print. */
   lastSendError = '';
 
-  private async _send(char: any, bytes: Uint8Array): Promise<boolean> {
+  /** Prints run one after another: overlapping GATT writes fail on Android ("GATT operation failed"). */
+  private _queue: Promise<unknown> = Promise.resolve();
+
+  private _send(char: any, bytes: Uint8Array): Promise<boolean> {
+    const run = this._queue.then(() => this._sendNow(char, bytes), () => this._sendNow(char, bytes));
+    this._queue = run.catch(() => false);
+    return run;
+  }
+
+  private _sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
+
+  /** One chunk: up to 3 attempts, alternating acknowledged / unacknowledged writes, with a growing pause. */
+  private async _writeChunk(char: any, chunk: Uint8Array, preferResponse: boolean): Promise<void> {
+    const canResp = typeof char.writeValueWithResponse === 'function' && !!char.properties?.write;
+    const canNoResp = typeof char.writeValueWithoutResponse === 'function' && char.properties?.writeWithoutResponse !== false;
+    let last: any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const resp = attempt % 2 === 0 ? preferResponse : !preferResponse;
+      try {
+        if (resp && canResp) await char.writeValueWithResponse(chunk);
+        else if (!resp && canNoResp) await char.writeValueWithoutResponse(chunk);
+        else await char.writeValue(chunk);
+        return;
+      } catch (e: any) {
+        last = e;
+        console.warn('[BLE-SEND] chunk attempt %d failed: %s', attempt + 1, e?.message ?? e);
+        await this._sleep(80 * (attempt + 1));
+      }
+    }
+    throw last;
+  }
+
+  private async _sendNow(char: any, bytes: Uint8Array): Promise<boolean> {
     this.lastSendError = '';
     if (!char) { console.error('[BLE-SEND] char is null — cannot send'); this.lastSendError = 'Printer not connected'; return false; }
-    // Prefer acknowledged writes when the printer supports them: the browser then waits for the printer
-    // before sending the next chunk, so its small buffer never overflows (no lost bytes).
-    const withResponse = !!char.properties?.write && typeof char.writeValueWithResponse === 'function';
-    const write = (chunk: Uint8Array) => withResponse ? char.writeValueWithResponse(chunk)
-      : char.writeValueWithoutResponse ? char.writeValueWithoutResponse(chunk) : char.writeValue(chunk);
+    const isReceipt = char === this.receiptChar;
+    const preferResponse = !!char.properties?.write && typeof char.writeValueWithResponse === 'function';
     console.log('[BLE-SEND] Starting send: totalBytes=%d withResponse=%s smallWrites=%s',
-      bytes.length, withResponse, this._smallWritesOnly);
+      bytes.length, preferResponse, this._smallWritesOnly);
 
     let chunkSize = 20;
+    let offset = 0;
     if (!this._smallWritesOnly) {
       // Desktop: find the largest chunk the link accepts (oversized writes throw there).
       for (const size of [512, 200, 100, 64, 20]) {
         try {
           const probe = bytes.slice(0, Math.min(size, bytes.length));
-          await write(probe);
+          await (preferResponse ? char.writeValueWithResponse(probe)
+            : char.writeValueWithoutResponse ? char.writeValueWithoutResponse(probe) : char.writeValue(probe));
           chunkSize = size;
-          bytes = bytes.slice(probe.length);
-          console.log('[BLE-SEND] MTU probe succeeded at size=%d — remaining=%d bytes', size, bytes.length);
+          offset = probe.length;
           break;
         } catch (e: any) {
           console.warn('[BLE-SEND] MTU probe failed at size=%d: %s', size, e?.message ?? e);
-          if (size === 20) {
-            this.lastSendError = e?.message ?? String(e);
-            console.error('[BLE-SEND] Even 20-byte probe failed — aborting');
-            return false;
-          }
+          if (size === 20) chunkSize = 20;   // fall through to the chunk loop (with retries / reconnect)
         }
       }
     }
 
-    try {
-      let chunkCount = 0;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        const slice = bytes.slice(i, i + chunkSize);
-        try {
-          await write(slice);
-        } catch (e1: any) {
-          console.warn('[BLE-SEND] write failed chunk %d: %s — retrying with writeValue', chunkCount, e1?.message ?? e1);
-          await new Promise(r => setTimeout(r, 50));
-          await char.writeValue(slice);
+    let reconnected = false;
+    while (offset < bytes.length) {
+      const chunk = bytes.slice(offset, offset + chunkSize);
+      try {
+        await this._writeChunk(char, chunk, preferResponse);
+        offset += chunk.length;
+        await this._sleep(preferResponse ? 5 : 25);   // let the printer drain its buffer
+      } catch (e: any) {
+        // The link went stale (printer slept / dropped it): reconnect once and continue from this chunk.
+        const device = isReceipt ? this.receiptDevice : this.labelDevice;
+        if (!reconnected && device) {
+          reconnected = true;
+          console.warn('[BLE-SEND] write failed (%s) — reconnecting and resuming at byte %d', e?.message ?? e, offset);
+          try { device.gatt?.disconnect(); } catch {}
+          await this._sleep(400);
+          const err = await this._connectDevice(device, isReceipt ? 'receipt' : 'label');
+          const fresh = isReceipt ? this.receiptChar : this.labelChar;
+          if (!err && fresh) { char = fresh; await this._sleep(200); continue; }
         }
-        chunkCount++;
-        // Unacknowledged writes: give the printer time to drain its buffer.
-        await new Promise(r => setTimeout(r, withResponse ? 2 : 25));
+        this.lastSendError = e?.message ?? String(e);
+        console.error('[BLE-SEND] Send failed:', this.lastSendError);
+        if (isReceipt) this.receiptChar = null; else this.labelChar = null;
+        return false;
       }
-      console.log('[BLE-SEND] Done — sent %d chunks at chunkSize=%d', chunkCount, chunkSize);
-      return true;
-    } catch (e: any) {
-      this.lastSendError = e?.message ?? String(e);
-      console.error('[BLE-SEND] Send failed:', e?.message ?? e);
-      if (char === this.receiptChar) this.receiptChar = null;
-      if (char === this.labelChar) this.labelChar = null;
-      return false;
     }
+    console.log('[BLE-SEND] Done — %d bytes at chunkSize=%d%s', bytes.length, chunkSize, reconnected ? ' (after reconnect)' : '');
+    return true;
   }
 
   /** A short ESC/POS test receipt (Settings → Test print). */
