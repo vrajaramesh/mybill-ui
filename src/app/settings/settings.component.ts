@@ -150,6 +150,18 @@ export class SettingsComponent implements OnInit {
     if (err) alert(err);
   }
 
+  receiptTesting = false;
+
+  async testReceiptPrinter(): Promise<void> {
+    this.receiptTesting = true;
+    const ok = await this.printer.testPrintReceipt();
+    this.receiptTesting = false;
+    if (!ok) {
+      alert('Test print failed: ' + (this.printer.lastSendError || 'unknown error') +
+        '\n\nTurn the printer off and on, click Disconnect, then Pair again.');
+    }
+  }
+
   disconnectReceiptPrinter(): void {
     this.printer.disconnectReceipt();
   }

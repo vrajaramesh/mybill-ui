@@ -125,6 +125,9 @@
             (click)="pairReceiptPrinter()" [disabled]="receiptPrinterPairing">
             {{ receiptPrinterPairing ? '🔄 Pairing…' : '📡 Pair Receipt Printer' }}
           </button>
+          <button *ngIf="printer.receiptConnected" class="action-btn primary"
+            (click)="testReceiptPrinter()" [disabled]="receiptTesting">
+            {{ receiptTesting ? '🖨️ Printing…' : '🖨️ Test print' }}</button>
           <button *ngIf="printer.receiptConnected" class="action-btn danger"
             (click)="disconnectReceiptPrinter()">Disconnect</button>
         </div>

@@ -398,29 +398,48 @@ export class ThermalPrinterService {
     return result;
   }
 
-  private async _send(char: any, bytes: Uint8Array): Promise<boolean> {
-    if (!char) { console.error('[BLE-SEND] char is null — cannot send'); return false; }
-    console.log('[BLE-SEND] Starting send: totalBytes=%d', bytes.length);
+  /**
+   * Android-based browsers (Android Chrome, JioBook / JioOS, ChromeOS) accept a write bigger than the negotiated
+   * BLE MTU without an error but deliver only its first ~20 bytes - so the printer gets fragments and prints nothing.
+   * There we always send 20-byte chunks. Desktop Chrome throws on oversized writes, so the MTU probe works there.
+   */
+  private get _smallWritesOnly(): boolean {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    return /Android|CrOS|JioOS|JioBook/i.test(ua);
+  }
 
-    // Negotiate the largest MTU the device supports by trying descending sizes.
-    // Web Bluetooth throws if the chunk exceeds negotiated ATT_MTU.
-    const CANDIDATES = [512, 200, 100, 64, 20];
+  /** Last send problem, for the Settings test print. */
+  lastSendError = '';
+
+  private async _send(char: any, bytes: Uint8Array): Promise<boolean> {
+    this.lastSendError = '';
+    if (!char) { console.error('[BLE-SEND] char is null — cannot send'); this.lastSendError = 'Printer not connected'; return false; }
+    // Prefer acknowledged writes when the printer supports them: the browser then waits for the printer
+    // before sending the next chunk, so its small buffer never overflows (no lost bytes).
+    const withResponse = !!char.properties?.write && typeof char.writeValueWithResponse === 'function';
+    const write = (chunk: Uint8Array) => withResponse ? char.writeValueWithResponse(chunk)
+      : char.writeValueWithoutResponse ? char.writeValueWithoutResponse(chunk) : char.writeValue(chunk);
+    console.log('[BLE-SEND] Starting send: totalBytes=%d withResponse=%s smallWrites=%s',
+      bytes.length, withResponse, this._smallWritesOnly);
+
     let chunkSize = 20;
-    for (const size of CANDIDATES) {
-      try {
-        const probe = bytes.slice(0, Math.min(size, bytes.length));
-        await (char.writeValueWithoutResponse
-          ? char.writeValueWithoutResponse(probe)
-          : char.writeValue(probe));
-        chunkSize = size;
-        bytes = bytes.slice(probe.length); // remaining bytes after probe
-        console.log('[BLE-SEND] MTU probe succeeded at size=%d — remaining=%d bytes', size, bytes.length);
-        break;
-      } catch (e: any) {
-        console.warn('[BLE-SEND] MTU probe failed at size=%d: %s', size, e?.message ?? e);
-        if (size === 20) {
-          console.error('[BLE-SEND] Even 20-byte probe failed — aborting');
-          return false;
+    if (!this._smallWritesOnly) {
+      // Desktop: find the largest chunk the link accepts (oversized writes throw there).
+      for (const size of [512, 200, 100, 64, 20]) {
+        try {
+          const probe = bytes.slice(0, Math.min(size, bytes.length));
+          await write(probe);
+          chunkSize = size;
+          bytes = bytes.slice(probe.length);
+          console.log('[BLE-SEND] MTU probe succeeded at size=%d — remaining=%d bytes', size, bytes.length);
+          break;
+        } catch (e: any) {
+          console.warn('[BLE-SEND] MTU probe failed at size=%d: %s', size, e?.message ?? e);
+          if (size === 20) {
+            this.lastSendError = e?.message ?? String(e);
+            console.error('[BLE-SEND] Even 20-byte probe failed — aborting');
+            return false;
+          }
         }
       }
     }
@@ -430,23 +449,40 @@ export class ThermalPrinterService {
       for (let i = 0; i < bytes.length; i += chunkSize) {
         const slice = bytes.slice(i, i + chunkSize);
         try {
-          await char.writeValueWithoutResponse(slice);
+          await write(slice);
         } catch (e1: any) {
-          console.warn('[BLE-SEND] writeValueWithoutResponse failed chunk %d: %s — retrying with writeValue', chunkCount, e1?.message ?? e1);
+          console.warn('[BLE-SEND] write failed chunk %d: %s — retrying with writeValue', chunkCount, e1?.message ?? e1);
+          await new Promise(r => setTimeout(r, 50));
           await char.writeValue(slice);
         }
         chunkCount++;
-        await new Promise(r => setTimeout(r, 10));
+        // Unacknowledged writes: give the printer time to drain its buffer.
+        await new Promise(r => setTimeout(r, withResponse ? 2 : 25));
       }
-      console.log('[BLE-SEND] Done — sent %d chunks at chunkSize=%d', chunkCount + 1, chunkSize);
+      console.log('[BLE-SEND] Done — sent %d chunks at chunkSize=%d', chunkCount, chunkSize);
       return true;
     } catch (e: any) {
+      this.lastSendError = e?.message ?? String(e);
       console.error('[BLE-SEND] Send failed:', e?.message ?? e);
       if (char === this.receiptChar) this.receiptChar = null;
       if (char === this.labelChar) this.labelChar = null;
       return false;
     }
   }
+
+  /** A short ESC/POS test receipt (Settings → Test print). */
+  async testPrintReceipt(): Promise<boolean> {
+    if (!this.receiptConnected && !(await this.reconnectReceipt())) {
+      this.lastSendError = 'Printer not connected - pair it first';
+      return false;
+    }
+    const enc = new TextEncoder();
+    const text = `${(this.settings.firmName || 'mybill').toUpperCase()}\nTest print OK\n${new Date().toLocaleString()}\n` +
+      `Printer: ${this.receiptDeviceName || '-'}\n\n\n\n`;
+    const bytes = new Uint8Array([0x1b, 0x40, 0x1b, 0x61, 0x01, ...enc.encode(text), 0x1d, 0x56, 0x42, 0x00]);
+    return this._send(this.receiptChar, bytes);
+  }
+
 
   // ── ESC/POS builders ──────────────────────────────────────────────────────
 
