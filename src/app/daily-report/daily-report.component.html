@@ -23,7 +23,7 @@
     {{ generating ? 'The AI is reading the day\'s chats and sales – this takes 1 to 3 minutes…' : 'Loading…' }}
   </div>
   <div class="dr-empty" *ngIf="notFound && !generating">
-    No report for {{ date | date:'EEE d MMM y' }} yet. Reports are made at 9:30 PM – or click <b>Generate now</b>.
+    No report for {{ date | date:'EEE d MMM y' }} yet. Reports are made only when you ask – click <b>Generate now</b>.
   </div>
 
   <ng-container *ngIf="report && !generating">
