@@ -248,7 +248,20 @@ export class CollectionsComponent implements OnInit {
 
   approve() {
     if (!this.edit?.collection_id) return;
-    this.dsCall(this.http.post<Collection>(`/api/boutique-collections/${this.edit.collection_id}/approve`, {}), 'Approved ✓ – customers can buy it');
+    this.dsBusy = true;
+    this.error = this.saved = '';
+    this.http.post<any>(`/api/boutique-collections/${this.edit.collection_id}/approve`, {}).subscribe({
+      next: c => {
+        this.dsBusy = false;
+        const p = c.published || {};
+        this.saved = (p.permalinks?.length ? `Approved ✓ and posted on Instagram @${p.account}` : 'Approved ✓ – customers can buy it')
+          + (p.catalog_items ? ` · ${p.catalog_items} colours in the Meta catalog` : '');
+        if (p.error) this.error = 'Not everything was posted: ' + p.error;
+        this.show(c);
+        this.load();
+      },
+      error: err => { this.dsBusy = false; this.error = err?.error?.message || 'Could not approve'; }
+    });
   }
 
   archive() {

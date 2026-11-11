@@ -112,7 +112,7 @@
         <span class="co-ds-spacer"></span>
         <input class="form-control co-price-all" type="number" min="1" [(ngModel)]="priceAll" placeholder="₹ price for all">
         <button class="btn btn-secondary btn-sm" (click)="setPriceAll()" [disabled]="dsBusy || !priceAll">Set price</button>
-        <button class="btn btn-primary btn-sm" (click)="approve()" [disabled]="dsBusy" *ngIf="edit.status !== 'ACTIVE'">✅ Approve &amp; Post</button>
+        <button class="btn btn-primary btn-sm" (click)="approve()" [disabled]="dsBusy" *ngIf="edit.status !== 'ACTIVE' || !edit.instagram_urls?.length">{{ dsBusy ? 'Posting… (up to 2 min)' : '✅ Approve &amp; Post' }}</button>
         <button class="btn btn-danger btn-sm" (click)="archive()" [disabled]="dsBusy" *ngIf="edit.status !== 'ARCHIVED'">🗄️ Archive</button>
       </div>
       <div class="co-variants" *ngIf="isDropship && items.length">
