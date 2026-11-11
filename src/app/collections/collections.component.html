@@ -18,7 +18,7 @@
       <button class="btn btn-primary btn-sm" (click)="newSupplier()">+ New supplier</button>
     </div>
     <table class="co-items" *ngIf="suppliers.length">
-      <tr><th>Name</th><th>WhatsApp</th><th>Ships from</th><th>Dispatch</th><th>Pay to</th><th></th></tr>
+      <tr><th>Name</th><th>WhatsApp</th><th>Ships from</th><th>Dispatch</th><th>Pay to</th><th>Dropship</th><th>Last used</th><th></th></tr>
       <tr *ngFor="let s of suppliers" [class.co-inactive]="!s.active">
         <td><b>{{ s.name }}</b> <span *ngIf="!s.active" class="co-off">inactive</span>
           <div class="co-muted" *ngIf="s.contactPerson">{{ s.contactPerson }}</div></td>
@@ -26,6 +26,8 @@
         <td>{{ s.pincode || '⚠️ no pincode' }}</td>
         <td>{{ s.dispatchDays }} day(s)</td>
         <td class="co-muted">{{ s.paymentDetails || '–' }}</td>
+        <td>{{ s.dropshipActive !== false ? '✅' : '–' }}</td>
+        <td class="co-muted">{{ s.lastUsedAt ? (s.lastUsedAt | date:'d MMM, h:mm a') : '–' }}</td>
         <td><button class="btn btn-secondary btn-sm" (click)="editSupplier(s)">Edit</button></td>
       </tr>
     </table>
@@ -50,6 +52,8 @@
       <label class="wide">Notes<textarea class="form-control" rows="2" [(ngModel)]="supplierEdit.notes"></textarea></label>
       <div class="wide co-buttons">
         <label class="co-check"><input type="checkbox" [(ngModel)]="supplierEdit.active"> Active</label>
+        <label class="co-check" title="Offered when you forward a supplier post to the shop WhatsApp">
+          <input type="checkbox" [(ngModel)]="supplierEdit.dropshipActive"> Active for dropship</label>
         <button class="btn btn-primary btn-sm" (click)="saveSupplier()">Save supplier</button>
         <button class="btn btn-secondary btn-sm" (click)="supplierEdit = null">Cancel</button>
         <button class="btn btn-danger btn-sm co-delete" *ngIf="supplierEdit.id" (click)="deleteSupplier(supplierEdit)">Delete</button>

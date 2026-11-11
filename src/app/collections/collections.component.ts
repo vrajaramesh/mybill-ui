@@ -59,6 +59,8 @@ interface Supplier {
   active: boolean;
   defaultCourierSlabs?: Record<string, number | null>;   // copied into collections built from their forwarded posts
   defaultCourierExtraPerPiece?: number | null;
+  dropshipActive?: boolean;         // offered in the WhatsApp "Which supplier?" list for forwarded posts
+  lastUsedAt?: string | null;
 }
 
 /** Courier charge per distance zone (supplier pincode -> customer pincode). */
@@ -160,7 +162,8 @@ export class CollectionsComponent implements OnInit {
   newSupplier() {
     this.supplierError = '';
     this.supplierEdit = { name: '', contactPerson: '', phone: '', address: '', pincode: '', paymentDetails: '',
-                          dispatchDays: 2, notes: '', active: true, defaultCourierSlabs: {}, defaultCourierExtraPerPiece: null };
+                          dispatchDays: 2, notes: '', active: true, defaultCourierSlabs: {}, defaultCourierExtraPerPiece: null,
+                          dropshipActive: true };
   }
 
   editSupplier(s: Supplier) {
@@ -173,7 +176,8 @@ export class CollectionsComponent implements OnInit {
     if (!s) return;
     const body = { name: s.name, contact_person: s.contactPerson, phone: s.phone, address: s.address, pincode: s.pincode,
                    payment_details: s.paymentDetails, dispatch_days: s.dispatchDays, notes: s.notes, active: s.active,
-                   default_courier_slabs: s.defaultCourierSlabs || {}, default_courier_extra_per_piece: s.defaultCourierExtraPerPiece };
+                   default_courier_slabs: s.defaultCourierSlabs || {}, default_courier_extra_per_piece: s.defaultCourierExtraPerPiece,
+                   dropship_active: s.dropshipActive !== false };
     const req = s.id ? this.http.put<Supplier>(`/api/boutique-suppliers/${s.id}`, body)
                      : this.http.post<Supplier>('/api/boutique-suppliers', body);
     req.subscribe({
