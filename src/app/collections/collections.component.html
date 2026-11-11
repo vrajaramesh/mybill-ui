@@ -32,6 +32,26 @@
       </tr>
     </table>
     <p class="co-muted" *ngIf="!suppliers.length">No suppliers yet.</p>
+
+    <div class="co-owners">
+      <h4>📲 Forwarding numbers <span class="co-muted">– forward a supplier's post (text + photos) from these WhatsApp
+        numbers to the shop number and it becomes a dropship collection. The AI never chats with these numbers.</span></h4>
+      <table class="co-items" *ngIf="ownerNumbers.length">
+        <tr><th>Number</th><th>Label</th><th>Active</th><th></th></tr>
+        <tr *ngFor="let n of ownerNumbers" [class.co-inactive]="!n.active">
+          <td>+{{ n.phone }}</td>
+          <td><input class="form-control" [(ngModel)]="n.label" (blur)="saveOwner(n)" placeholder="e.g. Owner"></td>
+          <td><input type="checkbox" [checked]="n.active" (change)="toggleOwner(n)"></td>
+          <td><button class="btn btn-danger btn-sm" (click)="deleteOwner(n)">Remove</button></td>
+        </tr>
+      </table>
+      <div class="co-owner-add">
+        <input class="form-control" [(ngModel)]="newOwner.phone" placeholder="WhatsApp number, e.g. 9441249575">
+        <input class="form-control" [(ngModel)]="newOwner.label" placeholder="Label (optional)">
+        <button class="btn btn-primary btn-sm" (click)="saveOwner(newOwner, true)" [disabled]="!newOwner.phone.trim()">+ Add number</button>
+      </div>
+      <p class="co-error" *ngIf="ownerError">{{ ownerError }}</p>
+    </div>
     <div class="co-grid co-sup-form" *ngIf="supplierEdit">
       <label>Supplier name *<input class="form-control" [(ngModel)]="supplierEdit.name" placeholder="Sri Lakshmi Sarees, Surat"></label>
       <label>Contact person<input class="form-control" [(ngModel)]="supplierEdit.contactPerson"></label>

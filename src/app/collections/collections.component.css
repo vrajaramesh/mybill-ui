@@ -57,3 +57,5 @@
 .co-status { display: flex; align-items: center; gap: 6px; }
 .co-status select { width: auto; }
 .co-actions .co-soldout { background: #fee2e2; }
+.co-owners { margin-top: 14px; }
+.co-owner-add { display: flex; gap: 8px; align-items: center; margin-top: 6px; max-width: 640px; }

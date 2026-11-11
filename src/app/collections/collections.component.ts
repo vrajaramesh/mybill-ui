@@ -63,6 +63,9 @@ interface Supplier {
   lastUsedAt?: string | null;
 }
 
+/** A WhatsApp number whose forwarded supplier posts become dropship collections. */
+interface OwnerNumber { phone: string; label: string | null; active: boolean; }
+
 /** Courier charge per distance zone (supplier pincode -> customer pincode). */
 const ZONES: { key: string; label: string; hint: string }[] = [
   { key: 'LOCAL', label: 'Local', hint: 'same city (first 3 pincode digits)' },
@@ -132,9 +135,34 @@ export class CollectionsComponent implements OnInit {
   supplierEdit: Supplier | null = null;
   supplierError = '';
 
+  // owner ("forwarding") numbers
+  ownerNumbers: OwnerNumber[] = [];
+  newOwner = { phone: '', label: '' };
+  ownerError = '';
+
   constructor(private http: HttpClient, private boutique: BoutiqueService) {}
 
-  ngOnInit() { this.load(); this.loadSuppliers(); this.loadWholesaleProducts(); }
+  ngOnInit() { this.load(); this.loadSuppliers(); this.loadWholesaleProducts(); this.loadOwnerNumbers(); }
+
+  loadOwnerNumbers() {
+    this.http.get<OwnerNumber[]>('/api/dropship-owner-numbers').subscribe({ next: l => this.ownerNumbers = l, error: () => {} });
+  }
+
+  saveOwner(n: { phone: string; label: string | null; active?: boolean }, reset = false) {
+    this.ownerError = '';
+    this.http.post<OwnerNumber>('/api/dropship-owner-numbers', { phone: n.phone, label: n.label, active: n.active !== false })
+      .subscribe({
+        next: () => { if (reset) this.newOwner = { phone: '', label: '' }; this.loadOwnerNumbers(); },
+        error: err => this.ownerError = err?.error?.message || 'Could not save the number'
+      });
+  }
+
+  toggleOwner(n: OwnerNumber) { this.saveOwner({ ...n, active: !n.active }); }
+
+  deleteOwner(n: OwnerNumber) {
+    if (!confirm(`Remove ${n.phone}? Its forwards will be treated as a normal chat again.`)) return;
+    this.http.delete(`/api/dropship-owner-numbers/${n.phone}`).subscribe({ next: () => this.loadOwnerNumbers() });
+  }
 
   loadWholesaleProducts() {
     this.http.get<WholesaleProduct[]>('/api/boutique-collections/wholesale-products')
