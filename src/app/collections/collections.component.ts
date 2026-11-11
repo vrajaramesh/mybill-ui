@@ -95,6 +95,11 @@ interface Collection {
   courier_slabs?: Record<string, number | null>;
   courier_extra_per_piece?: number | null;
   wholesale?: WholesalePricing;
+  // list / dropship extras
+  price?: number | null;
+  available_count?: number;
+  instagram_url?: string | null;
+  instagram_urls?: string[];
 }
 
 /**
@@ -220,6 +225,54 @@ export class CollectionsComponent implements OnInit {
       next: () => { this.supplierEdit = null; this.loadSuppliers(); },
       error: err => this.supplierError = err?.error?.message || 'Could not delete'
     });
+  }
+
+  // ── dropship: approve / archive / variants (same effect as the owner's WhatsApp buttons) ──
+  dsBusy = false;
+  priceAll: number | null = null;
+
+  get isDropship(): boolean { return this.edit?.type === 'DROPSHIP' && !!this.edit?.collection_id; }
+
+  statusLabel(s?: string): string {
+    return s === 'DRAFT' ? '📝 Draft' : s === 'ARCHIVED' ? '🗄️ Archived' : '✅ Active';
+  }
+
+  private dsCall(req: any, done = 'Saved ✓') {
+    this.dsBusy = true;
+    this.error = this.saved = '';
+    req.subscribe({
+      next: (c: Collection) => { this.dsBusy = false; this.saved = done; this.show(c); this.load(); },
+      error: (err: any) => { this.dsBusy = false; this.error = err?.error?.message || 'Could not save'; }
+    });
+  }
+
+  approve() {
+    if (!this.edit?.collection_id) return;
+    this.dsCall(this.http.post<Collection>(`/api/boutique-collections/${this.edit.collection_id}/approve`, {}), 'Approved ✓ – customers can buy it');
+  }
+
+  archive() {
+    if (!this.edit?.collection_id || !confirm(`Archive ${this.edit.code}? Customers won't see it any more.`)) return;
+    this.dsCall(this.http.post<Collection>(`/api/boutique-collections/${this.edit.collection_id}/archive`, {}), 'Archived ✓');
+  }
+
+  setPriceAll() {
+    if (!this.edit?.collection_id || !this.priceAll || this.priceAll <= 0) return;
+    this.dsCall(this.http.post<Collection>(`/api/boutique-collections/${this.edit.collection_id}/price`, { price: this.priceAll }),
+      `Price ₹${this.priceAll} set for every variant ✓`);
+    this.priceAll = null;
+  }
+
+  variantStatus(it: CollectionItem) {
+    if (!this.edit?.collection_id) return;
+    const status = it.status === 'SOLD_OUT' ? 'AVAILABLE' : 'SOLD_OUT';
+    this.dsCall(this.http.patch<Collection>(`/api/boutique-collections/${this.edit.collection_id}/variants/${it.item_code}`, { status }));
+  }
+
+  variantPrice(it: CollectionItem) {
+    if (!this.edit?.collection_id || it.price == null || +it.price <= 0) return;
+    this.dsCall(this.http.patch<Collection>(`/api/boutique-collections/${this.edit.collection_id}/variants/${it.item_code}`,
+      { price: it.price }));
   }
 
   toggleSoldOut(it: CollectionItem) {

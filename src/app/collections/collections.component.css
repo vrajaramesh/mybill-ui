@@ -59,3 +59,18 @@
 .co-actions .co-soldout { background: #fee2e2; }
 .co-owners { margin-top: 14px; }
 .co-owner-add { display: flex; gap: 8px; align-items: center; margin-top: 6px; max-width: 640px; }
+.co-ds-line { margin-top: 2px; font-size: 12px; }
+.co-badge { display: inline-block; padding: 1px 6px; border-radius: 8px; background: #dcfce7; font-size: 11px; }
+.co-badge.draft { background: #fef3c7; }
+.co-badge.arch { background: #e5e7eb; }
+.co-ds-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: #f8fafc; border-radius: 8px; }
+.co-ds-spacer { flex: 1; }
+.co-price-all { width: 140px; }
+.co-variants { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.co-variant { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; font-size: 13px; }
+.co-variant.sold { opacity: 0.55; }
+.co-variant img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.co-v-code { font-weight: 600; margin-top: 4px; }
+.co-v-colour { font-size: 12px; min-height: 30px; }
+.co-v-row { display: flex; align-items: center; gap: 4px; }
+.co-v-row input { width: 80px; padding: 2px 4px; }

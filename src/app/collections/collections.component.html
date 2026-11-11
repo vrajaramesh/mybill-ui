@@ -92,11 +92,41 @@
           <b>{{ c.code }}</b> <span class="co-type" [class.ready]="c.type === 'READYMADE'" [class.drop]="c.type === 'DROPSHIP' || c.type === 'WHOLESALE'">{{ typeLabel(c.type) }}</span>
           <span *ngIf="!c.active" class="co-off">{{ c.status === 'DRAFT' ? 'draft' : 'inactive' }}</span>
           <div class="co-muted">{{ c.name }} · {{ c.item_count }} items</div>
+          <div class="co-muted co-ds-line" *ngIf="c.type === 'DROPSHIP'">
+            <span class="co-badge" [class.draft]="c.status === 'DRAFT'" [class.arch]="c.status === 'ARCHIVED'">{{ statusLabel(c.status) }}</span>
+            <span *ngIf="c.supplier_name"> · {{ c.supplier_name }}</span>
+            <span *ngIf="c.price != null"> · ₹{{ c.price }}</span>
+            · {{ c.available_count }}/{{ c.item_count }} available
+            <a *ngIf="c.instagram_url" [href]="c.instagram_url" target="_blank" (click)="$event.stopPropagation()"> · 📷 Instagram</a>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="co-edit" *ngIf="edit">
+      <!-- dropship: approve / archive / price, same as the owner's WhatsApp buttons -->
+      <div class="co-ds-bar" *ngIf="isDropship">
+        <span class="co-badge" [class.draft]="edit.status === 'DRAFT'" [class.arch]="edit.status === 'ARCHIVED'">{{ statusLabel(edit.status) }}</span>
+        <span class="co-muted" *ngIf="edit.supplier_name">{{ edit.supplier_name }}</span>
+        <a *ngFor="let u of edit.instagram_urls || []" [href]="u" target="_blank">📷 Instagram post</a>
+        <span class="co-ds-spacer"></span>
+        <input class="form-control co-price-all" type="number" min="1" [(ngModel)]="priceAll" placeholder="₹ price for all">
+        <button class="btn btn-secondary btn-sm" (click)="setPriceAll()" [disabled]="dsBusy || !priceAll">Set price</button>
+        <button class="btn btn-primary btn-sm" (click)="approve()" [disabled]="dsBusy" *ngIf="edit.status !== 'ACTIVE'">✅ Approve &amp; Post</button>
+        <button class="btn btn-danger btn-sm" (click)="archive()" [disabled]="dsBusy" *ngIf="edit.status !== 'ARCHIVED'">🗄️ Archive</button>
+      </div>
+      <div class="co-variants" *ngIf="isDropship && items.length">
+        <div class="co-variant" *ngFor="let it of items" [class.sold]="it.status === 'SOLD_OUT'">
+          <img [src]="it.stamped_image_url || it.image_url" alt="" *ngIf="it.stamped_image_url || it.image_url">
+          <div class="co-v-code">{{ it.item_code }}</div>
+          <div class="co-muted co-v-colour">{{ it.colour || '–' }}<span *ngIf="it.secondary_desc"> · {{ it.secondary_desc }}</span></div>
+          <div class="co-v-row">
+            ₹<input class="form-control" type="number" min="1" [(ngModel)]="it.price" (blur)="variantPrice(it)" (keyup.enter)="variantPrice(it)">
+            <button class="btn btn-sm" [class.btn-secondary]="it.status !== 'SOLD_OUT'" [class.btn-danger]="it.status === 'SOLD_OUT'"
+              (click)="variantStatus(it)" [disabled]="dsBusy">{{ it.status === 'SOLD_OUT' ? '🚫 Sold out' : '✓ Available' }}</button>
+          </div>
+        </div>
+      </div>
       <div class="co-grid">
         <label>Code *<input class="form-control" [(ngModel)]="edit.code" placeholder="MCS-1"></label>
         <label>Type *
