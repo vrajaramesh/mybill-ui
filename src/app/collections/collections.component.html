@@ -37,6 +37,15 @@
       <label>Pincode they ship from *<input class="form-control" [(ngModel)]="supplierEdit.pincode" maxlength="6" placeholder="395002"></label>
       <label>Dispatch time (days)<input class="form-control" type="number" min="0" max="30" [(ngModel)]="supplierEdit.dispatchDays"></label>
       <label>Payment details (UPI / bank)<input class="form-control" [(ngModel)]="supplierEdit.paymentDetails" placeholder="name@upi"></label>
+      <div class="wide co-slabs" *ngIf="supplierEdit.defaultCourierSlabs">
+        <div class="co-muted">Default courier charges (₹) – copied into collections made from this supplier's forwarded posts:</div>
+        <div class="co-slab-grid">
+          <label *ngFor="let z of zones">{{ z.label }}<input class="form-control" type="number" min="0"
+            [(ngModel)]="supplierEdit.defaultCourierSlabs[z.key]" placeholder="₹"></label>
+          <label>Each extra piece<input class="form-control" type="number" min="0"
+            [(ngModel)]="supplierEdit.defaultCourierExtraPerPiece" placeholder="₹ 0"></label>
+        </div>
+      </div>
       <label class="wide">Address<textarea class="form-control" rows="2" [(ngModel)]="supplierEdit.address"></textarea></label>
       <label class="wide">Notes<textarea class="form-control" rows="2" [(ngModel)]="supplierEdit.notes"></textarea></label>
       <div class="wide co-buttons">
@@ -57,7 +66,7 @@
         <img *ngIf="c.cover_image_url" [src]="c.cover_image_url" alt="">
         <div>
           <b>{{ c.code }}</b> <span class="co-type" [class.ready]="c.type === 'READYMADE'" [class.drop]="c.type === 'DROPSHIP' || c.type === 'WHOLESALE'">{{ typeLabel(c.type) }}</span>
-          <span *ngIf="!c.active" class="co-off">inactive</span>
+          <span *ngIf="!c.active" class="co-off">{{ c.status === 'DRAFT' ? 'draft' : 'inactive' }}</span>
           <div class="co-muted">{{ c.name }} · {{ c.item_count }} items</div>
         </div>
       </div>
@@ -111,7 +120,13 @@
           <img *ngIf="edit.cover_image_url" [src]="edit.cover_image_url" alt="cover">
           <label class="btn btn-secondary btn-sm">{{ uploading ? 'Uploading…' : 'Cover photo' }}
             <input type="file" accept="image/*" hidden (change)="onCover($event)"></label>
-          <label class="co-check"><input type="checkbox" [(ngModel)]="edit.active"> Active (the assistant sells it)</label>
+          <label class="co-status">Status
+            <select class="form-control" [(ngModel)]="edit.status">
+              <option value="DRAFT">📝 Draft (not sold yet)</option>
+              <option value="ACTIVE">✅ Active (the assistant sells it)</option>
+              <option value="ARCHIVED">🗄️ Archived</option>
+            </select></label>
+          <span class="co-muted" *ngIf="edit.source === 'WHATSAPP_FORWARD'">· made from a WhatsApp forward</span>
         </div>
       </div>
 
@@ -160,6 +175,8 @@
           </td>
           <td class="co-actions">
             <button (click)="move(i, -1)" title="Up">↑</button><button (click)="move(i, 1)" title="Down">↓</button>
+            <button (click)="toggleSoldOut(it)" [title]="it.status === 'SOLD_OUT' ? 'Sold out – click to make available' : 'Mark sold out'"
+              [class.co-soldout]="it.status === 'SOLD_OUT'">{{ it.status === 'SOLD_OUT' ? '🚫' : '✓' }}</button>
             <button (click)="removeItem(i)" title="Remove" class="del">✕</button>
           </td>
         </tr>

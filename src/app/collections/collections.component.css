@@ -54,3 +54,6 @@
 .co-slab-grid small { font-size: 0.68rem; }
 .co-neg { color: #b91c1c; }
 .co-wslabs { margin-top: 6px; font-size: 13px; }
+.co-status { display: flex; align-items: center; gap: 6px; }
+.co-status select { width: auto; }
+.co-actions .co-soldout { background: #fee2e2; }

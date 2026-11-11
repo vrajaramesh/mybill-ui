@@ -19,6 +19,10 @@ interface CollectionItem {
   sizes?: { size: string; stock: number }[];
   cost_price?: number | null;
   wholesale_product_id?: number | null;   // WHOLESALE collections: the Wholesale-module product
+  status?: 'AVAILABLE' | 'SOLD_OUT';       // SOLD_OUT = the assistant doesn't offer it
+  variant_no?: number | null;
+  secondary_desc?: string | null;
+  stamped_image_url?: string | null;
   product_code?: string | null;
   in_stock?: boolean;
 }
@@ -53,6 +57,8 @@ interface Supplier {
   dispatchDays: number;
   notes: string;
   active: boolean;
+  defaultCourierSlabs?: Record<string, number | null>;   // copied into collections built from their forwarded posts
+  defaultCourierExtraPerPiece?: number | null;
 }
 
 /** Courier charge per distance zone (supplier pincode -> customer pincode). */
@@ -73,6 +79,9 @@ interface Collection {
   cover_image_url: string | null;
   ai_instructions: string;
   active: boolean;
+  status?: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  source?: string;
+  shipping_extra?: boolean;
   items?: CollectionItem[];
   warnings?: string[];
   item_count?: number;
@@ -151,16 +160,20 @@ export class CollectionsComponent implements OnInit {
   newSupplier() {
     this.supplierError = '';
     this.supplierEdit = { name: '', contactPerson: '', phone: '', address: '', pincode: '', paymentDetails: '',
-                          dispatchDays: 2, notes: '', active: true };
+                          dispatchDays: 2, notes: '', active: true, defaultCourierSlabs: {}, defaultCourierExtraPerPiece: null };
   }
 
-  editSupplier(s: Supplier) { this.supplierError = ''; this.supplierEdit = { ...s }; }
+  editSupplier(s: Supplier) {
+    this.supplierError = '';
+    this.supplierEdit = { ...s, defaultCourierSlabs: { ...(s.defaultCourierSlabs || {}) } };
+  }
 
   saveSupplier() {
     const s = this.supplierEdit;
     if (!s) return;
     const body = { name: s.name, contact_person: s.contactPerson, phone: s.phone, address: s.address, pincode: s.pincode,
-                   payment_details: s.paymentDetails, dispatch_days: s.dispatchDays, notes: s.notes, active: s.active };
+                   payment_details: s.paymentDetails, dispatch_days: s.dispatchDays, notes: s.notes, active: s.active,
+                   default_courier_slabs: s.defaultCourierSlabs || {}, default_courier_extra_per_piece: s.defaultCourierExtraPerPiece };
     const req = s.id ? this.http.put<Supplier>(`/api/boutique-suppliers/${s.id}`, body)
                      : this.http.post<Supplier>('/api/boutique-suppliers', body);
     req.subscribe({
@@ -175,6 +188,11 @@ export class CollectionsComponent implements OnInit {
       next: () => { this.supplierEdit = null; this.loadSuppliers(); },
       error: err => this.supplierError = err?.error?.message || 'Could not delete'
     });
+  }
+
+  toggleSoldOut(it: CollectionItem) {
+    it.status = it.status === 'SOLD_OUT' ? 'AVAILABLE' : 'SOLD_OUT';
+    this.itemsChanged = true;
   }
 
   typeLabel(t: string): string {
@@ -199,7 +217,8 @@ export class CollectionsComponent implements OnInit {
   }
 
   newCollection() {
-    this.edit = { code: '', name: '', type: 'FABRIC', description: '', cover_image_url: null, ai_instructions: '', active: true };
+    this.edit = { code: '', name: '', type: 'FABRIC', description: '', cover_image_url: null, ai_instructions: '', active: true,
+                  status: 'ACTIVE' };
     this.items = [];
     this.itemsChanged = false;
     this.error = this.saved = '';
@@ -320,6 +339,7 @@ export class CollectionsComponent implements OnInit {
     this.saving = true;
     this.error = this.saved = '';
     const body = { ...this.edit, code: this.edit.code.trim().toUpperCase() };
+    body.active = body.status === 'ACTIVE';
     delete (body as any).items; delete (body as any).warnings;
     if (body.type !== 'DROPSHIP') { delete body.supplier_id; delete body.courier_slabs; delete body.courier_extra_per_piece; }
     const req = this.edit.collection_id
@@ -330,6 +350,7 @@ export class CollectionsComponent implements OnInit {
         if (!this.itemsChanged) { this.done(c); return; }
         const items = this.items.map(i => ({ item_code: i.item_code.trim().toUpperCase(), product_id: i.product_id,
                                              wholesale_product_id: i.wholesale_product_id ?? null,
+                                             status: i.status || 'AVAILABLE',
                                              colour: i.colour?.trim() || null, image_url: i.image_url || null }));
         this.http.put<Collection>(`/api/boutique-collections/${c.collection_id}/items`, { items }).subscribe({
           next: full => this.done(full),
