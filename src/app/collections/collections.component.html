@@ -108,6 +108,7 @@
       <div class="co-ds-bar" *ngIf="isDropship">
         <span class="co-badge" [class.draft]="edit.status === 'DRAFT'" [class.arch]="edit.status === 'ARCHIVED'">{{ statusLabel(edit.status) }}</span>
         <span class="co-muted" *ngIf="edit.supplier_name">{{ edit.supplier_name }}</span>
+        <span class="co-muted" *ngIf="edit.owner_phone" title="Approvals, supplier and availability questions go to this number">· 📲 forwarded by +{{ edit.owner_phone }}</span>
         <a *ngFor="let u of edit.instagram_urls || []" [href]="u" target="_blank">📷 Instagram post</a>
         <span class="co-ds-spacer"></span>
         <input class="form-control co-price-all" type="number" min="1" [(ngModel)]="priceAll" placeholder="₹ price for all">
@@ -186,11 +187,19 @@
 
       <h4>Items <span class="co-muted">– one per photo in the post</span></h4>
       <table class="co-items" *ngIf="items.length">
-        <tr><th>Code</th><th>{{ isWholesale ? 'Wholesale product' : 'Product (from Products)' }}</th><th>{{ isWholesale ? 'Design / colour' : 'Colour' }}</th>
+        <tr><th>Code</th><th>{{ isWholesale ? 'Wholesale product' : isDs ? 'Name (dropship – not in Products)' : 'Product (from Products)' }}</th><th>{{ isWholesale ? 'Design / colour' : 'Colour' }}</th>
           <th>{{ edit.type === 'DROPSHIP' ? 'Price · cost · margin' : isWholesale ? 'Stock' : 'Price · stock' }}</th><th></th></tr>
         <tr *ngFor="let it of items; let i = index">
           <td><input class="form-control code" [(ngModel)]="it.item_code" (ngModelChange)="markChanged()" placeholder="MCS-1A"></td>
-          <td>
+          <td *ngIf="isDs">
+            <div class="co-prod">
+              <img *ngIf="it.image_url" [src]="it.image_url" alt="">
+              <input class="form-control" [(ngModel)]="it.product_name" (ngModelChange)="markChanged()" placeholder="Kanchi silk saree – Red">
+              <label class="btn btn-secondary btn-sm" title="This colour's photo">📷
+                <input type="file" accept="image/*" hidden (change)="onItemPhoto($event, it)"></label>
+            </div>
+          </td>
+          <td *ngIf="!isDs">
             <div class="co-prod">
               <img *ngIf="it.image_url" [src]="it.image_url" alt="">
               <span *ngIf="it.product_id || it.wholesale_product_id; else noProd">{{ it.product_name }}
@@ -213,12 +222,15 @@
             </div>
           </td>
           <td><input class="form-control" [(ngModel)]="it.colour" (ngModelChange)="markChanged()" placeholder="Blue check"></td>
-          <td class="co-muted">
+          <td class="co-muted co-ds-prices" *ngIf="isDs">
+            <label>₹ price<input class="form-control" type="number" min="1" [(ngModel)]="it.price" (ngModelChange)="markChanged()"></label>
+            <label>₹ cost<input class="form-control" type="number" min="0" [(ngModel)]="it.cost_price" (ngModelChange)="markChanged()"></label>
+            <b *ngIf="margin(it) != null" [class.co-neg]="margin(it)! < 0">margin ₹{{ margin(it) }}</b>
+            <input class="form-control" [(ngModel)]="it.sizes_text" (ngModelChange)="markChanged()" placeholder="Sizes: S, M, L (empty = free size)">
+          </td>
+          <td class="co-muted" *ngIf="!isDs">
             <span *ngIf="it.price != null">₹{{ it.price }}/{{ it.unit }}</span>
-            <ng-container *ngIf="edit.type === 'DROPSHIP'; else stockCell">
-              <span *ngIf="it.cost_price != null"> · cost ₹{{ it.cost_price }}</span>
-              <b *ngIf="margin(it) != null" [class.co-neg]="margin(it)! < 0"> · ₹{{ margin(it) }}</b>
-            </ng-container>
+            <ng-container *ngTemplateOutlet="stockCell"></ng-container>
             <ng-template #stockCell>
               <span *ngIf="isWholesale; else retailStock">
                 <span *ngIf="it.stock != null">{{ +it.stock }} {{ it.unit }}</span>
@@ -249,8 +261,8 @@
       </div>
       <p class="co-muted co-hint">Link the Instagram post or ad to this collection in <b>Ad &amp; post links</b>, or write
         <b>Code: {{ edit.code || 'MCS-1' }}</b> in the caption. For readymade items, enter sizes &amp; stock in Products.
-        <span *ngIf="edit.type === 'DROPSHIP'">For dropship items: in Products enter the selling price, the <b>cost price</b>
-        (what the supplier charges you), unit <b>pcs</b> and the sizes (stock can stay 0 – the supplier keeps it).</span>
+        <span *ngIf="edit.type === 'DROPSHIP'">Dropship items are kept apart from Products: enter each colour's name, selling
+        price, <b>cost</b> (what the supplier charges you) and sizes here – the supplier keeps the stock.</span>
         <span *ngIf="isWholesale">For wholesale: give each design its code (e.g. MCS-1, MCS-2), link it to the product in
         Wholesale → Products and upload the design's photo (📷). Codes must not be used by your other firm's collections.</span></p>
     </div>

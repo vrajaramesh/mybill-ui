@@ -19,6 +19,8 @@ interface CollectionItem {
   sizes?: { size: string; stock: number }[];
   cost_price?: number | null;
   wholesale_product_id?: number | null;   // WHOLESALE collections: the Wholesale-module product
+  dropship_product_id?: number | null;    // DROPSHIP collections: the variant's own row (not in Products)
+  sizes_text?: string;                    // DROPSHIP: "S, M, L" edited here
   status?: 'AVAILABLE' | 'SOLD_OUT';       // SOLD_OUT = the assistant doesn't offer it
   variant_no?: number | null;
   secondary_desc?: string | null;
@@ -100,11 +102,13 @@ interface Collection {
   available_count?: number;
   instagram_url?: string | null;
   instagram_urls?: string[];
+  owner_phone?: string | null;   // dropship: the owner number that forwarded the post
 }
 
 /**
  * Boutique → Collections: fabric / readymade collections, one per Instagram post, whose items (codes printed on the
- * photos, e.g. MCS-1A) the WhatsApp assistant sells. Prices, stock and sizes come from Products.
+ * photos, e.g. MCS-1A) the WhatsApp assistant sells. Prices, stock and sizes come from Products – except dropship
+ * variants, which are the supplier's and are kept apart from Products (name, price, cost and sizes entered here).
  */
 @Component({
   selector: 'app-collections',
@@ -175,6 +179,8 @@ export class CollectionsComponent implements OnInit {
   }
 
   get isWholesale(): boolean { return this.edit?.type === 'WHOLESALE'; }
+  /** Dropship variants are entered here (name, price, cost, sizes) – they are not in Products. */
+  get isDs(): boolean { return this.edit?.type === 'DROPSHIP'; }
 
   /** One product's slabs, or each product's when the items use several. */
   get pricingList(): WholesalePricing[] {
@@ -345,7 +351,8 @@ export class CollectionsComponent implements OnInit {
   private show(full: Collection) {
     this.edit = { ...full, description: full.description || '', ai_instructions: full.ai_instructions || '',
                   courier_slabs: { ...(full.courier_slabs || {}) } };
-    this.items = (full.items || []).map(i => ({ ...i, colour: i.colour || '' }));
+    this.items = (full.items || []).map(i => ({ ...i, colour: i.colour || '',
+                                                 sizes_text: (i.sizes || []).map(s => s.size).join(', ') }));
     this.itemsChanged = false;
   }
 
@@ -354,13 +361,16 @@ export class CollectionsComponent implements OnInit {
   addItem() {
     const prefix = this.edit?.code ? this.edit.code.toUpperCase() : '';
     const letter = String.fromCharCode(65 + this.items.length);   // A, B, C ...
-    const code = !prefix ? '' : this.isWholesale ? `${prefix}-${this.items.length + 1}` : `${prefix}${letter}`;  // wholesale: MCS-1, MCS-2
+    const code = !prefix ? '' : this.isWholesale ? `${prefix}-${this.items.length + 1}`   // wholesale: MCS-1, MCS-2
+      : this.isDs ? `${prefix}-${String(this.items.length + 1).padStart(2, '0')}` : `${prefix}${letter}`;  // dropship: KSS1211-01
     const last = this.items[this.items.length - 1];
     this.items.push({ item_code: code, product_id: null, colour: '', image_url: null,
                       ...(this.isWholesale && last?.wholesale_product_id
-                          ? { wholesale_product_id: last.wholesale_product_id, product_name: last.product_name, unit: last.unit } : {}) });
+                          ? { wholesale_product_id: last.wholesale_product_id, product_name: last.product_name, unit: last.unit } : {}),
+                      ...(this.isDs ? { product_name: last?.product_name || this.edit?.name || '', price: last?.price ?? null,
+                                        cost_price: last?.cost_price ?? null, sizes_text: last?.sizes_text || '' } : {}) });
     this.itemsChanged = true;
-    this.pickFor = this.items.length - 1;
+    this.pickFor = this.isDs ? null : this.items.length - 1;
     this.query = '';
     this.results = [];
   }
@@ -448,6 +458,11 @@ export class CollectionsComponent implements OnInit {
         if (!this.itemsChanged) { this.done(c); return; }
         const items = this.items.map(i => ({ item_code: i.item_code.trim().toUpperCase(), product_id: i.product_id,
                                              wholesale_product_id: i.wholesale_product_id ?? null,
+                                             ...(body.type === 'DROPSHIP' ? {
+                                               dropship_product_id: i.dropship_product_id ?? null,
+                                               product_name: i.product_name?.trim() || null,
+                                               price: i.price ?? null, cost_price: i.cost_price ?? null,
+                                               sizes: i.sizes_text || '' } : {}),
                                              status: i.status || 'AVAILABLE',
                                              colour: i.colour?.trim() || null, image_url: i.image_url || null }));
         this.http.put<Collection>(`/api/boutique-collections/${c.collection_id}/items`, { items }).subscribe({
